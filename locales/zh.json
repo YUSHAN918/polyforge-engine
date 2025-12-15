@@ -1,0 +1,194 @@
+{
+  "sidebar": {
+    "hero": "英雄大厅",
+    "assets": "资产库",
+    "world": "世界构造",
+    "arch": "架构验证",
+    "motion": "演武场",
+    "vfx": "特效工坊",
+    "play": "实机演示"
+  },
+  "arch": {
+    "title": "架构验证器",
+    "subtitle": "Architecture Validator",
+    "monitor": "模块状态监控",
+    "log": "总线日志",
+    "logSubtitle": "Event Bus Log",
+    "btn_test": "模拟测试",
+    "scene": "场景模块",
+    "assets": "资产模块",
+    "history": "历史记录",
+    "input": "输入系统"
+  },
+  "motion": {
+    "style": "动作风格 (Motion Style)",
+    "bounce": "颠簸 (Bounce)",
+    "knee": "抬膝高度 (Knee)",
+    "width": "双脚间距 (Width)",
+    "arm_amp": "手臂摆动 (Arm Amp)",
+    "arm_span": "手臂开合 (Span)",
+    "arm_rot": "手臂前后 (Arm Rot)",
+    "spine": "脊柱扭转 (Spine)"
+  },
+  "common": {
+    "default": "默认",
+    "defaultNone": "默认/无",
+    "none": "无",
+    "left": "Left",
+    "right": "Right",
+    "systemDefault": "系统默认",
+    "custom": "自定义",
+    "previous": "上一步"
+  },
+  "editor": {
+    "title": "英雄大厅",
+    "step": "步骤 {{current}}/{{total}}",
+    "editAsset": "编辑/创建自定义资产",
+    "tab": {
+      "head": "头部构造",
+      "body": "躯干与四肢"
+    },
+    "head": {
+      "scaling": "头部大小 (Head Scaling)",
+      "overallSize": "整体大小 (Scale)",
+      "sizeNote": "头部大小已固定，不受身体缩放影响。",
+      "shape": "头型 (Head Shape)",
+      "features": "五官 & 发型",
+      "eyes": "眼睛",
+      "mouth": "嘴巴",
+      "hair": "发型",
+      "hairColor": "发色",
+      "none": "无/默认",
+      "skinColor": "肤色"
+    },
+    "body": {
+      "scaling": "体型缩放 (Body Scaling)",
+      "overallSize": "整体体型 (Body Scale)",
+      "height": "身高拉伸 (Height)",
+      "width": "体宽拉伸 (Width)",
+      "torsoColor": "身躯",
+      "limbColor": "四肢",
+      "torso": "躯干构造 (Torso)",
+      "chest": "胸腔 (Chest)",
+      "hips": "髋部 (Hips)",
+      "arms": "手臂构造 (Arms)",
+      "upperArm": "大臂 (Upper Arm)",
+      "forearm": "小臂 (Forearm)",
+      "hand": "手掌 (Hand)",
+      "legs": "腿部构造 (Legs)",
+      "thigh": "大腿 (Thigh)",
+      "calf": "小腿 (Calf)",
+      "foot": "脚掌 (Foot)"
+    },
+    "gear": {
+      "oneHanded": "单手武器",
+      "twoHanded": "双手武器",
+      "selectWeapon": "选择武器",
+      "none": "无 (None)",
+      "unarmed": "空手",
+      "offhandShield": "副手盾牌",
+      "headAndFace": "头部与面饰",
+      "headwear": "头饰风格 (Headwear)",
+      "faceAccessory": "面部饰品 (Face Accessory)",
+      "noWeaponsAvailable": "暂无可用装备"
+    },
+    "action": {
+      "title": "动作风格 (Motion Style)",
+      "description": "为您的角色配置独特的运动和战斗风格。您可以从'演武场'中创建更多自定义风格。",
+      "idle": "待机 (Idle)",
+      "walk": "行走 (Walk)",
+      "run": "奔跑 (Run)",
+      "attack": "攻击 (Attack)"
+    },
+    "nextStep": {
+      "weapon": "下一步: 选择武器",
+      "action": "下一步: 动作调优"
+    },
+    "finish": "确定角色"
+  },
+  "ai": {
+    "greeting": "你好！我是 PolySprite (灵枢)。我可以帮你生成模型、动作、背景故事，或者回答关于编辑器的问题。",
+    "inputPlaceholder": "输入指令...",
+    "msg": {
+      "distracted": "我好像走神了...",
+      "executing": "执行中...",
+      "connectionError": "连接中断，请稍后重试。"
+    },
+    "action": {
+      "dockToSidebar": "收纳到侧边栏",
+      "openChat": "打开对话",
+      "closeChat": "关闭对话"
+    },
+    "quick": {
+      "genStory": "生成背景故事",
+      "suggestColors": "推荐配色",
+      "genSword": "生成剑",
+      "genShield": "生成盾牌",
+      "genHelmet": "随机头盔",
+      "zombieWalk": "僵尸行走",
+      "ninjaRun": "忍者跑",
+      "heavyAttack": "重击动画",
+      "howToUse": "如何操作？",
+      "makeTree": "做个树",
+      "whoAreYou": "你是谁？"
+    },
+    "prompt": {
+      "genStory": "为当前角色生成一段背景故事",
+      "suggestColors": "给出一套适合战士的配色方案建议",
+      "genSword": "做一个低多边形的剑 (Generate low poly sword)",
+      "genShield": "做一个圆形的盾牌 (Generate round shield)",
+      "genHelmet": "做一个骑士头盔",
+      "zombieWalk": "把动作调整为僵尸行走的风格",
+      "ninjaRun": "生成忍者跑步的动作风格",
+      "heavyAttack": "生成一个挥舞重武器的攻击动作",
+      "howToUse": "告诉我地图编辑器的快捷键和操作方法",
+      "makeTree": "我想要一个简单的松树模型，带我去模型工坊生成",
+      "whoAreYou": "介绍一下你自己"
+    }
+  },
+  "camera": {
+    "title": "镜头设置",
+    "tab": {
+      "camera": "镜头",
+      "shadow": "阴影"
+    },
+    "mode": "镜头模式 (Camera Mode)",
+    "mode.isometric": "等距 (Isometric)",
+    "mode.tps": "第三人称 (TPS)",
+    "mode.sideScroll": "横版 (Side Scroll)",
+    "settings": "镜头参数 (Camera Settings)",
+    "fov": "视野 (FOV)",
+    "height": "高度 (Height)",
+    "distance": "距离 (Distance)",
+    "shadowSettings": "阴影设置 (Shadow Settings)",
+    "shadowOpacity": "不透明度 (Opacity)",
+    "shadowBlur": "模糊度 (Blur)",
+    "shadowColor": "颜色 (Color)",
+    "shadowOffsetX": "X偏移",
+    "shadowOffsetY": "Y偏移",
+    "shadowOffsetZ": "Z偏移",
+    "importExport": "导入/导出",
+    "export": "导出设置",
+    "import": "导入设置",
+    "importExportNote": "导出当前镜头和阴影设置，或从JSON文件导入"
+  },
+  "settings": {
+    "title": "设置",
+    "general": "常规",
+    "interface": "界面",
+    "data": "数据",
+    "language": "语言",
+    "languageDescription": "切换界面语言",
+    "chinese": "中文",
+    "english": "English",
+    "aiAssistant": "AI助手",
+    "aiAssistantDescription": "显示或隐藏AI助手面板",
+    "show": "显示",
+    "hide": "隐藏",
+    "saveLoad": "保存/加载",
+    "saveLoadDescription": "保存或加载项目数据",
+    "save": "保存",
+    "load": "加载",
+    "close": "关闭"
+  }
+}

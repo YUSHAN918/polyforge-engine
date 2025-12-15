@@ -10,6 +10,8 @@ import { ActionStudioPanel } from './components/ActionStudioPanel';
 import { AIAssistant } from './components/AIAssistant'; 
 import { VfxEditorPanel } from './components/VfxEditorPanel'; // NEW
 import { ArchitectureEditor } from './components/ArchitectureEditor/ArchitectureEditor'; // NEW
+import { SettingsModal } from './components/SettingsModal'; // NEW
+import './i18n'; // 初始化国际化
 import { AppMode, CharacterConfig, MapConfig, MapItemType, GearTransformMap, AssetTransformMap, AnimationConfig, CharacterAction, CustomModel, ModelPrimitive, AssetCategory, AssetSubCategory, CustomAction, Keyframe, SavedCharacter, CameraMode, WorkshopRefType, SavedProceduralAction, CameraSettings, ShadowSettings, ActionCategory, VfxAsset, VfxTestParams, VfxBindingMap, VfxEmitterConfig } from './types'; // Updated imports
 import { INITIAL_GEAR_TRANSFORMS, INITIAL_ASSET_TRANSFORMS, DEFAULT_ANIMATION_CONFIG, INITIAL_CUSTOM_MODELS, INITIAL_CUSTOM_ACTIONS, INITIAL_SKILLS, NATIVE_TEMPLATES, sanitizeModel, INITIAL_PROCEDURAL_ACTIONS, DEFAULT_CONFIG } from './initialData';
 import { generate3DModel, generateProceduralConfig, generateCharacterAction, generateVfxConfig } from './services/geminiService'; 
@@ -56,6 +58,9 @@ export const App: React.FC = () => {
   
   // --- AI SPRITE STATE ---
   const [isAiDocked, setIsAiDocked] = useState(false);
+
+  // --- SETTINGS MODAL STATE ---
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // --- VFX STATE (NEW) ---
   const [vfxAssets, setVfxAssets] = useState<VfxAsset[]>([]);
@@ -1124,6 +1129,7 @@ export const App: React.FC = () => {
         setMode={handleModeSwitchAttempt} 
         isAiDocked={isAiDocked} 
         onUndock={() => setIsAiDocked(false)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       <div className="flex-1 relative flex min-w-0 overflow-hidden">
@@ -1362,6 +1368,12 @@ export const App: React.FC = () => {
             onDock={() => setIsAiDocked(true)}
         />
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
     </div>
   );
 };

@@ -10,9 +10,10 @@ interface SidebarProps {
   isChatOpen?: boolean;
   isAiDocked?: boolean;
   onUndock?: () => void;
+  onOpenSettings?: () => void; // NEW
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode, isAiDocked, onUndock }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode, isAiDocked, onUndock, onOpenSettings }) => {
   const navItems = [
     { 
       mode: AppMode.CHARACTER_EDITOR, 
@@ -94,6 +95,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode, isAiDock
             </button>
           );
         })}
+      </div>
+
+      {/* SETTINGS BUTTON */}
+      <div className="mt-auto w-full px-2 mb-4">
+          <button 
+            onClick={() => {
+              if (onOpenSettings) onOpenSettings();
+              // 发送日志事件到架构验证器
+              EventBus.publish(EventType.LOG_EVENT, {
+                message: '用户打开了设置面板',
+                type: 'info',
+                module: 'Sidebar',
+              });
+            }}
+            className="group w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-gray-500 hover:text-gray-200 hover:bg-gray-800/50 transition-all duration-300"
+            title="设置"
+          >
+              <i className="fas fa-cog text-xl mb-1 transition-transform group-hover:scale-110 group-hover:rotate-90"></i>
+              <span className="text-[9px] font-bold opacity-80">设置</span>
+          </button>
       </div>
 
       {/* DOCKED SPRITE BUTTON */}

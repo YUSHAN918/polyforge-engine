@@ -1,0 +1,194 @@
+{
+  "sidebar": {
+    "hero": "Hero Hall",
+    "assets": "Asset Library",
+    "world": "World Builder",
+    "arch": "Architecture",
+    "motion": "Motion Studio",
+    "vfx": "VFX Workshop",
+    "play": "Play Mode"
+  },
+  "arch": {
+    "title": "Architecture Validator",
+    "subtitle": "Architecture Validator",
+    "monitor": "Module Status",
+    "log": "Event Bus Log",
+    "logSubtitle": "Event Bus Log",
+    "btn_test": "Simulate Test",
+    "scene": "Scene",
+    "assets": "Assets",
+    "history": "History",
+    "input": "Input"
+  },
+  "motion": {
+    "style": "Motion Style",
+    "bounce": "Bounce",
+    "knee": "Knee Height",
+    "width": "Step Width",
+    "arm_amp": "Arm Amplitude",
+    "arm_span": "Arm Span",
+    "arm_rot": "Arm Rotation",
+    "spine": "Spine Twist"
+  },
+  "common": {
+    "default": "Default",
+    "defaultNone": "Default/None",
+    "none": "None",
+    "left": "Left",
+    "right": "Right",
+    "systemDefault": "System Default",
+    "custom": "Custom",
+    "previous": "Previous"
+  },
+  "editor": {
+    "title": "Hero Hall",
+    "step": "Step {{current}}/{{total}}",
+    "editAsset": "Edit/Create Custom Asset",
+    "tab": {
+      "head": "Head",
+      "body": "Body & Limbs"
+    },
+    "head": {
+      "scaling": "Head Scaling",
+      "overallSize": "Overall Size",
+      "sizeNote": "Head size is fixed and not affected by body scaling.",
+      "shape": "Head Shape",
+      "features": "Facial Features & Hair",
+      "eyes": "Eyes",
+      "mouth": "Mouth",
+      "hair": "Hair",
+      "hairColor": "Hair Color",
+      "none": "None/Default",
+      "skinColor": "Skin Color"
+    },
+    "body": {
+      "scaling": "Body Scaling",
+      "overallSize": "Overall Size",
+      "height": "Height",
+      "width": "Width",
+      "torsoColor": "Torso",
+      "limbColor": "Limbs",
+      "torso": "Torso",
+      "chest": "Chest",
+      "hips": "Hips",
+      "arms": "Arms",
+      "upperArm": "Upper Arm",
+      "forearm": "Forearm",
+      "hand": "Hand",
+      "legs": "Legs",
+      "thigh": "Thigh",
+      "calf": "Calf",
+      "foot": "Foot"
+    },
+    "gear": {
+      "oneHanded": "One-Handed",
+      "twoHanded": "Two-Handed",
+      "selectWeapon": "Select Weapon",
+      "none": "None",
+      "unarmed": "Unarmed",
+      "offhandShield": "Offhand Shield",
+      "headAndFace": "Head & Face",
+      "headwear": "Headwear",
+      "faceAccessory": "Face Accessory",
+      "noWeaponsAvailable": "No weapons available"
+    },
+    "action": {
+      "title": "Motion Style",
+      "description": "Configure unique movement and combat styles for your character. You can create more custom styles in the Motion Studio.",
+      "idle": "Idle",
+      "walk": "Walk",
+      "run": "Run",
+      "attack": "Attack"
+    },
+    "nextStep": {
+      "weapon": "Next: Select Weapon",
+      "action": "Next: Motion Tuning"
+    },
+    "finish": "Confirm Character"
+  },
+  "ai": {
+    "greeting": "Hello! I'm PolySprite. I can help you generate models, actions, backstories, or answer questions about the editor.",
+    "inputPlaceholder": "Enter command...",
+    "msg": {
+      "distracted": "I seem to have lost my train of thought...",
+      "executing": "Executing...",
+      "connectionError": "Connection interrupted, please try again later."
+    },
+    "action": {
+      "dockToSidebar": "Dock to Sidebar",
+      "openChat": "Open Chat",
+      "closeChat": "Close Chat"
+    },
+    "quick": {
+      "genStory": "Generate Backstory",
+      "suggestColors": "Suggest Colors",
+      "genSword": "Generate Sword",
+      "genShield": "Generate Shield",
+      "genHelmet": "Random Helmet",
+      "zombieWalk": "Zombie Walk",
+      "ninjaRun": "Ninja Run",
+      "heavyAttack": "Heavy Attack",
+      "howToUse": "How to Use?",
+      "makeTree": "Make a Tree",
+      "whoAreYou": "Who Are You?"
+    },
+    "prompt": {
+      "genStory": "Generate a backstory for the current character",
+      "suggestColors": "Give a color scheme suggestion suitable for a warrior",
+      "genSword": "Make a low-poly sword",
+      "genShield": "Make a round shield",
+      "genHelmet": "Make a knight helmet",
+      "zombieWalk": "Adjust the motion to zombie walking style",
+      "ninjaRun": "Generate ninja running motion style",
+      "heavyAttack": "Generate a heavy weapon swing attack action",
+      "howToUse": "Tell me the keyboard shortcuts and how to use the map editor",
+      "makeTree": "I want a simple pine tree model, take me to the model workshop to generate it",
+      "whoAreYou": "Introduce yourself"
+    }
+  },
+  "camera": {
+    "title": "Camera Settings",
+    "tab": {
+      "camera": "Camera",
+      "shadow": "Shadow"
+    },
+    "mode": "Camera Mode",
+    "mode.isometric": "Isometric",
+    "mode.tps": "Third Person",
+    "mode.sideScroll": "Side Scroll",
+    "settings": "Camera Settings",
+    "fov": "Field of View",
+    "height": "Height",
+    "distance": "Distance",
+    "shadowSettings": "Shadow Settings",
+    "shadowOpacity": "Opacity",
+    "shadowBlur": "Blur",
+    "shadowColor": "Color",
+    "shadowOffsetX": "X Offset",
+    "shadowOffsetY": "Y Offset",
+    "shadowOffsetZ": "Z Offset",
+    "importExport": "Import/Export",
+    "export": "Export Settings",
+    "import": "Import Settings",
+    "importExportNote": "Export current camera and shadow settings, or import from JSON file"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "interface": "Interface",
+    "data": "Data",
+    "language": "Language",
+    "languageDescription": "Switch interface language",
+    "chinese": "中文",
+    "english": "English",
+    "aiAssistant": "AI Assistant",
+    "aiAssistantDescription": "Show or hide AI assistant panel",
+    "show": "Show",
+    "hide": "Hide",
+    "saveLoad": "Save/Load",
+    "saveLoadDescription": "Save or load project data",
+    "save": "Save",
+    "load": "Load",
+    "close": "Close"
+  }
+}
