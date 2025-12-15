@@ -14,7 +14,7 @@ import { SettingsModal } from './components/SettingsModal'; // NEW
 import './i18n'; // 初始化国际化
 import { AppMode, CharacterConfig, MapConfig, MapItemType, GearTransformMap, AssetTransformMap, AnimationConfig, CharacterAction, CustomModel, ModelPrimitive, AssetCategory, AssetSubCategory, CustomAction, Keyframe, SavedCharacter, CameraMode, WorkshopRefType, SavedProceduralAction, CameraSettings, ShadowSettings, ActionCategory, VfxAsset, VfxTestParams, VfxBindingMap, VfxEmitterConfig } from './types'; // Updated imports
 import { INITIAL_GEAR_TRANSFORMS, INITIAL_ASSET_TRANSFORMS, DEFAULT_ANIMATION_CONFIG, INITIAL_CUSTOM_MODELS, INITIAL_CUSTOM_ACTIONS, INITIAL_SKILLS, NATIVE_TEMPLATES, sanitizeModel, INITIAL_PROCEDURAL_ACTIONS, DEFAULT_CONFIG } from './initialData';
-import { generate3DModel, generateProceduralConfig, generateCharacterAction, generateVfxConfig } from './services/geminiService'; 
+import { generate3DModel, generateProceduralConfig, generateCharacterAction, generateVfxConfig } from './services/aiService'; 
 import * as THREE from 'three'; // Import THREE for vector math
 
 const DEFAULT_MAP_CONFIG: MapConfig = {

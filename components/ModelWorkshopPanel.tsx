@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ModelPrimitive, PrimitiveType, CustomModel, AssetCategory, AssetSubCategory, WorkshopRefType } from '../types';
-import { generate3DModel } from '../services/geminiService';
+import { generate3DModel } from '../services/aiService';
 
 interface ModelWorkshopPanelProps {
   primitives: ModelPrimitive[];

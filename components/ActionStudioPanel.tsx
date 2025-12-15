@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { CustomAction, Keyframe, BoneName, AnimationConfig, CharacterAction, ActionInterpolationMode, SavedProceduralAction, ActionCategory, CharacterConfig, CustomModel, CombatStyle } from '../types';
-import { generateCharacterAction, generateProceduralConfig } from '../services/geminiService';
+import { generateCharacterAction, generateProceduralConfig } from '../services/aiService';
 
 interface ActionStudioPanelProps {
   customActions: CustomAction[];

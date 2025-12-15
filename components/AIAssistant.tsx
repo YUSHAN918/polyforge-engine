@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { AppMode } from '../types';
-import { sendEngineChatMessage } from '../services/geminiService';
+import { sendEngineChatMessage } from '../services/aiService';
 
 interface AIAssistantProps {
   currentMode: AppMode;

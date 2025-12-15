@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { sendEngineChatMessage } from '../services/geminiService';
+import { sendEngineChatMessage } from '../services/aiService';
 
 interface ChatWidgetProps {
   initialHistory?: {role: 'user' | 'model', text: string}[];

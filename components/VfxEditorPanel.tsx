@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { VfxAsset, VfxEmitterConfig, VfxShape, CustomModel, VfxTestParams, VfxBindingMap, VfxType } from '../types';
-import { generateVfxConfig } from '../services/geminiService';
+import { generateVfxConfig } from '../services/aiService';
 
 interface VfxEditorPanelProps {
     vfxAssets: VfxAsset[];
