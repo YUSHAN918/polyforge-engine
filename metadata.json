@@ -1,0 +1,7 @@
+{
+  "name": "LOW3D游戏模拟编辑器",
+  "description": "A browser-based Low-Poly 3D Game Engine simulator. Create custom characters using AI-assisted texturing and modeling, then test them in a MOBA-style environment.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
