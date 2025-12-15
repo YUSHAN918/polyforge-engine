@@ -6,7 +6,9 @@
     "arch": "架构验证",
     "motion": "演武场",
     "vfx": "特效工坊",
-    "play": "实机演示"
+    "play": "实机演示",
+    "settings": "设置",
+    "summon_sprite": "召唤灵枢"
   },
   "arch": {
     "title": "架构验证器",

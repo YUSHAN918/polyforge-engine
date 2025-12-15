@@ -3,10 +3,12 @@
     "hero": "Hero Hall",
     "assets": "Asset Library",
     "world": "World Builder",
-    "arch": "Architecture",
-    "motion": "Motion Studio",
-    "vfx": "VFX Workshop",
-    "play": "Play Mode"
+    "arch": "Architecture Validator",
+    "motion": "Action Studio",
+    "vfx": "VFX Studio",
+    "play": "Play Mode",
+    "settings": "Settings",
+    "summon_sprite": "Summon Sprite"
   },
   "arch": {
     "title": "Architecture Validator",

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppMode } from '../types';
 import EventBus, { EventType } from '../services/EventBus';
 
@@ -14,46 +15,48 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode, isAiDocked, onUndock, onOpenSettings }) => {
+  const { t } = useTranslation();
+  
   const navItems = [
     { 
       mode: AppMode.CHARACTER_EDITOR, 
-      label: '英雄大厅', 
+      label: t('sidebar.hero'), 
       icon: 'fa-user-shield', 
       desc: 'Hero Studio' 
     },
     { 
       mode: AppMode.ASSET_LIBRARY, 
-      label: '资产库', 
+      label: t('sidebar.assets'), 
       icon: 'fa-cubes', 
       desc: 'Asset Library' 
     },
     { 
       mode: AppMode.MAP_EDITOR, 
-      label: '世界构造', 
+      label: t('sidebar.world'), 
       icon: 'fa-globe-asia', 
       desc: 'World Builder' 
     },
     { 
       mode: AppMode.ACTION_STUDIO, 
-      label: '演武场', 
+      label: t('sidebar.motion'), 
       icon: 'fa-film', 
       desc: 'Action Studio' 
     },
     { 
       mode: AppMode.VFX_STUDIO, // NEW
-      label: '特效工坊', 
+      label: t('sidebar.vfx'), 
       icon: 'fa-magic', 
       desc: 'VFX Studio' 
     },
     { 
       mode: AppMode.GAMEPLAY, 
-      label: '实机演示', 
+      label: t('sidebar.play'), 
       icon: 'fa-gamepad', 
       desc: 'Play Mode' 
     },
     { 
       mode: AppMode.ARCHITECTURE_VALIDATOR, 
-      label: '架构验证', 
+      label: t('sidebar.arch'), 
       icon: 'fa-sitemap', 
       desc: 'Architecture Validator' 
     },
@@ -110,10 +113,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode, isAiDock
               });
             }}
             className="group w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 text-gray-500 hover:text-gray-200 hover:bg-gray-800/50 transition-all duration-300"
-            title="设置"
+            title={t('sidebar.settings')}
           >
               <i className="fas fa-cog text-xl mb-1 transition-transform group-hover:scale-110 group-hover:rotate-90"></i>
-              <span className="text-[9px] font-bold opacity-80">设置</span>
+              <span className="text-[9px] font-bold opacity-80">{t('sidebar.settings')}</span>
           </button>
       </div>
 
@@ -131,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentMode, setMode, isAiDock
                   });
                 }}
                 className="group w-full aspect-square rounded-full flex items-center justify-center bg-gray-900 border border-blue-500/30 shadow-lg shadow-blue-900/20 hover:scale-110 transition-transform relative"
-                title="召唤灵枢"
+                title={t('sidebar.summon_sprite')}
               >
                   <div className="absolute inset-0 bg-blue-500/10 rounded-full animate-pulse group-hover:bg-blue-500/20"></div>
                   <i className="fas fa-sparkles text-blue-400 text-lg animate-spin-slow"></i>
