@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface SettingsModalProps {
@@ -6,17 +6,46 @@ interface SettingsModalProps {
   onClose: () => void;
   isAiChatVisible?: boolean;
   setIsAiChatVisible?: (visible: boolean) => void;
+  onSaveProject?: () => void;
+  onLoadProject?: (file: File) => Promise<void>;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, isAiChatVisible = false, setIsAiChatVisible }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, isAiChatVisible = false, setIsAiChatVisible, onSaveProject, onLoadProject }) => {
   const { t, i18n } = useTranslation();
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
     setCurrentLanguage(lang);
+  };
+
+  const handleSaveClick = () => {
+    if (onSaveProject) {
+      onSaveProject();
+    }
+  };
+
+  const handleLoadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onLoadProject) {
+      onLoadProject(file).catch(error => {
+        console.error('加载项目失败:', error);
+        alert(`加载项目失败: ${error.message}`);
+      });
+    }
+    // 重置input value，以便可以选择同一文件再次触发change事件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -137,30 +166,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors group"
-                  disabled
+                  className="py-3 bg-yellow-600/30 hover:bg-yellow-600 border border-yellow-500 text-yellow-100 rounded-lg transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleSaveClick}
+                  disabled={!onSaveProject}
                 >
                   <div className="flex flex-col items-center gap-1">
                     <i className="fas fa-save text-yellow-400 text-lg group-hover:scale-110 transition-transform"></i>
                     <span className="font-medium text-white">{t('settings.save')}</span>
-                    <span className="text-xs text-gray-400">Save Data</span>
+                    <span className="text-xs text-gray-300">Save Project</span>
                   </div>
                 </button>
                 <button
-                  className="py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors group"
-                  disabled
+                  className="py-3 bg-yellow-600/30 hover:bg-yellow-600 border border-yellow-500 text-yellow-100 rounded-lg transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleLoadClick}
+                  disabled={!onLoadProject}
                 >
                   <div className="flex flex-col items-center gap-1">
                     <i className="fas fa-folder-open text-yellow-400 text-lg group-hover:scale-110 transition-transform"></i>
                     <span className="font-medium text-white">{t('settings.load')}</span>
-                    <span className="text-xs text-gray-400">Load Data</span>
+                    <span className="text-xs text-gray-300">Load Project</span>
                   </div>
                 </button>
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".json"
+                className="hidden"
+              />
               
               <div className="text-sm text-gray-400 p-3 bg-gray-900/30 rounded-lg border border-gray-800">
-                <i className="fas fa-clock text-yellow-400 mr-2"></i>
-                {t('settings.saveLoadDescription')}
+                <i className="fas fa-info-circle text-yellow-400 mr-2"></i>
+                {onSaveProject && onLoadProject 
+                  ? t('settings.saveLoadDescription')
+                  : '保存/加载功能已激活。点击保存将下载项目文件，点击加载可从JSON文件导入。'}
               </div>
             </div>
           </section>

@@ -12,9 +12,11 @@ import { VfxEditorPanel } from './components/VfxEditorPanel'; // NEW
 import { ArchitectureEditor } from './components/ArchitectureEditor/ArchitectureEditor'; // NEW
 import { SettingsModal } from './components/SettingsModal'; // NEW
 import './i18n'; // 初始化国际化
+import i18n from 'i18next'; // 导入 i18n 实例
 import { AppMode, CharacterConfig, MapConfig, MapItemType, GearTransformMap, AssetTransformMap, AnimationConfig, CharacterAction, CustomModel, ModelPrimitive, AssetCategory, AssetSubCategory, CustomAction, Keyframe, SavedCharacter, CameraMode, WorkshopRefType, SavedProceduralAction, CameraSettings, ShadowSettings, ActionCategory, VfxAsset, VfxTestParams, VfxBindingMap, VfxEmitterConfig } from './types'; // Updated imports
 import { INITIAL_GEAR_TRANSFORMS, INITIAL_ASSET_TRANSFORMS, DEFAULT_ANIMATION_CONFIG, INITIAL_CUSTOM_MODELS, INITIAL_CUSTOM_ACTIONS, INITIAL_SKILLS, NATIVE_TEMPLATES, sanitizeModel, INITIAL_PROCEDURAL_ACTIONS, DEFAULT_CONFIG } from './initialData';
 import { generate3DModel, generateProceduralConfig, generateCharacterAction, generateVfxConfig } from './services/aiService'; 
+import { exportToFile, importFromFile, saveToLocal } from './services/storageService';
 import * as THREE from 'three'; // Import THREE for vector math
 
 const DEFAULT_MAP_CONFIG: MapConfig = {
@@ -1069,6 +1071,62 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
       }
   };
 
+  // --- PROJECT SAVE/LOAD HANDLERS ---
+  const handleSaveProject = () => {
+    try {
+      // Get current language from i18n
+      const language = i18n.language || 'zh';
+      
+      // Build project data matching ProjectSaveData interface
+      const projectData = {
+        metadata: {
+          version: '1.0.0',
+          timestamp: Date.now(),
+          name: config.name || '未命名项目'
+        },
+        hero: config,
+        settings: {
+          language
+        }
+      };
+      
+      // Trigger download
+      exportToFile(projectData, `polyforge_project_${Date.now()}.json`);
+      
+      // Silent backup to localStorage
+      saveToLocal(projectData);
+      
+      alert('项目已保存！已下载文件并备份到本地存储。');
+    } catch (error) {
+      console.error('保存项目失败:', error);
+      alert('保存项目失败，请查看控制台获取详细信息。');
+    }
+  };
+
+  const handleLoadProject = async (file: File) => {
+    try {
+      const projectData = await importFromFile(file);
+      
+      // Validate imported data
+      if (!projectData.hero) {
+        throw new Error('导入的文件缺少角色数据');
+      }
+      
+      // Update the current state with imported data
+      setConfig(projectData.hero);
+      
+      // Update language if different
+      if (projectData.settings?.language && projectData.settings.language !== i18n.language) {
+        i18n.changeLanguage(projectData.settings.language);
+      }
+      
+      alert('项目加载成功！角色和设置已更新。');
+    } catch (error) {
+      console.error('加载项目失败:', error);
+      alert(`加载项目失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  };
+
   const handleExportSettings = () => {
       const settingsData = {
           cameraSettings,
@@ -1379,6 +1437,8 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         onClose={() => setIsSettingsOpen(false)} 
         isAiChatVisible={isAiChatVisible}
         setIsAiChatVisible={setIsAiChatVisible}
+        onSaveProject={handleSaveProject}
+        onLoadProject={handleLoadProject}
       />
     </div>
   );

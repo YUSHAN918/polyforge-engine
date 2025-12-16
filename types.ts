@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import React from 'react';
 
@@ -438,6 +437,19 @@ export type WorkshopRefType =
   | 'arm_r' | 'forearm_r' 
   | 'thigh_l' | 'calf_l' | 'foot_l'
   | 'thigh_r' | 'calf_r' | 'foot_r';
+
+// --- PROJECT SAVE DATA (NEW) ---
+export interface ProjectSaveData {
+  metadata: {
+    version: string;
+    timestamp: number;
+    name: string;
+  };
+  hero: CharacterConfig;
+  settings: {
+    language: string;
+  };
+}
 
 // Global JSX augmentation to fix IntrinsicElements errors
 declare global {
