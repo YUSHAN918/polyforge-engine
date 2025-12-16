@@ -8,9 +8,10 @@ interface AIAssistantProps {
   onAiCommand: (action: string, payload: any) => void;
   isDocked?: boolean;
   onDock?: () => void;
+  onTurnOff?: () => void;
 }
 
-export const AIAssistant: React.FC<AIAssistantProps> = ({ currentMode, onAiCommand, isDocked, onDock }) => {
+export const AIAssistant: React.FC<AIAssistantProps> = ({ currentMode, onAiCommand, isDocked, onDock, onTurnOff }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [input, setInput] = useState('');
@@ -155,10 +156,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ currentMode, onAiComma
                 onMouseLeave={() => setMenuVisible(false)}
             >
                 <button 
-                    onClick={() => { onDock && onDock(); setMenuVisible(false); }}
-                    className="w-full px-4 py-2 text-left text-xs text-gray-300 hover:bg-blue-600 hover:text-white flex items-center gap-2"
+                    onClick={() => { onTurnOff && onTurnOff(); setMenuVisible(false); }}
+                    className="w-full px-4 py-2 text-left text-xs text-gray-300 hover:bg-red-600 hover:text-white flex items-center gap-2"
                 >
-                    <i className="fas fa-arrow-left"></i> 收纳到侧边栏
+                    <i className="fas fa-power-off"></i> 关闭AI助手
                 </button>
                 <button 
                     onClick={() => { setIsOpen(!isOpen); setMenuVisible(false); }}
@@ -185,7 +186,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ currentMode, onAiComma
                         <span className="text-xs font-bold text-white tracking-widest uppercase">PolySprite</span>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={() => { onDock && onDock(); }} className="text-gray-400 hover:text-white" title="收纳"><i className="fas fa-compress-arrows-alt"></i></button>
                         <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white"><i className="fas fa-times"></i></button>
                     </div>
                 </div>

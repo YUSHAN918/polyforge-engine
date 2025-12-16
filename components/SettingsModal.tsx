@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isAiChatVisible?: boolean;
+  setIsAiChatVisible?: (visible: boolean) => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, isAiChatVisible = false, setIsAiChatVisible }) => {
   const { t, i18n } = useTranslation();
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
@@ -106,10 +108,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </div>
                 </div>
                 <div className="relative">
-                  <div className="w-12 h-6 flex items-center bg-gray-700 rounded-full p-1 cursor-not-allowed opacity-50">
-                    <div className="bg-gray-600 w-4 h-4 rounded-full shadow transform"></div>
-                  </div>
-                  <span className="text-xs text-gray-500 mt-1 block text-center">开发中</span>
+                  <button
+                    onClick={() => setIsAiChatVisible && setIsAiChatVisible(!isAiChatVisible)}
+                    className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${isAiChatVisible ? 'bg-green-600' : 'bg-gray-700'}`}
+                    aria-label={isAiChatVisible ? t('settings.disableAiAssistant') : t('settings.enableAiAssistant')}
+                  >
+                    <div className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${isAiChatVisible ? 'translate-x-6' : ''}`}></div>
+                  </button>
+                  <span className="text-xs text-gray-500 mt-1 block text-center">{isAiChatVisible ? t('settings.enabled') : t('settings.disabled')}</span>
                 </div>
               </div>
               

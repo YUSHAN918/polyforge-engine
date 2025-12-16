@@ -56,8 +56,9 @@ export const App: React.FC = () => {
   const [previewAction, setPreviewAction] = useState<CharacterAction>(CharacterAction.IDLE);
   const [lastAttackTrigger, setLastAttackTrigger] = useState(0);
   
-  // --- AI SPRITE STATE ---
-  const [isAiDocked, setIsAiDocked] = useState(false);
+// --- AI SPRITE STATE ---
+const [isAiDocked, setIsAiDocked] = useState(false);
+const [isAiChatVisible, setIsAiChatVisible] = useState(true);
 
   // --- SETTINGS MODAL STATE ---
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1361,18 +1362,23 @@ export const App: React.FC = () => {
         )}
         
         {/* AI Assistant at the end for z-index layering */}
-        <AIAssistant 
-            currentMode={mode} 
-            onAiCommand={handleAiCommand} 
-            isDocked={isAiDocked}
-            onDock={() => setIsAiDocked(true)}
-        />
+        {isAiChatVisible && (
+          <AIAssistant 
+              currentMode={mode} 
+              onAiCommand={handleAiCommand} 
+              isDocked={isAiDocked}
+              onDock={() => setIsAiDocked(true)}
+              onTurnOff={() => setIsAiChatVisible(false)}
+          />
+        )}
       </div>
 
       {/* Settings Modal */}
       <SettingsModal 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 
+        isAiChatVisible={isAiChatVisible}
+        setIsAiChatVisible={setIsAiChatVisible}
       />
     </div>
   );
