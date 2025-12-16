@@ -448,6 +448,16 @@ export interface ProjectSaveData {
   hero: CharacterConfig;
   settings: {
     language: string;
+    camera?: {
+      mode: CameraMode;
+      settings: CameraSettings;
+    };
+    environment?: {
+      shadow: ShadowSettings;
+    };
+    gameplay?: {
+      // 预留字段，用于未来添加重力、速度等参数
+    };
   };
   actions: CustomAction[];
   animConfig: AnimationConfig;

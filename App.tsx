@@ -1086,7 +1086,14 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         },
         hero: config,
         settings: {
-          language
+          language,
+          camera: {
+            mode: cameraMode,
+            settings: cameraSettings
+          },
+          environment: {
+            shadow: shadowSettings
+          }
         },
         actions: customActions,
         animConfig: animConfig,
@@ -1124,6 +1131,17 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         i18n.changeLanguage(projectData.settings.language);
       }
       
+      // Load camera settings if available
+      if (projectData.settings?.camera) {
+        setCameraMode(projectData.settings.camera.mode);
+        setCameraSettings(projectData.settings.camera.settings);
+      }
+      
+      // Load environment settings if available
+      if (projectData.settings?.environment?.shadow) {
+        setShadowSettings(projectData.settings.environment.shadow);
+      }
+      
       // Load custom actions if available
       if (projectData.actions && Array.isArray(projectData.actions)) {
         setCustomActions(projectData.actions);
@@ -1153,7 +1171,7 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         setVfxAssets([]);
       }
       
-      alert('项目加载成功！角色、动作、动画配置、地图和特效已更新。');
+      alert('项目加载成功！角色、动作、动画配置、地图、特效、相机和环境设置已更新。');
     } catch (error) {
       console.error('加载项目失败:', error);
       alert(`加载项目失败: ${error instanceof Error ? error.message : '未知错误'}`);
