@@ -1087,7 +1087,8 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         hero: config,
         settings: {
           language
-        }
+        },
+        actions: customActions
       };
       
       // Trigger download
@@ -1120,7 +1121,15 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         i18n.changeLanguage(projectData.settings.language);
       }
       
-      alert('项目加载成功！角色和设置已更新。');
+      // Load custom actions if available
+      if (projectData.actions && Array.isArray(projectData.actions)) {
+        setCustomActions(projectData.actions);
+      } else {
+        // If no actions field, initialize with empty array to maintain consistency
+        setCustomActions([]);
+      }
+      
+      alert('项目加载成功！角色和动作已更新。');
     } catch (error) {
       console.error('加载项目失败:', error);
       alert(`加载项目失败: ${error instanceof Error ? error.message : '未知错误'}`);

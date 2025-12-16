@@ -449,6 +449,7 @@ export interface ProjectSaveData {
   settings: {
     language: string;
   };
+  actions: CustomAction[];
 }
 
 // Global JSX augmentation to fix IntrinsicElements errors
