@@ -450,6 +450,9 @@ export interface ProjectSaveData {
     language: string;
   };
   actions: CustomAction[];
+  animConfig: AnimationConfig;
+  map: MapConfig;
+  vfx: VfxAsset[];
 }
 
 // Global JSX augmentation to fix IntrinsicElements errors

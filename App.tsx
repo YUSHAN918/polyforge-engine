@@ -1088,7 +1088,10 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         settings: {
           language
         },
-        actions: customActions
+        actions: customActions,
+        animConfig: animConfig,
+        map: mapConfig,
+        vfx: vfxAssets
       };
       
       // Trigger download
@@ -1129,7 +1132,28 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         setCustomActions([]);
       }
       
-      alert('项目加载成功！角色和动作已更新。');
+      // Load animation config with fallback to default
+      if (projectData.animConfig) {
+        setAnimConfig(projectData.animConfig);
+      } else {
+        setAnimConfig(DEFAULT_ANIMATION_CONFIG);
+      }
+      
+      // Load map config with fallback to default
+      if (projectData.map) {
+        setMapConfig(projectData.map);
+      } else {
+        setMapConfig(DEFAULT_MAP_CONFIG);
+      }
+      
+      // Load vfx assets with fallback to empty array
+      if (projectData.vfx && Array.isArray(projectData.vfx)) {
+        setVfxAssets(projectData.vfx);
+      } else {
+        setVfxAssets([]);
+      }
+      
+      alert('项目加载成功！角色、动作、动画配置、地图和特效已更新。');
     } catch (error) {
       console.error('加载项目失败:', error);
       alert(`加载项目失败: ${error instanceof Error ? error.message : '未知错误'}`);
