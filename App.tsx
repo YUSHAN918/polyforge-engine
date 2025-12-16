@@ -19,6 +19,11 @@ import { generate3DModel, generateProceduralConfig, generateCharacterAction, gen
 import { exportToFile, importFromFile, saveToLocal } from './services/storageService';
 import * as THREE from 'three'; // Import THREE for vector math
 
+// 功能开关：检查 AI 助手是否启用
+const isAiEnabled = () => {
+  return import.meta.env.VITE_ENABLE_AI === 'true';
+};
+
 const DEFAULT_MAP_CONFIG: MapConfig = {
     groundColor: '#2a2a2a', // Dark Stone
     elements: []
@@ -60,7 +65,7 @@ export const App: React.FC = () => {
   
 // --- AI SPRITE STATE ---
 const [isAiDocked, setIsAiDocked] = useState(false);
-const [isAiChatVisible, setIsAiChatVisible] = useState(true);
+const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
 
   // --- SETTINGS MODAL STATE ---
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1471,7 +1476,7 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(true);
         )}
         
         {/* AI Assistant at the end for z-index layering */}
-        {isAiChatVisible && (
+        {isAiEnabled() && isAiChatVisible && (
           <AIAssistant 
               currentMode={mode} 
               onAiCommand={handleAiCommand} 

@@ -128,30 +128,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <i className="fas fa-robot text-green-400"></i>
-                  <div>
-                    <div className="font-medium text-white">{t('settings.aiAssistant')}</div>
-                    <div className="text-xs text-gray-400">AI Assistant Visibility</div>
+              {import.meta.env.VITE_ENABLE_AI === 'true' ? (
+                <>
+                  <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <i className="fas fa-robot text-green-400"></i>
+                      <div>
+                        <div className="font-medium text-white">{t('settings.aiAssistant')}</div>
+                        <div className="text-xs text-gray-400">AI Assistant Visibility</div>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <button
+                        onClick={() => setIsAiChatVisible && setIsAiChatVisible(!isAiChatVisible)}
+                        className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${isAiChatVisible ? 'bg-green-600' : 'bg-gray-700'}`}
+                        aria-label={isAiChatVisible ? t('settings.disableAiAssistant') : t('settings.enableAiAssistant')}
+                      >
+                        <div className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${isAiChatVisible ? 'translate-x-6' : ''}`}></div>
+                      </button>
+                      <span className="text-xs text-gray-500 mt-1 block text-center">{isAiChatVisible ? t('settings.enabled') : t('settings.disabled')}</span>
+                    </div>
                   </div>
+                  
+                  <div className="text-sm text-gray-400 p-3 bg-gray-900/30 rounded-lg border border-gray-800">
+                    <i className="fas fa-info-circle text-blue-400 mr-2"></i>
+                    {t('settings.aiAssistantDescription')}
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-gray-400 p-3 bg-gray-900/30 rounded-lg border border-gray-800">
+                  <i className="fas fa-info-circle text-blue-400 mr-2"></i>
+                  AI Assistant 功能在当前版本中未启用。
                 </div>
-                <div className="relative">
-                  <button
-                    onClick={() => setIsAiChatVisible && setIsAiChatVisible(!isAiChatVisible)}
-                    className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${isAiChatVisible ? 'bg-green-600' : 'bg-gray-700'}`}
-                    aria-label={isAiChatVisible ? t('settings.disableAiAssistant') : t('settings.enableAiAssistant')}
-                  >
-                    <div className={`bg-white w-4 h-4 rounded-full shadow transform transition-transform ${isAiChatVisible ? 'translate-x-6' : ''}`}></div>
-                  </button>
-                  <span className="text-xs text-gray-500 mt-1 block text-center">{isAiChatVisible ? t('settings.enabled') : t('settings.disabled')}</span>
-                </div>
-              </div>
-              
-              <div className="text-sm text-gray-400 p-3 bg-gray-900/30 rounded-lg border border-gray-800">
-                <i className="fas fa-info-circle text-blue-400 mr-2"></i>
-                {t('settings.aiAssistantDescription')}
-              </div>
+              )}
             </div>
           </section>
 

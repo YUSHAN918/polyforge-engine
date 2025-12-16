@@ -87,6 +87,7 @@ const CameraController = () => {
     return (
         <OrbitControls
             ref={controlsRef}
+            // @ts-ignore
             args={[camera, gl.domElement]}
             makeDefault
             minDistance={2}
@@ -165,7 +166,7 @@ const VfxStudioScene: React.FC<{
                 mode="translate"
                 space="local"
                 size={0.5}
-                onMouseUp={(e) => {
+                onMouseUp={(e: any) => {
                     if (e?.target?.object) {
                         const o = e.target.object;
                         onUpdateEmitter(selectedEmitter.id, { offset: [o.position.x, o.position.y, o.position.z] });
@@ -942,7 +943,7 @@ const WorkshopScene: React.FC<{
                              if (targetObject) { targetObject.updateMatrix(); anchorInitialMatrix.current.copy(targetObject.matrix); }
                         }
                     }}
-                    onMouseUp={(e) => {
+                    onMouseUp={(e: any) => {
                         if (!e?.target?.object) return;
                         const o = e.target.object;
                         const activePrim = primitives.find(p => p.id === selectedPrimId);
@@ -1002,17 +1003,19 @@ const BoneControlScene: React.FC<{
                 <sphereGeometry args={[0.15, 8, 8]} />
                 <meshBasicMaterial color="#fbbf24" wireframe depthTest={false} />
             </mesh>
-            <TransformControls object={targetObj} mode={effectiveMode as any} space="local" onDraggingChanged={(e) => setIsGizmoDragging(e.value)}
+            <TransformControls object={targetObj} mode={effectiveMode as any} space="local" 
+                // @ts-ignore
+                onDraggingChanged={(e) => setIsGizmoDragging(e.value)}
                 onObjectChange={(e: any) => {
-                    if (e.target.object) {
-                        const o = e.target.object;
+                    if ((e.target as any).object) {
+                        const o = (e.target as any).object;
                         if (effectiveMode === 'rotate' && setOverridePose) { setOverridePose({ ...overridePose, [selectedBone]: [o.rotation.x, o.rotation.y, o.rotation.z] }); } 
                         else if (effectiveMode === 'translate' && setOverridePosition) { setOverridePosition({ ...overridePosition, [selectedBone]: [o.position.x, o.position.y, o.position.z] }); }
                     }
                 }}
-                onMouseUp={(e) => {
-                    if (onBoneChange && e?.target?.object) {
-                        const o = e.target.object;
+                onMouseUp={(e: any) => {
+                    if (onBoneChange && (e?.target as any)?.object) {
+                        const o = (e.target as any).object;
                         if (effectiveMode === 'rotate') { onBoneChange(selectedBone, [o.rotation.x, o.rotation.y, o.rotation.z], 'rotation'); } 
                         else { onBoneChange(selectedBone, [o.position.x, o.position.y, o.position.z], 'position'); }
                     }
