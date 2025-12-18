@@ -1,19 +1,5 @@
-name = "low3d-editor"
+# Cloudflare Pages configuration
+# Pages doesn't need build.upload rules - it handles file types automatically
+
+name = "polyforge-engine"
 compatibility_date = "2024-01-01"
-
-[build]
-command = "npm run build"
-cwd = "."
-watch_dir = "src"
-
-[build.upload]
-format = "service-worker"
-dir = "dist"
-
-[[build.upload.rules]]
-type = "Text"
-globs = ["**/*.html", "**/*.js", "**/*.css"]
-
-[[build.upload.rules]]
-type = "Data"
-globs = ["**/*.woff", "**/*.woff2", "**/*.ttf", "**/*.eot"]

@@ -2,6 +2,30 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 
+// 全局错误捕获
+window.onerror = (message, source, lineno, colno, error) => {
+  console.error('🔴 全局错误捕获:', {
+    message,
+    source,
+    lineno,
+    colno,
+    error,
+    stack: error?.stack,
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent
+  });
+  return false; // 让错误继续传播到控制台
+};
+
+// 未处理的 Promise 拒绝
+window.onunhandledrejection = (event) => {
+  console.error('🔴 未处理的 Promise 拒绝:', {
+    reason: event.reason,
+    promise: event.promise,
+    timestamp: new Date().toISOString()
+  });
+};
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
