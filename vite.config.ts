@@ -19,6 +19,15 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: 'dist',
         emptyOutDir: true,
+        chunkSizeWarningLimit: 2000,
+        minify: false, // 禁用压缩以获取可读的错误堆栈
+        sourcemap: true, // 启用 source maps 用于调试
+        rollupOptions: {
+          output: {
+            // 添加详细的构建日志
+            sourcemapExcludeSources: false,
+          }
+        }
       },
       plugins: [react()],
       define: {

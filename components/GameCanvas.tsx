@@ -1052,13 +1052,30 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
     <div className="relative w-full h-full bg-gray-900">
         <Canvas shadows className="bg-gray-900" onPointerMissed={onBackgroundClick}>
             <Suspense fallback={null}>
+                {/* 基础环境光 - 提供整体亮度 */}
+                <ambientLight intensity={0.7} />
+                
+                {/* 半球光 - 模拟天空和地面的反射光 */}
                 <hemisphereLight args={["#ffffff", "#444444", 2.0]} />
+                
+                {/* 主平行光 - 提供方向性光照和阴影 */}
                 <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-                <ambientLight intensity={0.8} />
                 
-                <Suspense fallback={null}><Environment preset="city" /></Suspense>
+                {/* 本地 HDR 环境光 - 提供金属质感和环境反射（不依赖 CDN） */}
+                <Suspense fallback={null}>
+                    <Environment files="/assets/env/potsdamer_platz_1k.hdr" background={false} />
+                </Suspense>
                 
-                <ContactShadows resolution={1024} scale={100} blur={shadowSettings?.blur ?? 0.4} opacity={shadowSettings?.opacity ?? 0.75} color={shadowSettings?.color ?? "#000000"} position={[shadowSettings?.offsetX ?? 0, shadowSettings?.offsetY ?? 0, shadowSettings?.offsetZ ?? 0]} far={10} />
+                {/* 接触阴影 - 角色脚底的假投影 */}
+                <ContactShadows 
+                    resolution={1024} 
+                    scale={50} 
+                    blur={shadowSettings?.blur ?? 0.4} 
+                    opacity={shadowSettings?.opacity ?? 0.75} 
+                    color={shadowSettings?.color ?? "#000000"} 
+                    position={[shadowSettings?.offsetX ?? 0, shadowSettings?.offsetY ?? 0, shadowSettings?.offsetZ ?? 0]} 
+                    far={10} 
+                />
 
                 {(mode === AppMode.MAP_EDITOR || mode === AppMode.ACTION_STUDIO || mode === AppMode.ASSET_LIBRARY || mode === AppMode.CHARACTER_EDITOR || mode === AppMode.MODEL_WORKSHOP || mode === AppMode.VFX_STUDIO) && (
                     <Grid infiniteGrid fadeDistance={40} cellColor="#374151" sectionColor="#1f2937" sectionSize={4} cellSize={1} position={[0, 0.01, 0]} />
