@@ -80,6 +80,9 @@ export interface Entity {
   /** 父实体（用于层级） */
   parent?: Entity;
   
+  /** 父实体的 Socket 名称 */
+  parentSocket: string | null;
+  
   /** 子实体列表 */
   children: Entity[];
   

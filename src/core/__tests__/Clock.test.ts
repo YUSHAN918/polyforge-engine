@@ -140,7 +140,7 @@ function testTimeScaleCallbacks(): void {
   // 改变 TimeScale
   clock.setTimeScale(2.0);
 
-  console.assert(callbackCalled === true, 'Callback should be called');
+  console.assert(callbackCalled, 'Callback should be called');
   console.assert(
     receivedTimeScale === 2.0,
     `Callback should receive 2.0, got ${receivedTimeScale}`
@@ -154,7 +154,7 @@ function testTimeScaleCallbacks(): void {
   clock.setTimeScale(1.0);
 
   console.assert(
-    callbackCalled === false,
+    !callbackCalled,
     'Callback should not be called after removal'
   );
 

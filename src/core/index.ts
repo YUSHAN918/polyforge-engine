@@ -13,6 +13,8 @@ export { SystemManager } from './SystemManager';
 export { SerializationService } from './SerializationService';
 export type { SerializedWorld } from './SerializationService';
 export { Clock } from './Clock';
+export { CommandManager, CreateEntityCommand, DeleteEntityCommand, ModifyComponentCommand, AttachToSocketCommand } from './CommandManager';
+export type { ICommand } from './CommandManager';
 
 // 工具函数
 export * from './utils';
@@ -64,5 +66,7 @@ export { runCoreDemo } from './demo';
 export { runEntityManagerTests } from './__tests__/EntityManager.test';
 export { runHierarchyTests } from './__tests__/Hierarchy.test';
 export { runClockTests } from './__tests__/Clock.test';
+export { runCommandTests } from './__tests__/Command.test';
 export { hierarchyDemo } from './hierarchyDemo';
 export { clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus } from './clockDemo';
+export { commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory } from './commandDemo';

@@ -3,17 +3,16 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { runCoreDemo } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
 import { runVisualDemo } from './core/visualDemo';
 import { runVehicleDemo } from './core/vehicleDemo';
-import { hierarchyDemo } from './core/hierarchyDemo';
-import { clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus } from './core/clockDemo';
 import { runHierarchyTests } from './core/__tests__/Hierarchy.test';
 import { runEntityManagerTests } from './core/__tests__/EntityManager.test';
 import { runClockTests } from './core/__tests__/Clock.test';
+import { runCommandTests } from './core/__tests__/Command.test';
 
 /**
  * 在浏览器控制台中运行所有测试
@@ -33,6 +32,9 @@ export function runAllTests(): void {
     
     // Phase 4 测试
     runClockTests();
+    
+    // Phase 5 测试
+    runCommandTests();
     
     console.log('%c✅ All tests passed!', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
   } catch (error) {
@@ -149,6 +151,18 @@ export function runClockDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行命令系统演示（阶段 5）
+ */
+export function runCommandDemoWrapper(): void {
+  console.clear();
+  try {
+    commandDemo();
+  } catch (error) {
+    console.error('Command demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -161,6 +175,7 @@ if (typeof window !== 'undefined') {
   (window as any).vehicleDemo = runVehicleDemoWrapper; // 🆕 阶段 2.2
   (window as any).hierarchyDemo = runHierarchyDemoWrapper; // 🆕 阶段 3
   (window as any).clockDemo = runClockDemoWrapper; // 🆕 阶段 4
+  (window as any).commandDemo = runCommandDemoWrapper; // 🆕 阶段 5
   
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
@@ -169,6 +184,15 @@ if (typeof window !== 'undefined') {
   (window as any).togglePause = togglePause;
   (window as any).getClockStatus = getClockStatus;
   
+  // 命令控制函数
+  (window as any).spawnBox = spawnBox;
+  (window as any).moveBox = moveBox;
+  (window as any).deleteLastBox = deleteLastBox;
+  (window as any).undoLast = undoLast;
+  (window as any).redoLast = redoLast;
+  (window as any).showHistory = showHistory;
+  (window as any).clearHistory = clearHistory;
+  
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
@@ -176,6 +200,7 @@ if (typeof window !== 'undefined') {
   console.log('%c📋 Available Commands:', 'color: #2196F3; font-weight: bold;');
   console.log('%c  window.quickDemo()           ', 'color: #FF9800;', '- Quick demo (recommended)');
   console.log('%c  window.clockDemo()           ', 'color: #FF9800;', '- Clock system demo ⏱️ NEW!');
+  console.log('%c  window.commandDemo()         ', 'color: #FF9800;', '- Command system demo 🔄 NEW!');
   console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
   console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
@@ -191,5 +216,14 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.resumeGame()          ', 'color: #FF9800;', '- Resume the game');
   console.log('%c  window.togglePause()         ', 'color: #FF9800;', '- Toggle pause state');
   console.log('%c  window.getClockStatus()      ', 'color: #FF9800;', '- Get clock status');
+  console.log('');
+  console.log('%c🔄 Command Controls:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  window.spawnBox()            ', 'color: #FF9800;', '- Create a new box');
+  console.log('%c  window.moveBox(x, y, z)      ', 'color: #FF9800;', '- Move the last box');
+  console.log('%c  window.deleteLastBox()       ', 'color: #FF9800;', '- Delete the last box');
+  console.log('%c  window.undoLast()            ', 'color: #FF9800;', '- Undo last command');
+  console.log('%c  window.redoLast()            ', 'color: #FF9800;', '- Redo last command');
+  console.log('%c  window.showHistory()         ', 'color: #FF9800;', '- Show command history');
+  console.log('%c  window.clearHistory()        ', 'color: #FF9800;', '- Clear all history');
   console.log('');
 }

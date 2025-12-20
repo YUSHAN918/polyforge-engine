@@ -15,6 +15,7 @@ export class Entity implements IEntity {
   public name: string;
   public components: Map<string, Component>;
   public parent?: Entity;
+  public parentSocket: string | null = null; // 存储父实体的 socket 名称
   public children: Entity[];
   public sockets: Map<string, Socket>;
   public active: boolean;
@@ -87,8 +88,8 @@ export class Entity implements IEntity {
       }
       
       // 如果之前占用了 socket，清空它
-      if (socketName && this.parent.sockets.has(socketName)) {
-        const socket = this.parent.sockets.get(socketName)!;
+      if (this.parentSocket && this.parent.sockets.has(this.parentSocket)) {
+        const socket = this.parent.sockets.get(this.parentSocket)!;
         if (socket.occupied === this) {
           socket.occupied = undefined;
         }
@@ -97,6 +98,7 @@ export class Entity implements IEntity {
 
     // 建立新的父子关系
     this.parent = parent;
+    this.parentSocket = socketName || null; // 存储 socket 名称
     parent.children.push(this);
 
     // 如果指定了 socket，占用它
@@ -134,6 +136,7 @@ export class Entity implements IEntity {
     }
 
     this.parent = undefined;
+    this.parentSocket = null; // 清空 socket 名称
   }
 
   /**

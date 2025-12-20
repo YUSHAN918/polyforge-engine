@@ -136,31 +136,35 @@
   - _需求：7.1-7.6_
   - ✅ 已完成（阶段 4 - Clock.test.ts 5 个测试套件）
 
-## 5. CommandManager 命令系统
+## 5. CommandManager 命令系统 ✅ 已完成（阶段 5）
 
-- [ ] 5.1 实现 Command 接口
+- [x] 5.1 实现 Command 接口
   - 定义 execute/undo/redo 方法
   - 实现 Command 序列化
   - _需求：5.1, 5.5_
+  - ✅ 已完成（阶段 5）
 
-- [ ] 5.2 实现 CommandManager
+- [x] 5.2 实现 CommandManager
   - 实现撤销/重做栈
   - 实现栈大小限制
   - 实现 Command 执行和回滚
   - _需求：5.2, 5.3, 5.4, 5.6_
+  - ✅ 已完成（阶段 5）
 
-- [ ] 5.3 实现常用 Command 类型
+- [x] 5.3 实现常用 Command 类型
   - CreateEntityCommand
   - DeleteEntityCommand
   - ModifyComponentCommand
   - AttachToSocketCommand
   - _需求：5.1_
+  - ✅ 已完成（阶段 5）
 
-- [ ]* 5.4 编写 Command 系统单元测试
+- [x]* 5.4 编写 Command 系统单元测试
   - 测试撤销/重做逻辑
   - 测试 Command 序列化
   - 测试栈溢出处理
   - _需求：5.1-5.6_
+  - ✅ 已完成（阶段 5 - Command.test.ts 6 个测试套件）
 
 ## 6. InputMappingSystem 输入系统
 
