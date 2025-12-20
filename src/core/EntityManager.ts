@@ -132,10 +132,29 @@ export class EntityManager {
   }
 
   /**
-   * 获取实体
+   * 获取实体（静默返回，不产生警告）
    */
   getEntity(id: string): Entity | undefined {
     return this.entities.get(id);
+  }
+
+  /**
+   * 获取实体（如果不存在则发出警告）
+   * 用于调试和需要明确错误提示的场景
+   */
+  getEntityOrWarn(id: string): Entity | undefined {
+    const entity = this.entities.get(id);
+    if (!entity) {
+      console.warn(`⚠️ Entity not found: ${id}`);
+    }
+    return entity;
+  }
+
+  /**
+   * 检查实体是否存在
+   */
+  hasEntity(id: string): boolean {
+    return this.entities.has(id);
   }
 
   /**

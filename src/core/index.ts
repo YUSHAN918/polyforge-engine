@@ -20,6 +20,39 @@ export * from './utils';
 export { TransformComponent } from './components/TransformComponent';
 export { NameComponent } from './components/NameComponent';
 
+// 核心组件（阶段 2）
+export { VisualComponent } from './components/VisualComponent';
+export type {
+  GeometryData,
+  MaterialData,
+  EmissiveConfig,
+  PostProcessingConfig,
+} from './components/VisualComponent';
+export { RigComponent } from './components/RigComponent';
+export type {
+  RigType,
+  BoneDefinition,
+  IKChain,
+  BoneConstraint,
+} from './components/RigComponent';
+export { PhysicsComponent } from './components/PhysicsComponent';
+export type {
+  BodyType,
+  ColliderShape,
+  ColliderConfig,
+} from './components/PhysicsComponent';
+export { VehicleComponent } from './components/VehicleComponent';
+export type {
+  VehicleType,
+  WheelConfig,
+  EngineConfig,
+  SteeringConfig,
+  SuspensionConfig,
+  FlightConfig,
+} from './components/VehicleComponent';
+export { AudioSourceComponent } from './components/AudioSourceComponent';
+export type { AudioType } from './components/AudioSourceComponent';
+
 // 示例系统
 export { MovementSystem } from './systems/MovementSystem';
 

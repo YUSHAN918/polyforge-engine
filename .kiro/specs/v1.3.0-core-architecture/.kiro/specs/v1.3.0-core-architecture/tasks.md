@@ -36,38 +36,44 @@
 
 ## 2. 核心组件实现
 
-- [ ] 2.1 实现 TransformComponent
+- [x] 2.1 实现 TransformComponent
   - 定义位置、旋转、缩放属性
   - 实现世界矩阵计算
   - 实现层级变换传播
   - _需求：3.3_
+  - ✅ 已完成（阶段 1）
 
-- [ ] 2.2 实现 VisualComponent
+- [x] 2.2 实现 VisualComponent
   - 定义几何体和材质数据结构
   - 实现 emissive 自发光属性
   - 实现后期特效标记
   - _需求：2.1, 10.1, 10.2_
+  - ✅ 已完成（阶段 2.1）
 
-- [ ] 2.3 实现 RigComponent
+- [x] 2.3 实现 RigComponent
   - 定义骨骼树数据结构
   - 支持 humanoid 和 multiped 类型
   - 实现骨骼约束系统
   - _需求：2.2_
+  - ✅ 已完成（阶段 2.1）
 
-- [ ] 2.4 实现 PhysicsComponent
+- [x] 2.4 实现 PhysicsComponent
   - 定义刚体类型和碰撞体形状
   - 预留 Rapier 句柄字段
   - _需求：2.3, 13.2_
+  - ✅ 已完成（阶段 2.2）
 
-- [ ] 2.5 实现 VehicleComponent
+- [x] 2.5 实现 VehicleComponent
   - 定义轮子挂点和引擎参数
   - 预留悬挂系统接口
   - _需求：2.4_
+  - ✅ 已完成（阶段 2.2）
 
-- [ ] 2.6 实现 AudioSourceComponent
+- [x] 2.6 实现 AudioSourceComponent
   - 定义音频资产引用
   - 定义空间音频参数
   - _需求：12.4_
+  - ✅ 已完成（阶段 2.2）
 
 - [ ]* 2.7 编写组件单元测试
   - 测试各组件的序列化
