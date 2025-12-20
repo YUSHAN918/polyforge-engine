@@ -94,7 +94,7 @@ export class EntityManager {
   destroyEntity(id: string): boolean {
     const entity = this.entities.get(id);
     if (!entity) {
-      console.warn(`Entity ${id} not found`);
+      // 静默返回，不产生警告
       return false;
     }
 
@@ -181,7 +181,7 @@ export class EntityManager {
   addComponent(entityId: string, component: Component): boolean {
     const entity = this.entities.get(entityId);
     if (!entity) {
-      console.warn(`Entity ${entityId} not found`);
+      // 静默返回，不产生警告
       return false;
     }
 
@@ -202,7 +202,7 @@ export class EntityManager {
   removeComponent(entityId: string, componentType: string): boolean {
     const entity = this.entities.get(entityId);
     if (!entity) {
-      console.warn(`Entity ${entityId} not found`);
+      // 静默返回，不产生警告
       return false;
     }
 
@@ -323,7 +323,7 @@ export class EntityManager {
     const parent = this.entities.get(parentId);
 
     if (!child || !parent) {
-      console.warn(`Entity not found: child=${childId}, parent=${parentId}`);
+      // 静默返回，不产生警告
       return false;
     }
 
@@ -351,7 +351,7 @@ export class EntityManager {
   removeParent(childId: string): boolean {
     const child = this.entities.get(childId);
     if (!child) {
-      console.warn(`Entity ${childId} not found`);
+      // 静默返回，不产生警告
       return false;
     }
 
@@ -430,7 +430,7 @@ export class EntityManager {
         if (parent) {
           entity.setParent(parent, entityData.socketName);
         } else {
-          console.warn(`Parent entity ${entityData.parentId} not found for entity ${entity.id}`);
+          // 父实体未找到，将其作为根实体
           this.hierarchyRoot.push(entity);
         }
       } else {

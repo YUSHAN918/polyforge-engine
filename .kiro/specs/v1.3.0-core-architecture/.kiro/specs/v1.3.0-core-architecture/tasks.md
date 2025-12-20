@@ -2,37 +2,42 @@
 
 ## 1. 核心 ECS 基础设施
 
-- [ ] 1.1 实现 Entity 和 Component 基础类型
+- [x] 1.1 实现 Entity 和 Component 基础类型
   - 定义 Entity 接口和 Component 基类
   - 实现唯一 ID 生成器
   - 创建组件注册表
   - _需求：1.1, 1.2, 1.3_
+  - ✅ 已完成（v1.3.1 核心提交）
 
-- [ ] 1.2 实现 EntityManager
+- [x] 1.2 实现 EntityManager
   - 实现 Entity 的创建和销毁
   - 实现组件的添加和移除
   - 实现基于组件类型的查询索引
   - 实现层级管理（父子关系）
   - _需求：1.1, 1.2, 1.3_
+  - ✅ 已完成（v1.3.1 核心提交）
 
-- [ ] 1.3 实现 SystemManager
+- [x] 1.3 实现 SystemManager
   - 定义 System 接口
   - 实现 System 注册和优先级排序
   - 实现 System 的更新循环
   - 实现 Entity 添加/移除的回调机制
   - _需求：1.3_
+  - ✅ 已完成（v1.3.1 核心提交）
 
-- [ ] 1.4 实现 SerializationService
+- [x] 1.4 实现 SerializationService
   - 实现 Entity 序列化为 JSON
   - 实现 Entity 从 JSON 反序列化
   - 处理组件类型的动态注册
   - _需求：1.4, 1.5_
+  - ✅ 已完成（v1.3.1 核心提交）
 
-- [ ]* 1.5 编写 ECS 核心单元测试
+- [x]* 1.5 编写 ECS 核心单元测试
   - 测试 Entity 生命周期
   - 测试组件添加/移除
   - 测试序列化往返一致性
   - _需求：1.1-1.5_
+  - ✅ 已完成（v1.3.1 核心提交）
 
 ## 2. 核心组件实现
 
