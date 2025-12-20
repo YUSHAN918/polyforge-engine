@@ -9,6 +9,9 @@ import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
 import { runVisualDemo } from './core/visualDemo';
 import { runVehicleDemo } from './core/vehicleDemo';
+import { hierarchyDemo } from './core/hierarchyDemo';
+import { runHierarchyTests } from './core/__tests__/Hierarchy.test';
+import { runEntityManagerTests } from './core/__tests__/EntityManager.test';
 
 /**
  * 在浏览器控制台中运行所有测试
@@ -20,7 +23,12 @@ export function runAllTests(): void {
   console.log('');
 
   try {
-    runCoreDemo();
+    // Phase 1 测试
+    runEntityManagerTests();
+    
+    // Phase 3 测试
+    runHierarchyTests();
+    
     console.log('%c✅ All tests passed!', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
   } catch (error) {
     console.error('%c❌ Tests failed!', 'font-size: 16px; font-weight: bold; color: #F44336;');
@@ -112,6 +120,18 @@ export function runVehicleDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行层级系统演示（阶段 3）
+ */
+export function runHierarchyDemoWrapper(): void {
+  console.clear();
+  try {
+    hierarchyDemo();
+  } catch (error) {
+    console.error('Hierarchy demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -122,6 +142,7 @@ if (typeof window !== 'undefined') {
   (window as any).snapshotDemo = runSnapshotDemoWrapper;
   (window as any).visualDemo = runVisualDemoWrapper; // 🆕 阶段 2.1
   (window as any).vehicleDemo = runVehicleDemoWrapper; // 🆕 阶段 2.2
+  (window as any).hierarchyDemo = runHierarchyDemoWrapper; // 🆕 阶段 3
   
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
@@ -129,8 +150,9 @@ if (typeof window !== 'undefined') {
   console.log('');
   console.log('%c📋 Available Commands:', 'color: #2196F3; font-weight: bold;');
   console.log('%c  window.quickDemo()           ', 'color: #FF9800;', '- Quick demo (recommended)');
+  console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗 NEW!');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
-  console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊 NEW!');
+  console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
   console.log('%c  window.serializationDemo()   ', 'color: #FF9800;', '- Serialization demo');
   console.log('%c  window.snapshotDemo()        ', 'color: #FF9800;', '- Snapshot demo');
   console.log('%c  window.systemDemo()          ', 'color: #FF9800;', '- SystemManager demo');

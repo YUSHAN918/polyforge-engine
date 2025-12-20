@@ -18,6 +18,7 @@ export * from './utils';
 
 // 示例组件
 export { TransformComponent } from './components/TransformComponent';
+export type { Matrix4 } from './components/TransformComponent';
 export { NameComponent } from './components/NameComponent';
 
 // 核心组件（阶段 2）
@@ -53,9 +54,12 @@ export type {
 export { AudioSourceComponent } from './components/AudioSourceComponent';
 export type { AudioType } from './components/AudioSourceComponent';
 
-// 示例系统
+// 核心系统（阶段 3）
 export { MovementSystem } from './systems/MovementSystem';
+export { HierarchySystem } from './systems/HierarchySystem';
 
 // 演示和测试
 export { runCoreDemo } from './demo';
 export { runEntityManagerTests } from './__tests__/EntityManager.test';
+export { runHierarchyTests } from './__tests__/Hierarchy.test';
+export { hierarchyDemo } from './hierarchyDemo';
