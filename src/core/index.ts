@@ -10,6 +10,8 @@ export * from './types';
 export { Entity } from './Entity';
 export { EntityManager } from './EntityManager';
 export { SystemManager } from './SystemManager';
+export { SerializationService } from './SerializationService';
+export type { SerializedWorld } from './SerializationService';
 
 // 工具函数
 export * from './utils';

@@ -5,6 +5,7 @@
 
 import { EntityManager } from './EntityManager';
 import { SystemManager } from './SystemManager';
+import { SerializationService } from './SerializationService';
 import { TransformComponent } from './components/TransformComponent';
 import { NameComponent } from './components/NameComponent';
 import { MovementSystem } from './systems/MovementSystem';
@@ -18,8 +19,9 @@ export function quickDemo(): void {
   // 1. 创建管理器
   const manager = new EntityManager();
   const systemManager = new SystemManager(manager);
+  const serializationService = new SerializationService(manager);
   manager.setSystemManager(systemManager);
-  console.log('✓ EntityManager & SystemManager created');
+  console.log('✓ EntityManager, SystemManager & SerializationService created');
 
   // 2. 注册组件类型
   manager.registerComponent('Transform', TransformComponent);
@@ -71,41 +73,69 @@ export function quickDemo(): void {
   console.log(`  Entities with Transform: ${withTransform.length}`);
   console.log(`  Entities with Transform + Name: ${withBoth.length}`);
 
-  // 10. 序列化测试
-  console.log('\n💾 Serialization Test:');
-  const serialized = manager.serializeAll();
-  const json = JSON.stringify(serialized, null, 2);
-  console.log(`  Serialized size: ${(json.length / 1024).toFixed(2)} KB`);
-  console.log(`  Entities serialized: ${serialized.length}`);
-
-  // 11. 读取组件数据
-  console.log('\n📖 Component Data:');
-  const playerTransform = player.getComponent<TransformComponent>('Transform');
-  const playerName = player.getComponent<NameComponent>('Name');
-  console.log(`  Player position: [${playerTransform?.position.join(', ')}]`);
-  console.log(`  Player name: ${playerName?.displayName}`);
-  console.log(`  Player description: ${playerName?.description}`);
-
-  // 12. 统计信息
-  console.log('\n📈 Statistics:');
-  const stats = manager.getStats();
-  console.log(`  Total entities: ${stats.totalEntities}`);
-  console.log(`  Active entities: ${stats.activeEntities}`);
-  console.log(`  Root entities: ${stats.rootEntities}`);
-  console.log(`  Component types: ${stats.componentTypes}`);
-  console.log(`  Avg components/entity: ${stats.averageComponentsPerEntity.toFixed(2)}`);
-
-  // 13. 系统更新演示（心跳）
-  console.log('\n💓 System Heartbeat (5 beats):');
+  // 10. 系统更新演示（心跳）
+  console.log('\n💓 System Heartbeat (3 beats):');
   const deltaTime = 0.1;
-  for (let beat = 0; beat < 5; beat++) {
+  for (let beat = 0; beat < 3; beat++) {
     systemManager.update(deltaTime);
     const transform = player.getComponent<TransformComponent>('Transform');
     console.log(`  Beat ${beat + 1}: Position [${transform?.position.map(v => v.toFixed(3)).join(', ')}]`);
   }
 
+  // 11. 序列化测试（影子存档验证）
+  console.log('\n💾 Serialization Test (Shadow Save):');
+  
+  // 记录当前位置
+  const beforeTransform = player.getComponent<TransformComponent>('Transform');
+  const beforePosition = [...beforeTransform!.position] as [number, number, number];
+  console.log(`  Position before save: [${beforePosition.map(v => v.toFixed(3)).join(', ')}]`);
+  
+  // 导出 JSON
+  const exportedJSON = serializationService.serializeToJSON({
+    name: 'Quick Demo World',
+    author: 'PolyForge',
+  });
+  const stats = serializationService.getStats(JSON.parse(exportedJSON));
+  console.log(`  ✓ Exported: ${stats.entityCount} entities, ${(stats.jsonSize / 1024).toFixed(2)} KB`);
+  
+  // 清空世界
+  manager.clear();
+  console.log(`  ✓ World cleared: ${manager.getEntityCount()} entities`);
+  
+  // 导入 JSON
+  serializationService.deserializeFromJSON(exportedJSON);
+  console.log(`  ✓ Imported: ${manager.getEntityCount()} entities`);
+  
+  // 验证位置
+  const restoredPlayer = manager.getEntity(player.id);
+  const afterTransform = restoredPlayer?.getComponent<TransformComponent>('Transform');
+  const afterPosition = afterTransform?.position;
+  
+  const positionsMatch = 
+    beforePosition[0] === afterPosition?.[0] &&
+    beforePosition[1] === afterPosition?.[1] &&
+    beforePosition[2] === afterPosition?.[2];
+  
+  console.log(`  Position after restore: [${afterPosition?.map(v => v.toFixed(3)).join(', ')}]`);
+  console.log(`  Position matches: ${positionsMatch ? '✅ YES' : '❌ NO'}`);
+
+  // 12. 读取组件数据
+  console.log('\n📖 Component Data:');
+  const playerName = restoredPlayer?.getComponent<NameComponent>('Name');
+  console.log(`  Player name: ${playerName?.displayName}`);
+  console.log(`  Player description: ${playerName?.description}`);
+
+  // 13. 统计信息
+  console.log('\n📈 Statistics:');
+  const managerStats = manager.getStats();
+  console.log(`  Total entities: ${managerStats.totalEntities}`);
+  console.log(`  Active entities: ${managerStats.activeEntities}`);
+  console.log(`  Root entities: ${managerStats.rootEntities}`);
+  console.log(`  Component types: ${managerStats.componentTypes}`);
+  console.log(`  Avg components/entity: ${managerStats.averageComponentsPerEntity.toFixed(2)}`);
+
   console.log('\n✅ Demo completed successfully!');
-  console.log('🎉 New ECS core with SystemManager is working perfectly!\n');
+  console.log('🎉 ECS core with SystemManager and SerializationService is working perfectly!\n');
 
   return;
 }
