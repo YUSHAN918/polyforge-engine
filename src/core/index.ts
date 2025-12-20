@@ -9,6 +9,7 @@ export * from './types';
 // 核心类
 export { Entity } from './Entity';
 export { EntityManager } from './EntityManager';
+export { SystemManager } from './SystemManager';
 
 // 工具函数
 export * from './utils';
@@ -16,6 +17,9 @@ export * from './utils';
 // 示例组件
 export { TransformComponent } from './components/TransformComponent';
 export { NameComponent } from './components/NameComponent';
+
+// 示例系统
+export { MovementSystem } from './systems/MovementSystem';
 
 // 演示和测试
 export { runCoreDemo } from './demo';

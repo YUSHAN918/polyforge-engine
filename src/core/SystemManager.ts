@@ -1,0 +1,250 @@
+/**
+ * PolyForge v1.3.0 SystemManager Implementation
+ * SystemManager 系统管理器实现
+ */
+
+import { System, Entity } from './types';
+import { EntityManager } from './EntityManager';
+
+/**
+ * SystemManager 系统管理器
+ * 负责管理所有 System 的注册、排序和更新循环
+ */
+export class SystemManager {
+  /** 所有注册的系统 */
+  private systems: System[];
+
+  /** 系统映射（用于快速查找） */
+  private systemMap: Map<string, System>;
+
+  /** EntityManager 引用 */
+  private entityManager: EntityManager;
+
+  /** 是否已排序 */
+  private sorted: boolean;
+
+  constructor(entityManager: EntityManager) {
+    this.systems = [];
+    this.systemMap = new Map();
+    this.entityManager = entityManager;
+    this.sorted = true;
+  }
+
+  // ============================================================================
+  // System 注册管理
+  // ============================================================================
+
+  /**
+   * 注册系统
+   */
+  registerSystem(name: string, system: System): void {
+    if (this.systemMap.has(name)) {
+      console.warn(`System ${name} already registered`);
+      return;
+    }
+
+    this.systems.push(system);
+    this.systemMap.set(name, system);
+    this.sorted = false; // 标记需要重新排序
+
+    console.log(`✓ System registered: ${name} (priority: ${system.priority})`);
+  }
+
+  /**
+   * 注销系统
+   */
+  unregisterSystem(name: string): boolean {
+    const system = this.systemMap.get(name);
+    if (!system) {
+      console.warn(`System ${name} not found`);
+      return false;
+    }
+
+    const index = this.systems.indexOf(system);
+    if (index !== -1) {
+      this.systems.splice(index, 1);
+    }
+
+    this.systemMap.delete(name);
+    console.log(`✓ System unregistered: ${name}`);
+    return true;
+  }
+
+  /**
+   * 获取系统
+   */
+  getSystem(name: string): System | undefined {
+    return this.systemMap.get(name);
+  }
+
+  /**
+   * 获取所有系统
+   */
+  getAllSystems(): System[] {
+    return [...this.systems];
+  }
+
+  /**
+   * 获取已注册的系统数量
+   */
+  getSystemCount(): number {
+    return this.systems.length;
+  }
+
+  // ============================================================================
+  // 系统排序
+  // ============================================================================
+
+  /**
+   * 根据优先级排序系统
+   * 优先级数值越小，越先执行
+   */
+  private sortSystems(): void {
+    if (this.sorted) return;
+
+    this.systems.sort((a, b) => a.priority - b.priority);
+    this.sorted = true;
+
+    console.log('✓ Systems sorted by priority:');
+    this.systems.forEach((system, index) => {
+      const name = this.getSystemName(system);
+      console.log(`  ${index + 1}. ${name} (priority: ${system.priority})`);
+    });
+  }
+
+  /**
+   * 获取系统名称（用于调试）
+   */
+  private getSystemName(system: System): string {
+    for (const [name, sys] of this.systemMap.entries()) {
+      if (sys === system) return name;
+    }
+    return 'Unknown';
+  }
+
+  // ============================================================================
+  // 更新循环
+  // ============================================================================
+
+  /**
+   * 更新所有系统
+   * @param deltaTime 时间增量（秒）
+   */
+  update(deltaTime: number): void {
+    // 确保系统已排序
+    if (!this.sorted) {
+      this.sortSystems();
+    }
+
+    // 按优先级顺序更新所有系统
+    for (const system of this.systems) {
+      // 获取该系统需要的实体
+      const entities = this.entityManager.getActiveEntitiesWithComponents(
+        system.requiredComponents
+      );
+
+      // 更新系统
+      system.update(deltaTime, entities);
+    }
+  }
+
+  // ============================================================================
+  // 实体生命周期钩子
+  // ============================================================================
+
+  /**
+   * 通知所有系统：实体已添加
+   */
+  notifyEntityAdded(entity: Entity): void {
+    for (const system of this.systems) {
+      // 检查实体是否满足系统的组件要求
+      if (entity.hasAllComponents(system.requiredComponents)) {
+        system.onEntityAdded(entity);
+      }
+    }
+  }
+
+  /**
+   * 通知所有系统：实体即将移除
+   */
+  notifyEntityRemoved(entity: Entity): void {
+    for (const system of this.systems) {
+      // 检查实体是否满足系统的组件要求
+      if (entity.hasAllComponents(system.requiredComponents)) {
+        system.onEntityRemoved(entity);
+      }
+    }
+  }
+
+  /**
+   * 通知所有系统：实体的组件已改变
+   */
+  notifyComponentChanged(entity: Entity, componentType: string, added: boolean): void {
+    for (const system of this.systems) {
+      const hadComponents = added
+        ? entity.hasAllComponents(system.requiredComponents.filter(c => c !== componentType))
+        : entity.hasAllComponents(system.requiredComponents);
+
+      const hasComponents = entity.hasAllComponents(system.requiredComponents);
+
+      // 如果之前不满足，现在满足了 -> 添加
+      if (!hadComponents && hasComponents) {
+        system.onEntityAdded(entity);
+      }
+      // 如果之前满足，现在不满足了 -> 移除
+      else if (hadComponents && !hasComponents) {
+        system.onEntityRemoved(entity);
+      }
+    }
+  }
+
+  // ============================================================================
+  // 工具方法
+  // ============================================================================
+
+  /**
+   * 清空所有系统
+   */
+  clear(): void {
+    this.systems = [];
+    this.systemMap.clear();
+    this.sorted = true;
+    console.log('✓ All systems cleared');
+  }
+
+  /**
+   * 获取统计信息
+   */
+  getStats(): {
+    totalSystems: number;
+    systemNames: string[];
+    averagePriority: number;
+  } {
+    const systemNames = Array.from(this.systemMap.keys());
+    const totalPriority = this.systems.reduce((sum, sys) => sum + sys.priority, 0);
+
+    return {
+      totalSystems: this.systems.length,
+      systemNames,
+      averagePriority: this.systems.length > 0 ? totalPriority / this.systems.length : 0,
+    };
+  }
+
+  /**
+   * 打印调试信息
+   */
+  debug(): void {
+    console.log('=== SystemManager Debug Info ===');
+    console.log(`Total Systems: ${this.systems.length}`);
+    console.log(`Sorted: ${this.sorted}`);
+    console.log('Systems:');
+    
+    this.sortSystems();
+    this.systems.forEach((system, index) => {
+      const name = this.getSystemName(system);
+      console.log(`  ${index + 1}. ${name}`);
+      console.log(`     Priority: ${system.priority}`);
+      console.log(`     Required Components: [${system.requiredComponents.join(', ')}]`);
+    });
+  }
+}

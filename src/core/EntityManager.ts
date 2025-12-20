@@ -5,6 +5,7 @@
 
 import { Entity } from './Entity';
 import { Component, SerializedEntity, QueryResult } from './types';
+import type { SystemManager } from './SystemManager';
 
 /**
  * EntityManager 实体管理器
@@ -23,11 +24,26 @@ export class EntityManager {
   /** 组件注册表：componentType -> ComponentClass */
   private componentRegistry: Map<string, new () => Component>;
 
+  /** SystemManager 引用（可选） */
+  private systemManager?: SystemManager;
+
   constructor() {
     this.entities = new Map();
     this.componentIndex = new Map();
     this.hierarchyRoot = [];
     this.componentRegistry = new Map();
+    this.systemManager = undefined;
+  }
+
+  // ============================================================================
+  // SystemManager 集成
+  // ============================================================================
+
+  /**
+   * 设置 SystemManager（用于实体/组件变化通知）
+   */
+  setSystemManager(systemManager: SystemManager): void {
+    this.systemManager = systemManager;
   }
 
   // ============================================================================
@@ -63,6 +79,12 @@ export class EntityManager {
     const entity = new Entity(name);
     this.entities.set(entity.id, entity);
     this.hierarchyRoot.push(entity);
+    
+    // 通知 SystemManager
+    if (this.systemManager) {
+      this.systemManager.notifyEntityAdded(entity);
+    }
+    
     return entity;
   }
 
@@ -74,6 +96,11 @@ export class EntityManager {
     if (!entity) {
       console.warn(`Entity ${id} not found`);
       return false;
+    }
+
+    // 通知 SystemManager（在销毁前）
+    if (this.systemManager) {
+      this.systemManager.notifyEntityRemoved(entity);
     }
 
     // 从组件索引中移除
@@ -141,6 +168,12 @@ export class EntityManager {
 
     entity.addComponent(component);
     this.addToComponentIndex(entityId, component.type);
+    
+    // 通知 SystemManager
+    if (this.systemManager) {
+      this.systemManager.notifyComponentChanged(entity, component.type, true);
+    }
+    
     return true;
   }
 
@@ -157,6 +190,11 @@ export class EntityManager {
     const removed = entity.removeComponent(componentType);
     if (removed) {
       this.removeFromComponentIndex(entityId, componentType);
+      
+      // 通知 SystemManager
+      if (this.systemManager) {
+        this.systemManager.notifyComponentChanged(entity, componentType, false);
+      }
     }
     return removed;
   }
