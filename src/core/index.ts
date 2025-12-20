@@ -12,6 +12,7 @@ export { EntityManager } from './EntityManager';
 export { SystemManager } from './SystemManager';
 export { SerializationService } from './SerializationService';
 export type { SerializedWorld } from './SerializationService';
+export { Clock } from './Clock';
 
 // 工具函数
 export * from './utils';
@@ -62,4 +63,6 @@ export { HierarchySystem } from './systems/HierarchySystem';
 export { runCoreDemo } from './demo';
 export { runEntityManagerTests } from './__tests__/EntityManager.test';
 export { runHierarchyTests } from './__tests__/Hierarchy.test';
+export { runClockTests } from './__tests__/Clock.test';
 export { hierarchyDemo } from './hierarchyDemo';
+export { clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus } from './clockDemo';

@@ -115,23 +115,26 @@
   - _需求：3.1-3.5_
   - ✅ 已完成（阶段 3 - Hierarchy.test.ts 5 个测试套件）
 
-## 4. Clock 时钟系统
+## 4. Clock 时钟系统 ✅ 已完成（阶段 4）
 
-- [ ] 4.1 实现 Clock 类
+- [x] 4.1 实现 Clock 类
   - 实现时间追踪和 delta 计算
   - 实现 TimeScale 缩放
   - 实现暂停/恢复功能
   - _需求：7.1, 7.2_
+  - ✅ 已完成（阶段 4）
 
-- [ ] 4.2 集成 Clock 到 SystemManager
+- [x] 4.2 集成 Clock 到 SystemManager
   - 在 update 循环中使用 Clock.getDeltaTime()
   - 支持 TimeScale 动态调整
   - _需求：7.2, 7.3, 7.4_
+  - ✅ 已完成（阶段 4）
 
-- [ ]* 4.3 编写 Clock 单元测试
+- [x]* 4.3 编写 Clock 单元测试
   - 测试 TimeScale 效果
   - 测试暂停/恢复
   - _需求：7.1-7.6_
+  - ✅ 已完成（阶段 4 - Clock.test.ts 5 个测试套件）
 
 ## 5. CommandManager 命令系统
 

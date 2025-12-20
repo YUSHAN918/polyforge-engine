@@ -10,8 +10,10 @@ import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo'
 import { runVisualDemo } from './core/visualDemo';
 import { runVehicleDemo } from './core/vehicleDemo';
 import { hierarchyDemo } from './core/hierarchyDemo';
+import { clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus } from './core/clockDemo';
 import { runHierarchyTests } from './core/__tests__/Hierarchy.test';
 import { runEntityManagerTests } from './core/__tests__/EntityManager.test';
+import { runClockTests } from './core/__tests__/Clock.test';
 
 /**
  * 在浏览器控制台中运行所有测试
@@ -28,6 +30,9 @@ export function runAllTests(): void {
     
     // Phase 3 测试
     runHierarchyTests();
+    
+    // Phase 4 测试
+    runClockTests();
     
     console.log('%c✅ All tests passed!', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
   } catch (error) {
@@ -132,6 +137,18 @@ export function runHierarchyDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行时钟系统演示（阶段 4）
+ */
+export function runClockDemoWrapper(): void {
+  console.clear();
+  try {
+    clockDemo();
+  } catch (error) {
+    console.error('Clock demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -143,6 +160,14 @@ if (typeof window !== 'undefined') {
   (window as any).visualDemo = runVisualDemoWrapper; // 🆕 阶段 2.1
   (window as any).vehicleDemo = runVehicleDemoWrapper; // 🆕 阶段 2.2
   (window as any).hierarchyDemo = runHierarchyDemoWrapper; // 🆕 阶段 3
+  (window as any).clockDemo = runClockDemoWrapper; // 🆕 阶段 4
+  
+  // 时钟控制函数
+  (window as any).setSpeed = setSpeed;
+  (window as any).pauseGame = pauseGame;
+  (window as any).resumeGame = resumeGame;
+  (window as any).togglePause = togglePause;
+  (window as any).getClockStatus = getClockStatus;
   
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
@@ -150,7 +175,8 @@ if (typeof window !== 'undefined') {
   console.log('');
   console.log('%c📋 Available Commands:', 'color: #2196F3; font-weight: bold;');
   console.log('%c  window.quickDemo()           ', 'color: #FF9800;', '- Quick demo (recommended)');
-  console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗 NEW!');
+  console.log('%c  window.clockDemo()           ', 'color: #FF9800;', '- Clock system demo ⏱️ NEW!');
+  console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
   console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
   console.log('%c  window.serializationDemo()   ', 'color: #FF9800;', '- Serialization demo');
@@ -158,5 +184,12 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.systemDemo()          ', 'color: #FF9800;', '- SystemManager demo');
   console.log('%c  window.heartbeatDemo()       ', 'color: #FF9800;', '- Heartbeat demo');
   console.log('%c  window.runPolyForgeTests()   ', 'color: #FF9800;', '- Full test suite');
+  console.log('');
+  console.log('%c⏱️  Clock Controls:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  window.setSpeed(0.5)         ', 'color: #FF9800;', '- Set time scale to 0.5x');
+  console.log('%c  window.pauseGame()           ', 'color: #FF9800;', '- Pause the game');
+  console.log('%c  window.resumeGame()          ', 'color: #FF9800;', '- Resume the game');
+  console.log('%c  window.togglePause()         ', 'color: #FF9800;', '- Toggle pause state');
+  console.log('%c  window.getClockStatus()      ', 'color: #FF9800;', '- Get clock status');
   console.log('');
 }

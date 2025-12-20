@@ -5,6 +5,7 @@
 
 import { System, Entity } from './types';
 import { EntityManager } from './EntityManager';
+import { Clock } from './Clock';
 
 /**
  * SystemManager 系统管理器
@@ -20,14 +21,36 @@ export class SystemManager {
   /** EntityManager 引用 */
   private entityManager: EntityManager;
 
+  /** Clock 时钟引用 */
+  private clock: Clock;
+
   /** 是否已排序 */
   private sorted: boolean;
 
-  constructor(entityManager: EntityManager) {
+  constructor(entityManager: EntityManager, clock?: Clock) {
     this.systems = [];
     this.systemMap = new Map();
     this.entityManager = entityManager;
+    this.clock = clock || new Clock();
     this.sorted = true;
+  }
+
+  // ============================================================================
+  // Clock 管理
+  // ============================================================================
+
+  /**
+   * 获取 Clock 实例
+   */
+  getClock(): Clock {
+    return this.clock;
+  }
+
+  /**
+   * 设置 Clock 实例
+   */
+  setClock(clock: Clock): void {
+    this.clock = clock;
   }
 
   // ============================================================================
@@ -127,10 +150,35 @@ export class SystemManager {
   // ============================================================================
 
   /**
-   * 更新所有系统
-   * @param deltaTime 时间增量（秒）
+   * 更新所有系统（使用 Clock 的 deltaTime）
    */
-  update(deltaTime: number): void {
+  update(): void {
+    // 更新 Clock，获取经过 TimeScale 缩放后的 deltaTime
+    const deltaTime = this.clock.tick();
+
+    // 确保系统已排序
+    if (!this.sorted) {
+      this.sortSystems();
+    }
+
+    // 按优先级顺序更新所有系统
+    for (const system of this.systems) {
+      // 获取该系统需要的实体
+      const entities = this.entityManager.getActiveEntitiesWithComponents(
+        system.requiredComponents
+      );
+
+      // 更新系统（传入经过 TimeScale 缩放后的 deltaTime）
+      system.update(deltaTime, entities);
+    }
+  }
+
+  /**
+   * 更新所有系统（手动指定 deltaTime，用于测试）
+   * @param deltaTime 时间增量（秒）
+   * @deprecated 建议使用 update() 让 Clock 自动管理时间
+   */
+  updateManual(deltaTime: number): void {
     // 确保系统已排序
     if (!this.sorted) {
       this.sortSystems();

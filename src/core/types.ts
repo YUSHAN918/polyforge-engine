@@ -88,6 +88,30 @@ export interface Entity {
   
   /** 激活状态 */
   active: boolean;
+  
+  /** 组件管理方法 */
+  addComponent(component: Component): void;
+  removeComponent(componentType: string): boolean;
+  getComponent<T extends Component>(componentType: string): T | undefined;
+  hasComponent(componentType: string): boolean;
+  hasAllComponents(componentTypes: string[]): boolean;
+  
+  /** 层级管理方法 */
+  setParent(parent: Entity, socketName?: string): void;
+  removeParent(): void;
+  getAllChildren(): Entity[];
+  
+  /** Socket 管理方法 */
+  addSocket(socket: Socket): void;
+  removeSocket(socketName: string): boolean;
+  getSocket(socketName: string): Socket | undefined;
+  isSocketOccupied(socketName: string): boolean;
+  
+  /** 序列化方法 */
+  serialize(): SerializedEntity;
+  
+  /** 销毁方法 */
+  destroy(): void;
 }
 
 // ============================================================================
