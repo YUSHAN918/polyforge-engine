@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
-**最后更新**: 2025-12-20  
+**最后更新**: 2025-12-21  
 **当前版本**: v1.3.0  
-**整体进度**: 5/16 阶段完成 (31%)
+**整体进度**: 6/16 阶段完成 (38%)
 
 ---
 
@@ -16,7 +16,7 @@
 | Phase 3 | Socket/Anchor 系统 | ✅ 完成 | 2024-12-20 | [PHASE3_DELIVERY.md](./PHASE3_DELIVERY.md) |
 | Phase 4 | Clock 时钟系统 | ✅ 完成 | 2025-12-20 | [PHASE4_DELIVERY.md](./PHASE4_DELIVERY.md) |
 | Phase 5 | CommandManager 命令系统 | ✅ 完成 | 2025-12-20 | [PHASE5_DELIVERY.md](./PHASE5_DELIVERY.md) |
-| Phase 6 | InputMappingSystem | ⏳ 待开始 | - | - |
+| Phase 6 | InputMappingSystem | ✅ 完成 | 2025-12-21 | [PHASE6_DELIVERY.md](./PHASE6_DELIVERY.md) |
 | Phase 7 | AssetRegistry | ⏳ 待开始 | - | - |
 | Phase 8 | PhysicsSystem | ⏳ 待开始 | - | - |
 | Phase 9 | AudioSystem | ⏳ 待开始 | - | - |

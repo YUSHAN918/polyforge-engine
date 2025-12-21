@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -163,6 +163,18 @@ export function runCommandDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行输入系统演示（阶段 6）
+ */
+export function runInputDemoWrapper(): void {
+  console.clear();
+  try {
+    inputDemo();
+  } catch (error) {
+    console.error('Input demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -176,6 +188,7 @@ if (typeof window !== 'undefined') {
   (window as any).hierarchyDemo = runHierarchyDemoWrapper; // 🆕 阶段 3
   (window as any).clockDemo = runClockDemoWrapper; // 🆕 阶段 4
   (window as any).commandDemo = runCommandDemoWrapper; // 🆕 阶段 5
+  (window as any).inputDemo = runInputDemoWrapper; // 🆕 阶段 6
   
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
@@ -193,6 +206,12 @@ if (typeof window !== 'undefined') {
   (window as any).showHistory = showHistory;
   (window as any).clearHistory = clearHistory;
   
+  // 输入控制函数
+  (window as any).getBoxPosition = getBoxPosition;
+  (window as any).switchPreset = switchPreset;
+  (window as any).showInputStatus = showInputStatus;
+  (window as any).showCommandHistory = showCommandHistory;
+  
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
@@ -201,6 +220,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.quickDemo()           ', 'color: #FF9800;', '- Quick demo (recommended)');
   console.log('%c  window.clockDemo()           ', 'color: #FF9800;', '- Clock system demo ⏱️ NEW!');
   console.log('%c  window.commandDemo()         ', 'color: #FF9800;', '- Command system demo 🔄 NEW!');
+  console.log('%c  window.inputDemo()           ', 'color: #FF9800;', '- Input system demo 🎮 NEW!');
   console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
   console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
@@ -225,5 +245,11 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.redoLast()            ', 'color: #FF9800;', '- Redo last command');
   console.log('%c  window.showHistory()         ', 'color: #FF9800;', '- Show command history');
   console.log('%c  window.clearHistory()        ', 'color: #FF9800;', '- Clear all history');
+  console.log('');
+  console.log('%c🎮 Input Controls:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  window.getBoxPosition()      ', 'color: #FF9800;', '- Get box position');
+  console.log('%c  window.switchPreset(name)    ', 'color: #FF9800;', '- Switch input preset');
+  console.log('%c  window.showInputStatus()     ', 'color: #FF9800;', '- Show input status');
+  console.log('%c  window.showCommandHistory()  ', 'color: #FF9800;', '- Show command history');
   console.log('');
 }

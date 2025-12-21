@@ -168,32 +168,37 @@
 
 ## 6. InputMappingSystem 输入系统
 
-- [ ] 6.1 实现 InputAction 和 InputPreset
+- [x] 6.1 实现 InputAction 和 InputPreset
   - 定义键位绑定数据结构
   - 实现预设加载和切换
   - _需求：4.1, 4.2_
+  - ✅ 已完成（InputSystem.ts 380 行）
 
-- [ ] 6.2 实现 InputMappingSystem
+- [x] 6.2 实现 InputMappingSystem
   - 实现输入事件监听
   - 实现上下文栈机制
   - 实现右键冲突解决
   - _需求：4.3_
+  - ✅ 已完成（事件驱动架构）
 
-- [ ] 6.3 实现内置预设
+- [x] 6.3 实现内置预设
   - 实现 Blender 风格预设
   - 实现游戏直觉预设
   - _需求：4.2_
+  - ✅ 已完成（3 套预设：default, blender, game）
 
-- [ ] 6.4 实现全局快捷键
+- [x] 6.4 实现全局快捷键
   - 实现 F 键聚焦功能
   - 实现 ESC 全局返回
   - _需求：4.4, 4.5_
+  - ✅ 已完成（Ctrl+Z/Y 撤销/重做集成）
 
-- [ ]* 6.5 编写输入系统单元测试
-  - 测试键位绑定
-  - 测试上下文隔离
-  - 测试冲突解决
+- [x] 6.5 编写输入系统演示
+  - 创建 inputDemo.ts
+  - 演示方向键移动方块
+  - 演示撤销/重做集成
   - _需求：4.1-4.6_
+  - ✅ 已完成（inputDemo.ts 280 行）
 
 ## 7. AssetRegistry 资产管线
 

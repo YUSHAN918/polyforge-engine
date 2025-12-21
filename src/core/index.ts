@@ -60,6 +60,8 @@ export type { AudioType } from './components/AudioSourceComponent';
 // 核心系统（阶段 3）
 export { MovementSystem } from './systems/MovementSystem';
 export { HierarchySystem } from './systems/HierarchySystem';
+export { InputSystem } from './systems/InputSystem';
+export type { InputAction, InputPreset } from './systems/InputSystem';
 
 // 演示和测试
 export { runCoreDemo } from './demo';
@@ -70,3 +72,4 @@ export { runCommandTests } from './__tests__/Command.test';
 export { hierarchyDemo } from './hierarchyDemo';
 export { clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus } from './clockDemo';
 export { commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory } from './commandDemo';
+export { inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './inputDemo';
