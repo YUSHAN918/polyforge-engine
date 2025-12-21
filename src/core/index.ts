@@ -88,4 +88,4 @@ export { AudioImporter } from './assets/AudioImporter';
 export { HDRImporter } from './assets/HDRImporter';
 export { AssetType } from './assets/types';
 export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata, AudioMetadata, HDRMetadata } from './assets/types';
-export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo, hdrUploadDemo } from './assetDemo';
+export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo, hdrUploadDemo, assetBrowserDemo } from './assetDemo';

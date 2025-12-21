@@ -336,6 +336,8 @@ export class AssetRegistry {
 
   /**
    * 删除资产
+   * 确保同时删除 metadata 库和 files 库中的条目
+   * 清理该资产在内存中的所有 cache 引用
    * 
    * @param id 资产 ID
    */
@@ -343,12 +345,22 @@ export class AssetRegistry {
     this.ensureInitialized();
 
     try {
-      // 从 IndexedDB 删除
+      // 1. 从 IndexedDB 删除（metadata + files）
       await this.storage.deleteAsset(id);
 
-      // 从缓存删除
+      // 2. 从 Blob 缓存删除
       this.cache.delete(id);
+
+      // 3. 从元数据缓存删除
       this.metadataCache.delete(id);
+
+      // 4. 如果是 HDR 资产，清理 envMap 纹理
+      const envMap = this.envMapCache.get(id);
+      if (envMap) {
+        envMap.dispose();
+        this.envMapCache.delete(id);
+        console.log(`[AssetRegistry] Disposed envMap for asset: ${id}`);
+      }
 
       console.log(`[AssetRegistry] Deleted asset: ${id}`);
     } catch (error) {
@@ -358,7 +370,8 @@ export class AssetRegistry {
   }
 
   /**
-   * 查询资产
+   * 查询资产（高级过滤）
+   * 支持按 type、category 和 tags 进行交集过滤
    * 
    * @param filter 查询过滤器
    * @returns 匹配的资产元数据列表
@@ -369,26 +382,40 @@ export class AssetRegistry {
     let results: AssetMetadata[] = [];
 
     try {
-      // 如果有类型过滤，使用索引查询
+      // 1. 基础查询：优先使用索引
       if (filter.type) {
+        // 按类型查询（使用 IndexedDB 索引）
         results = await this.storage.getMetadataByType(filter.type);
       } 
-      // 如果有分类过滤，使用索引查询
       else if (filter.category) {
+        // 按分类查询（使用 IndexedDB 索引）
         results = await this.storage.getMetadataByCategory(filter.category);
       } 
-      // 否则获取所有
       else {
+        // 获取所有资产（从内存缓存）
         results = Array.from(this.metadataCache.values());
       }
 
-      // 应用额外的过滤条件
+      // 2. 应用额外的交集过滤条件
+
+      // 如果指定了 type，且之前未按 type 查询，则过滤
+      if (filter.type && !filter.type) {
+        results = results.filter(metadata => metadata.type === filter.type);
+      }
+
+      // 如果指定了 category，且之前未按 category 查询，则过滤
+      if (filter.category && results.length > 0 && results[0].category !== filter.category) {
+        results = results.filter(metadata => metadata.category === filter.category);
+      }
+
+      // 如果指定了 tags，过滤包含所有指定标签的资产（交集）
       if (filter.tags && filter.tags.length > 0) {
         results = results.filter(metadata => 
           filter.tags!.every(tag => metadata.tags.includes(tag))
         );
       }
 
+      // 如果指定了 namePattern，进行模糊匹配
       if (filter.namePattern) {
         const pattern = filter.namePattern.toLowerCase();
         results = results.filter(metadata => 
@@ -396,6 +423,7 @@ export class AssetRegistry {
         );
       }
 
+      console.log(`[AssetRegistry] Query returned ${results.length} assets`, filter);
       return results;
     } catch (error) {
       console.error('[AssetRegistry] Failed to query assets:', error);

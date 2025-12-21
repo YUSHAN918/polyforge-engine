@@ -997,3 +997,365 @@ scene.environment = envMap;</pre>
 if (typeof window !== 'undefined') {
   (window as any).hdrUploadDemo = hdrUploadDemo;
 }
+
+
+/**
+ * 资产浏览器演示
+ * 以卡片形式展示所有资产，支持筛选和删除
+ */
+export function assetBrowserDemo(): void {
+  console.clear();
+  console.log('='.repeat(60));
+  console.log('PolyForge Asset Browser Demo');
+  console.log('='.repeat(60));
+
+  // 创建或获取容器
+  let container = document.getElementById('asset-browser-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'asset-browser-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.95);
+      border-radius: 15px;
+      z-index: 10000;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      width: 90%;
+      max-width: 1200px;
+      max-height: 90vh;
+      overflow-y: auto;
+    `;
+    document.body.appendChild(container);
+  }
+
+  // 清空容器
+  container.innerHTML = '';
+
+  // 创建标题栏
+  const header = document.createElement('div');
+  header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;';
+  
+  const title = document.createElement('h2');
+  title.textContent = '📦 Asset Browser';
+  title.style.cssText = 'color: white; margin: 0; font-family: Arial;';
+  header.appendChild(title);
+
+  const closeButton = document.createElement('button');
+  closeButton.textContent = '✕';
+  closeButton.style.cssText = `
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    font-weight: bold;
+  `;
+  closeButton.onclick = () => container?.remove();
+  header.appendChild(closeButton);
+
+  container.appendChild(header);
+
+  // 创建筛选按钮栏
+  const filterBar = document.createElement('div');
+  filterBar.style.cssText = 'display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;';
+
+  const filters = [
+    { label: 'All', type: null },
+    { label: '📦 Models', type: 'model' },
+    { label: '🎵 Audio', type: 'audio' },
+    { label: '🖼️ Textures', type: 'texture' },
+    { label: '🌅 HDR', type: 'hdr' },
+  ];
+
+  let currentFilter: string | null = null;
+
+  filters.forEach(({ label, type }) => {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.style.cssText = `
+      padding: 10px 20px;
+      background: ${type === currentFilter ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'rgba(255, 255, 255, 0.1)'};
+      color: white;
+      border: ${type === currentFilter ? 'none' : '1px solid rgba(255, 255, 255, 0.3)'};
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: ${type === currentFilter ? 'bold' : 'normal'};
+      transition: all 0.3s;
+    `;
+    button.onclick = () => {
+      currentFilter = type;
+      loadAssets(type);
+    };
+    filterBar.appendChild(button);
+  });
+
+  container.appendChild(filterBar);
+
+  // 创建统计信息栏
+  const statsBar = document.createElement('div');
+  statsBar.style.cssText = 'color: #4ECDC4; font-family: monospace; font-size: 14px; margin-bottom: 15px;';
+  container.appendChild(statsBar);
+
+  // 创建资产网格容器
+  const gridContainer = document.createElement('div');
+  gridContainer.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  `;
+  container.appendChild(gridContainer);
+
+  // 加载资产函数
+  async function loadAssets(filterType: string | null = null) {
+    gridContainer.innerHTML = '<p style="color: white; text-align: center; grid-column: 1 / -1;">Loading assets...</p>';
+
+    try {
+      const registry = getAssetRegistry();
+      await registry.initialize();
+
+      // 查询资产
+      const filter: any = {};
+      if (filterType) {
+        filter.type = filterType;
+      }
+      const assets = await registry.queryAssets(filter);
+
+      // 更新统计信息
+      statsBar.textContent = `Found ${assets.length} asset${assets.length !== 1 ? 's' : ''}`;
+
+      // 清空网格
+      gridContainer.innerHTML = '';
+
+      if (assets.length === 0) {
+        gridContainer.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #888;">
+            <p style="font-size: 48px; margin: 0;">📭</p>
+            <p style="font-size: 18px; margin: 10px 0 0 0;">No assets found</p>
+            <p style="font-size: 14px; margin: 5px 0 0 0;">Try uploading some assets first!</p>
+          </div>
+        `;
+        return;
+      }
+
+      // 渲染资产卡片
+      assets.forEach(asset => {
+        const card = createAssetCard(asset, () => loadAssets(filterType));
+        gridContainer.appendChild(card);
+      });
+
+    } catch (error) {
+      console.error('[AssetBrowser] Failed to load assets:', error);
+      gridContainer.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #FF6B6B;">
+          <p style="font-size: 18px; margin: 0;">Failed to load assets</p>
+          <p style="font-size: 14px; margin: 5px 0 0 0;">${(error as Error).message}</p>
+        </div>
+      `;
+    }
+  }
+
+  // 创建资产卡片
+  function createAssetCard(asset: AssetMetadata, onDelete: () => void): HTMLElement {
+    const card = document.createElement('div');
+    card.style.cssText = `
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 15px;
+      transition: all 0.3s;
+      cursor: pointer;
+    `;
+    card.onmouseenter = () => {
+      card.style.background = 'rgba(255, 255, 255, 0.08)';
+      card.style.borderColor = '#4ECDC4';
+      card.style.transform = 'translateY(-5px)';
+    };
+    card.onmouseleave = () => {
+      card.style.background = 'rgba(255, 255, 255, 0.05)';
+      card.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+      card.style.transform = 'translateY(0)';
+    };
+
+    // 缩略图
+    const thumbnail = document.createElement('div');
+    thumbnail.style.cssText = `
+      width: 100%;
+      height: 150px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    `;
+
+    if (asset.thumbnail) {
+      const img = document.createElement('img');
+      img.src = asset.thumbnail;
+      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+      thumbnail.appendChild(img);
+    } else {
+      // 默认图标
+      const icon = document.createElement('div');
+      icon.style.cssText = 'font-size: 48px;';
+      icon.textContent = getAssetIcon(asset.type);
+      thumbnail.appendChild(icon);
+    }
+    card.appendChild(thumbnail);
+
+    // 资产名称
+    const name = document.createElement('h3');
+    name.textContent = asset.name;
+    name.style.cssText = `
+      color: white;
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-family: Arial;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
+    card.appendChild(name);
+
+    // 资产类型
+    const type = document.createElement('div');
+    type.textContent = `${getAssetIcon(asset.type)} ${asset.type.toUpperCase()}`;
+    type.style.cssText = `
+      color: #4ECDC4;
+      font-size: 12px;
+      font-family: monospace;
+      margin-bottom: 8px;
+    `;
+    card.appendChild(type);
+
+    // 资产大小
+    const size = document.createElement('div');
+    size.textContent = `Size: ${(asset.size / 1024).toFixed(2)} KB`;
+    size.style.cssText = `
+      color: #888;
+      font-size: 12px;
+      font-family: monospace;
+      margin-bottom: 8px;
+    `;
+    card.appendChild(size);
+
+    // 标签
+    if (asset.tags.length > 0) {
+      const tagsContainer = document.createElement('div');
+      tagsContainer.style.cssText = 'display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px;';
+      
+      asset.tags.slice(0, 3).forEach(tag => {
+        const tagBadge = document.createElement('span');
+        tagBadge.textContent = tag;
+        tagBadge.style.cssText = `
+          background: rgba(78, 205, 196, 0.2);
+          color: #4ECDC4;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-family: monospace;
+        `;
+        tagsContainer.appendChild(tagBadge);
+      });
+
+      if (asset.tags.length > 3) {
+        const moreBadge = document.createElement('span');
+        moreBadge.textContent = `+${asset.tags.length - 3}`;
+        moreBadge.style.cssText = `
+          background: rgba(255, 255, 255, 0.1);
+          color: #888;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-family: monospace;
+        `;
+        tagsContainer.appendChild(moreBadge);
+      }
+
+      card.appendChild(tagsContainer);
+    }
+
+    // 删除按钮
+    const deleteButton = document.createElement('button');
+    deleteButton.textContent = '🗑️ Delete';
+    deleteButton.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      background: rgba(255, 107, 107, 0.2);
+      color: #FF6B6B;
+      border: 1px solid #FF6B6B;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    `;
+    deleteButton.onmouseenter = () => {
+      deleteButton.style.background = '#FF6B6B';
+      deleteButton.style.color = 'white';
+    };
+    deleteButton.onmouseleave = () => {
+      deleteButton.style.background = 'rgba(255, 107, 107, 0.2)';
+      deleteButton.style.color = '#FF6B6B';
+    };
+    deleteButton.onclick = async (e) => {
+      e.stopPropagation();
+      
+      if (!confirm(`Are you sure you want to delete "${asset.name}"?`)) {
+        return;
+      }
+
+      try {
+        deleteButton.textContent = 'Deleting...';
+        deleteButton.disabled = true;
+
+        const registry = getAssetRegistry();
+        await registry.deleteAsset(asset.id);
+
+        console.log(`[AssetBrowser] Deleted asset: ${asset.name} (${asset.id})`);
+        
+        // 重新加载资产列表
+        onDelete();
+      } catch (error) {
+        console.error('[AssetBrowser] Failed to delete asset:', error);
+        alert(`Failed to delete asset: ${(error as Error).message}`);
+        deleteButton.textContent = '🗑️ Delete';
+        deleteButton.disabled = false;
+      }
+    };
+    card.appendChild(deleteButton);
+
+    return card;
+  }
+
+  // 获取资产图标
+  function getAssetIcon(type: string): string {
+    const icons: Record<string, string> = {
+      model: '📦',
+      audio: '🎵',
+      texture: '🖼️',
+      hdr: '🌅',
+    };
+    return icons[type] || '📄';
+  }
+
+  // 初始加载所有资产
+  loadAssets();
+
+  console.log('\n✓ Asset browser interface created');
+  console.log('Browse, filter, and delete assets');
+}
+
+// 导出到 window 对象
+if (typeof window !== 'undefined') {
+  (window as any).assetBrowserDemo = assetBrowserDemo;
+}
