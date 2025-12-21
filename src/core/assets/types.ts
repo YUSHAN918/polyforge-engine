@@ -90,3 +90,29 @@ export interface HDRMetadata {
   format: string;          // 格式（hdr/rgbe）
   exposure: number;        // 曝光值
 }
+
+
+/**
+ * 文件系统相关类型
+ */
+export interface ScannedFile {
+  name: string;
+  path: string;
+  type: 'model' | 'audio' | 'hdr' | 'texture';
+  size: number;
+  file: File;
+}
+
+export interface ImportProgress {
+  total: number;
+  current: number;
+  succeeded: number;
+  failed: number;
+  currentFile: string;
+  errors: Array<{
+    file: string;
+    error: string;
+  }>;
+}
+
+export type ProgressCallback = (progress: ImportProgress) => void;

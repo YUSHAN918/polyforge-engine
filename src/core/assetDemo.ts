@@ -1098,6 +1098,30 @@ export function assetBrowserDemo(): void {
 
   container.appendChild(filterBar);
 
+  // 创建批量导入按钮
+  const batchImportButton = document.createElement('button');
+  batchImportButton.textContent = '📁 Link Local Directory';
+  batchImportButton.style.cssText = `
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: all 0.3s;
+  `;
+  batchImportButton.onmouseenter = () => {
+    batchImportButton.style.transform = 'scale(1.05)';
+  };
+  batchImportButton.onmouseleave = () => {
+    batchImportButton.style.transform = 'scale(1)';
+  };
+  batchImportButton.onclick = () => startBatchImport();
+  container.appendChild(batchImportButton);
+
   // 创建统计信息栏
   const statsBar = document.createElement('div');
   statsBar.style.cssText = 'color: #4ECDC4; font-family: monospace; font-size: 14px; margin-bottom: 15px;';
@@ -1346,6 +1370,137 @@ export function assetBrowserDemo(): void {
       hdr: '🌅',
     };
     return icons[type] || '📄';
+  }
+
+  // 批量导入函数
+  async function startBatchImport() {
+    try {
+      // 动态导入 FileSystemService
+      const { FileSystemService } = await import('./assets/FileSystemService');
+
+      // 检查浏览器支持
+      if (!FileSystemService.isSupported()) {
+        alert('Your browser does not support File System Access API.\nPlease use Chrome, Edge, or another Chromium-based browser.');
+        return;
+      }
+
+      // 选择文件夹
+      const dirHandle = await FileSystemService.selectDirectory();
+      if (!dirHandle) {
+        return; // 用户取消
+      }
+
+      // 禁用按钮
+      batchImportButton.disabled = true;
+      batchImportButton.textContent = '📁 Scanning...';
+
+      // 扫描文件夹
+      const files = await FileSystemService.scanDirectory(dirHandle);
+
+      if (files.length === 0) {
+        alert('No supported files found in the selected directory.\n\nSupported formats:\n- Models: .glb, .gltf\n- Audio: .mp3, .wav, .ogg\n- HDR: .hdr\n- Textures: .png, .jpg');
+        batchImportButton.disabled = false;
+        batchImportButton.textContent = '📁 Link Local Directory';
+        return;
+      }
+
+      // 显示文件统计
+      const stats = FileSystemService.getFileTypeStats(files);
+      const statsText = Object.entries(stats)
+        .filter(([_, count]) => count > 0)
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(', ');
+
+      const confirmed = confirm(
+        `Found ${files.length} file(s) in "${dirHandle.name}":\n\n${statsText}\n\nStart importing?`
+      );
+
+      if (!confirmed) {
+        batchImportButton.disabled = false;
+        batchImportButton.textContent = '📁 Link Local Directory';
+        return;
+      }
+
+      // 创建进度条容器
+      const progressContainer = document.createElement('div');
+      progressContainer.style.cssText = `
+        background: rgba(78, 205, 196, 0.1);
+        border: 1px solid #4ECDC4;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+      `;
+
+      const progressTitle = document.createElement('h4');
+      progressTitle.textContent = '📦 Batch Import Progress';
+      progressTitle.style.cssText = 'color: #4ECDC4; margin: 0 0 10px 0; font-family: Arial;';
+      progressContainer.appendChild(progressTitle);
+
+      const progressBar = document.createElement('div');
+      progressBar.style.cssText = `
+        width: 100%;
+        height: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      `;
+
+      const progressFill = document.createElement('div');
+      progressFill.style.cssText = `
+        height: 100%;
+        background: linear-gradient(90deg, #4ECDC4 0%, #44A08D 100%);
+        width: 0%;
+        transition: width 0.3s;
+      `;
+      progressBar.appendChild(progressFill);
+      progressContainer.appendChild(progressBar);
+
+      const progressText = document.createElement('div');
+      progressText.style.cssText = 'color: white; font-family: monospace; font-size: 12px;';
+      progressContainer.appendChild(progressText);
+
+      // 插入进度条（在统计信息栏后面）
+      statsBar.parentNode?.insertBefore(progressContainer, statsBar.nextSibling);
+
+      // 开始批量导入
+      const registry = getAssetRegistry();
+      await FileSystemService.batchImport(files, registry, (progress) => {
+        // 更新进度条
+        const percentage = (progress.current / progress.total) * 100;
+        progressFill.style.width = `${percentage}%`;
+
+        // 更新进度文本
+        progressText.innerHTML = `
+          <div>Progress: ${progress.current} / ${progress.total} (${percentage.toFixed(1)}%)</div>
+          <div>Current: ${progress.currentFile}</div>
+          <div style="color: #4ECDC4;">✓ Succeeded: ${progress.succeeded}</div>
+          ${progress.failed > 0 ? `<div style="color: #FF6B6B;">✗ Failed: ${progress.failed}</div>` : ''}
+        `;
+      });
+
+      // 导入完成
+      progressTitle.textContent = '✓ Batch Import Complete!';
+      progressFill.style.background = 'linear-gradient(90deg, #4ECDC4 0%, #44A08D 100%)';
+
+      // 重新加载资产列表
+      await loadAssets(currentFilter);
+
+      // 恢复按钮
+      batchImportButton.disabled = false;
+      batchImportButton.textContent = '📁 Link Local Directory';
+
+      // 3 秒后移除进度条
+      setTimeout(() => {
+        progressContainer.remove();
+      }, 3000);
+
+    } catch (error) {
+      console.error('[AssetBrowser] Batch import failed:', error);
+      alert(`Batch import failed: ${(error as Error).message}`);
+      batchImportButton.disabled = false;
+      batchImportButton.textContent = '📁 Link Local Directory';
+    }
   }
 
   // 初始加载所有资产

@@ -86,6 +86,7 @@ export { IndexedDBStorage } from './assets/IndexedDBStorage';
 export { ModelImporter } from './assets/ModelImporter';
 export { AudioImporter } from './assets/AudioImporter';
 export { HDRImporter } from './assets/HDRImporter';
+export { FileSystemService } from './assets/FileSystemService';
 export { AssetType } from './assets/types';
-export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata, AudioMetadata, HDRMetadata } from './assets/types';
+export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata, AudioMetadata, HDRMetadata, ScannedFile, ImportProgress, ProgressCallback } from './assets/types';
 export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo, hdrUploadDemo, assetBrowserDemo } from './assetDemo';
