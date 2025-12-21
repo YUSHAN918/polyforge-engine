@@ -91,6 +91,15 @@ export interface HDRMetadata {
   exposure: number;        // 曝光值
 }
 
+/**
+ * 内容指纹（用于去重）
+ */
+export interface ContentFingerprint {
+  hash: string;            // SHA-256 哈希值
+  size: number;            // 文件大小（字节）
+  assetId: string;         // 关联的资产 ID
+}
+
 
 /**
  * 文件系统相关类型

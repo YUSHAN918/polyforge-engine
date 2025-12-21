@@ -12,12 +12,13 @@
  *     - keyPath: id
  */
 
-import type { AssetMetadata } from './types';
+import type { AssetMetadata, ContentFingerprint } from './types';
 
 const DB_NAME = 'PolyForgeAssets';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 升级版本以添加指纹表
 const METADATA_STORE = 'metadata';
 const FILES_STORE = 'files';
+const FINGERPRINTS_STORE = 'fingerprints'; // 新增：内容指纹表
 
 /**
  * IndexedDB 存储层
@@ -58,6 +59,7 @@ export class IndexedDBStorage {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion;
 
         // 创建 metadata ObjectStore
         if (!db.objectStoreNames.contains(METADATA_STORE)) {
@@ -76,6 +78,13 @@ export class IndexedDBStorage {
         if (!db.objectStoreNames.contains(FILES_STORE)) {
           db.createObjectStore(FILES_STORE, { keyPath: 'id' });
           console.log('[IndexedDBStorage] Created files store');
+        }
+
+        // 创建 fingerprints ObjectStore（v2 新增）
+        if (oldVersion < 2 && !db.objectStoreNames.contains(FINGERPRINTS_STORE)) {
+          const fingerprintsStore = db.createObjectStore(FINGERPRINTS_STORE, { keyPath: 'hash' });
+          fingerprintsStore.createIndex('assetId', 'assetId', { unique: false });
+          console.log('[IndexedDBStorage] Created fingerprints store for deduplication');
         }
       };
     });
@@ -240,16 +249,65 @@ export class IndexedDBStorage {
     const db = await this.ensureInitialized();
 
     return new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction([METADATA_STORE, FILES_STORE], 'readwrite');
+      const transaction = db.transaction([METADATA_STORE, FILES_STORE, FINGERPRINTS_STORE], 'readwrite');
       
       transaction.objectStore(METADATA_STORE).clear();
       transaction.objectStore(FILES_STORE).clear();
+      transaction.objectStore(FINGERPRINTS_STORE).clear();
 
       transaction.oncomplete = () => {
         console.log('[IndexedDBStorage] All data cleared');
         resolve();
       };
       transaction.onerror = () => reject(new Error(`Failed to clear data: ${transaction.error?.message}`));
+    });
+  }
+
+  /**
+   * 保存内容指纹
+   */
+  async saveFingerprint(fingerprint: ContentFingerprint): Promise<void> {
+    const db = await this.ensureInitialized();
+
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([FINGERPRINTS_STORE], 'readwrite');
+      const store = transaction.objectStore(FINGERPRINTS_STORE);
+      const request = store.put(fingerprint);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error(`Failed to save fingerprint: ${request.error?.message}`));
+    });
+  }
+
+  /**
+   * 根据哈希值查找指纹
+   */
+  async getFingerprintByHash(hash: string): Promise<ContentFingerprint | null> {
+    const db = await this.ensureInitialized();
+
+    return new Promise<ContentFingerprint | null>((resolve, reject) => {
+      const transaction = db.transaction([FINGERPRINTS_STORE], 'readonly');
+      const store = transaction.objectStore(FINGERPRINTS_STORE);
+      const request = store.get(hash);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(new Error(`Failed to get fingerprint: ${request.error?.message}`));
+    });
+  }
+
+  /**
+   * 删除指纹
+   */
+  async deleteFingerprint(hash: string): Promise<void> {
+    const db = await this.ensureInitialized();
+
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([FINGERPRINTS_STORE], 'readwrite');
+      const store = transaction.objectStore(FINGERPRINTS_STORE);
+      const request = store.delete(hash);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error(`Failed to delete fingerprint: ${request.error?.message}`));
     });
   }
 

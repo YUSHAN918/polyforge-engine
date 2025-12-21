@@ -97,6 +97,56 @@ export class AssetRegistry {
   }
 
   /**
+   * 计算文件内容的 SHA-256 哈希值
+   * 用于内容去重
+   */
+  private async calculateHash(data: Blob | ArrayBuffer): Promise<string> {
+    try {
+      // 如果是 Blob，转换为 ArrayBuffer
+      const buffer = data instanceof Blob ? await data.arrayBuffer() : data;
+      
+      // 使用 Web Crypto API 计算 SHA-256
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      
+      // 转换为十六进制字符串
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      return hashHex;
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to calculate hash:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查内容是否已存在（去重）
+   * 
+   * @param data 文件数据
+   * @returns 如果存在，返回已有资产的 ID；否则返回 null
+   */
+  private async checkDuplication(data: Blob): Promise<string | null> {
+    try {
+      // 1. 计算内容哈希
+      const hash = await this.calculateHash(data);
+      
+      // 2. 查询指纹表
+      const fingerprint = await this.storage.getFingerprintByHash(hash);
+      
+      if (fingerprint) {
+        console.log(`[AssetRegistry] Content duplication detected! Hash: ${hash}, Existing asset: ${fingerprint.assetId}`);
+        return fingerprint.assetId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to check duplication:', error);
+      // 去重检查失败不应阻止导入，返回 null 继续正常流程
+      return null;
+    }
+  }
+
+  /**
    * 注册资产
    * 
    * @param metadata 资产元数据
@@ -106,19 +156,36 @@ export class AssetRegistry {
   async registerAsset(metadata: Omit<AssetMetadata, 'id' | 'createdAt'>, data: Blob): Promise<string> {
     this.ensureInitialized();
 
-    // 生成完整的元数据
-    const fullMetadata: AssetMetadata = {
-      ...metadata,
-      id: this.generateId(),
-      createdAt: Date.now(),
-    };
-
     try {
-      // 保存到 IndexedDB
+      // 1. 检查内容去重
+      const existingAssetId = await this.checkDuplication(data);
+      
+      if (existingAssetId) {
+        // 内容已存在，直接返回已有资产的 ID
+        console.log(`[AssetRegistry] Skipping duplicate content, reusing asset: ${existingAssetId}`);
+        return existingAssetId;
+      }
+
+      // 2. 生成完整的元数据
+      const fullMetadata: AssetMetadata = {
+        ...metadata,
+        id: this.generateId(),
+        createdAt: Date.now(),
+      };
+
+      // 3. 计算内容哈希并保存指纹
+      const hash = await this.calculateHash(data);
+      await this.storage.saveFingerprint({
+        hash,
+        size: data.size,
+        assetId: fullMetadata.id,
+      });
+
+      // 4. 保存到 IndexedDB
       await this.storage.saveMetadata(fullMetadata);
       await this.storage.saveFile(fullMetadata.id, data);
 
-      // 更新元数据缓存
+      // 5. 更新元数据缓存
       this.metadataCache.set(fullMetadata.id, fullMetadata);
 
       console.log(`[AssetRegistry] Registered asset: ${fullMetadata.name} (${fullMetadata.id})`);
@@ -345,16 +412,30 @@ export class AssetRegistry {
     this.ensureInitialized();
 
     try {
-      // 1. 从 IndexedDB 删除（metadata + files）
+      // 1. 获取文件数据以计算哈希（用于删除指纹）
+      const fileData = await this.storage.getFile(id);
+      
+      if (fileData) {
+        try {
+          const hash = await this.calculateHash(fileData);
+          await this.storage.deleteFingerprint(hash);
+          console.log(`[AssetRegistry] Deleted fingerprint for asset: ${id}`);
+        } catch (error) {
+          console.warn(`[AssetRegistry] Failed to delete fingerprint for asset ${id}:`, error);
+          // 指纹删除失败不应阻止资产删除
+        }
+      }
+
+      // 2. 从 IndexedDB 删除（metadata + files）
       await this.storage.deleteAsset(id);
 
-      // 2. 从 Blob 缓存删除
+      // 3. 从 Blob 缓存删除
       this.cache.delete(id);
 
-      // 3. 从元数据缓存删除
+      // 4. 从元数据缓存删除
       this.metadataCache.delete(id);
 
-      // 4. 如果是 HDR 资产，清理 envMap 纹理
+      // 5. 如果是 HDR 资产，清理 envMap 纹理
       const envMap = this.envMapCache.get(id);
       if (envMap) {
         envMap.dispose();
