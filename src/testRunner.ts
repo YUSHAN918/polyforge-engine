@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -175,6 +175,18 @@ export function runInputDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行物理系统演示（阶段 8）
+ */
+export function runPhysicsDemoWrapper(): void {
+  console.clear();
+  try {
+    physicsDemo();
+  } catch (error) {
+    console.error('Physics demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -189,6 +201,7 @@ if (typeof window !== 'undefined') {
   (window as any).clockDemo = runClockDemoWrapper; // 🆕 阶段 4
   (window as any).commandDemo = runCommandDemoWrapper; // 🆕 阶段 5
   (window as any).inputDemo = runInputDemoWrapper; // 🆕 阶段 6
+  (window as any).physicsDemo = runPhysicsDemoWrapper; // 🆕 阶段 8
   
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
@@ -212,6 +225,14 @@ if (typeof window !== 'undefined') {
   (window as any).showInputStatus = showInputStatus;
   (window as any).showCommandHistory = showCommandHistory;
   
+  // 物理控制函数
+  (window as any).stopPhysics = stopPhysics;
+  (window as any).startPhysics = startPhysics;
+  (window as any).resetPhysics = resetPhysics;
+  (window as any).setGravity = setGravity;
+  (window as any).spawnPhysicsBox = spawnPhysicsBox;
+  (window as any).showPhysicsStatus = showPhysicsStatus;
+  
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
@@ -221,6 +242,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.clockDemo()           ', 'color: #FF9800;', '- Clock system demo ⏱️ NEW!');
   console.log('%c  window.commandDemo()         ', 'color: #FF9800;', '- Command system demo 🔄 NEW!');
   console.log('%c  window.inputDemo()           ', 'color: #FF9800;', '- Input system demo 🎮 NEW!');
+  console.log('%c  window.physicsDemo()         ', 'color: #FF9800;', '- Physics system demo 🎱 NEW!');
   console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
   console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
@@ -251,5 +273,13 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.switchPreset(name)    ', 'color: #FF9800;', '- Switch input preset');
   console.log('%c  window.showInputStatus()     ', 'color: #FF9800;', '- Show input status');
   console.log('%c  window.showCommandHistory()  ', 'color: #FF9800;', '- Show command history');
+  console.log('');
+  console.log('%c🎱 Physics Controls:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  window.stopPhysics()         ', 'color: #FF9800;', '- Stop physics simulation');
+  console.log('%c  window.startPhysics()        ', 'color: #FF9800;', '- Start physics simulation');
+  console.log('%c  window.resetPhysics()        ', 'color: #FF9800;', '- Reset all boxes');
+  console.log('%c  window.setGravity(x,y,z)     ', 'color: #FF9800;', '- Change gravity');
+  console.log('%c  window.spawnPhysicsBox()     ', 'color: #FF9800;', '- Spawn new box');
+  console.log('%c  window.showPhysicsStatus()   ', 'color: #FF9800;', '- Show physics status');
   console.log('');
 }
