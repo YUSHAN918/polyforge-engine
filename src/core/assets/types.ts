@@ -80,3 +80,13 @@ export interface AudioMetadata {
   numberOfChannels: number; // 声道数
   format: string;          // 文件格式（mp3/wav/ogg）
 }
+
+/**
+ * HDR 元数据
+ */
+export interface HDRMetadata {
+  width: number;           // 宽度（像素）
+  height: number;          // 高度（像素）
+  format: string;          // 格式（hdr/rgbe）
+  exposure: number;        // 曝光值
+}

@@ -10,10 +10,12 @@
  * - 三层查询策略：缓存 -> IndexedDB -> 返回
  */
 
+import * as THREE from 'three';
 import { IndexedDBStorage } from './IndexedDBStorage';
 import { ModelImporter } from './ModelImporter';
 import { AudioImporter } from './AudioImporter';
-import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata, AudioMetadata } from './types';
+import { HDRImporter } from './HDRImporter';
+import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata, AudioMetadata, HDRMetadata } from './types';
 
 /**
  * 资产注册表（单例）
@@ -24,8 +26,10 @@ export class AssetRegistry {
   private storage: IndexedDBStorage;
   private modelImporter: ModelImporter;
   private audioImporter: AudioImporter;
+  private hdrImporter: HDRImporter;
   private cache: Map<string, any>;           // 内存缓存
   private metadataCache: Map<string, AssetMetadata>; // 元数据缓存
+  private envMapCache: Map<string, THREE.Texture>; // HDR envMap 缓存
   private initialized: boolean = false;
 
   /**
@@ -35,8 +39,10 @@ export class AssetRegistry {
     this.storage = new IndexedDBStorage();
     this.modelImporter = new ModelImporter();
     this.audioImporter = new AudioImporter();
+    this.hdrImporter = new HDRImporter();
     this.cache = new Map();
     this.metadataCache = new Map();
+    this.envMapCache = new Map();
   }
 
   /**
@@ -207,6 +213,66 @@ export class AssetRegistry {
   }
 
   /**
+   * 导入 HDR 环境贴图
+   * 
+   * @param file HDR 文件
+   * @param options 导入选项
+   * @returns 资产 ID、元数据和预处理的 envMap
+   */
+  async importHDR(file: File, options: ImportOptions = {}): Promise<{ 
+    id: string; 
+    metadata: HDRMetadata;
+    envMap: THREE.Texture;
+  }> {
+    this.ensureInitialized();
+
+    console.log(`[AssetRegistry] Importing HDR: ${file.name}`);
+
+    try {
+      // 1. 使用 HDRImporter 导入 HDR
+      const { blob, metadata, thumbnail, envMap } = await this.hdrImporter.importHDR(file);
+
+      // 2. 注册资产
+      const assetId = await this.registerAsset(
+        {
+          name: file.name.replace(/\.hdr$/i, ''),
+          type: 'hdr' as any,
+          category: options.category || 'environments',
+          tags: options.tags || ['imported', 'hdr', 'environment'],
+          size: blob.size,
+          thumbnail,
+        },
+        blob
+      );
+
+      // 3. 缓存 envMap（用于即时预览）
+      this.envMapCache.set(assetId, envMap);
+
+      console.log(`[AssetRegistry] HDR imported successfully: ${assetId}`);
+      console.log(`[AssetRegistry] Metadata:`, metadata);
+
+      return {
+        id: assetId,
+        metadata,
+        envMap,
+      };
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to import HDR:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取 HDR envMap（从缓存）
+   * 
+   * @param id 资产 ID
+   * @returns envMap 纹理
+   */
+  getHDREnvMap(id: string): THREE.Texture | null {
+    return this.envMapCache.get(id) || null;
+  }
+
+  /**
    * 获取资产
    * 三层查询策略：缓存 -> IndexedDB -> 返回
    * 
@@ -350,6 +416,11 @@ export class AssetRegistry {
    */
   clearCache(): void {
     this.cache.clear();
+    // 清理 envMap 纹理
+    for (const envMap of this.envMapCache.values()) {
+      envMap.dispose();
+    }
+    this.envMapCache.clear();
     console.log('[AssetRegistry] Cache cleared');
   }
 
@@ -372,6 +443,11 @@ export class AssetRegistry {
     await this.storage.clear();
     this.cache.clear();
     this.metadataCache.clear();
+    // 清理 envMap 纹理
+    for (const envMap of this.envMapCache.values()) {
+      envMap.dispose();
+    }
+    this.envMapCache.clear();
     
     console.log('[AssetRegistry] All data cleared');
   }
@@ -383,8 +459,14 @@ export class AssetRegistry {
     this.storage.close();
     this.modelImporter.dispose();
     this.audioImporter.dispose();
+    this.hdrImporter.dispose();
     this.cache.clear();
     this.metadataCache.clear();
+    // 清理 envMap 纹理
+    for (const envMap of this.envMapCache.values()) {
+      envMap.dispose();
+    }
+    this.envMapCache.clear();
     this.initialized = false;
     AssetRegistry.instance = null;
     console.log('[AssetRegistry] Closed');
