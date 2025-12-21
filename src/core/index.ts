@@ -79,3 +79,10 @@ export { commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, show
 export { inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './inputDemo';
 export { physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './physicsDemo';
 export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './cameraDemo';
+
+// 资产系统（阶段 7）
+export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
+export { IndexedDBStorage } from './assets/IndexedDBStorage';
+export { AssetType } from './assets/types';
+export type { AssetMetadata, AssetData, AssetFilter, ImportOptions } from './assets/types';
+export { assetDemo, listAssets, clearAssets, assetStats } from './assetDemo';

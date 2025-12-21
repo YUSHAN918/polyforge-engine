@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -199,6 +199,18 @@ export function runCameraDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行资产系统演示（阶段 7）
+ */
+export function runAssetDemoWrapper(): void {
+  console.clear();
+  try {
+    assetDemo();
+  } catch (error) {
+    console.error('Asset demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -215,6 +227,7 @@ if (typeof window !== 'undefined') {
   (window as any).inputDemo = runInputDemoWrapper; // 🆕 阶段 6
   (window as any).physicsDemo = runPhysicsDemoWrapper; // 🆕 阶段 8
   (window as any).cameraDemo = runCameraDemoWrapper; // 🆕 阶段 10
+  (window as any).assetDemo = runAssetDemoWrapper; // 🆕 阶段 7
   
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
@@ -257,6 +270,11 @@ if (typeof window !== 'undefined') {
   (window as any).setCameraDistance = setCameraDistance;
   (window as any).showCameraStatus = showCameraStatus;
   
+  // 资产控制函数
+  (window as any).listAssets = listAssets;
+  (window as any).clearAssets = clearAssets;
+  (window as any).assetStats = assetStats;
+  
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
@@ -268,6 +286,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.inputDemo()           ', 'color: #FF9800;', '- Input system demo 🎮 NEW!');
   console.log('%c  window.physicsDemo()         ', 'color: #FF9800;', '- Physics system demo 🎱 NEW!');
   console.log('%c  window.cameraDemo()          ', 'color: #FF9800;', '- Camera system demo 📷 NEW!');
+  console.log('%c  window.assetDemo()           ', 'color: #FF9800;', '- Asset system demo 📦 NEW!');
   console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
   console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
@@ -315,5 +334,10 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.rotateCameraView(p,y)', 'color: #FF9800;', '- Rotate camera');
   console.log('%c  window.setCameraDistance(d)  ', 'color: #FF9800;', '- Set camera distance');
   console.log('%c  window.showCameraStatus()    ', 'color: #FF9800;', '- Show camera status');
+  console.log('');
+  console.log('%c📦 Asset Controls:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  window.listAssets()          ', 'color: #FF9800;', '- List all assets');
+  console.log('%c  window.clearAssets()         ', 'color: #FF9800;', '- Clear all assets');
+  console.log('%c  window.assetStats()          ', 'color: #FF9800;', '- Show cache statistics');
   console.log('');
 }

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate PolyForge Favicon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            image-rendering: pixelated;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .info {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .preview {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 PolyForge Favicon Generator</h1>
+        <p>Generate a favicon.ico for PolyForge</p>
+        
+        <div class="preview">
+            <div>
+                <p>32x32 Preview:</p>
+                <canvas id="canvas32" width="32" height="32"></canvas>
+            </div>
+            <div>
+                <p>16x16 Preview:</p>
+                <canvas id="canvas16" width="16" height="16"></canvas>
+            </div>
+        </div>
+        
+        <button onclick="downloadFavicon()">Download favicon.ico</button>
+        
+        <div class="info">
+            <p>Click the button to download the favicon.ico file.</p>
+            <p>Then move it to the <code>public/</code> directory.</p>
+        </div>
+    </div>
+
+    <script>
+        // Generate 32x32 favicon
+        function generateFavicon32() {
+            const canvas = document.getElementById('canvas32');
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 32, 32);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // Draw "PF" text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('PF', 16, 16);
+            
+            return canvas;
+        }
+        
+        // Generate 16x16 favicon
+        function generateFavicon16() {
+            const canvas = document.getElementById('canvas16');
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 16, 16);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 16, 16);
+            
+            // Draw "P" text (simplified for 16x16)
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('P', 8, 8);
+            
+            return canvas;
+        }
+        
+        // Generate both sizes on load
+        generateFavicon32();
+        generateFavicon16();
+        
+        // Download as ICO file
+        function downloadFavicon() {
+            const canvas32 = document.getElementById('canvas32');
+            
+            // Convert to PNG and download
+            canvas32.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'favicon.ico';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                alert('Favicon downloaded! Please move it to the public/ directory.');
+            });
+        }
+    </script>
+</body>
+</html>

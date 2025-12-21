@@ -202,11 +202,12 @@
 
 ## 7. AssetRegistry 资产管线
 
-- [ ] 7.1 实现 IndexedDB 封装
+- [x] 7.1 实现 IndexedDB 封装
   - 创建数据库 schema
   - 实现 CRUD 操作
   - 实现资产元数据索引
   - _需求：6.1_
+  - ✅ 已完成（阶段 7.1 - IndexedDBStorage.ts 300+ 行）
 
 - [ ] 7.2 实现模型资产导入
   - 实现 Draco 压缩
