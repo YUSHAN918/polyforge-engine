@@ -134,8 +134,18 @@ export class AssetRegistry {
       const fingerprint = await this.storage.getFingerprintByHash(hash);
       
       if (fingerprint) {
-        console.log(`[AssetRegistry] Content duplication detected! Hash: ${hash}, Existing asset: ${fingerprint.assetId}`);
-        return fingerprint.assetId;
+        // 3. 验证资产是否仍然存在（防止指纹未被清理的情况）
+        const metadata = await this.storage.getMetadata(fingerprint.assetId);
+        
+        if (metadata) {
+          console.log(`[AssetRegistry] Content duplication detected! Hash: ${hash}, Existing asset: ${fingerprint.assetId}`);
+          return fingerprint.assetId;
+        } else {
+          // 资产已被删除，但指纹未被清理（可能是测试环境限制）
+          console.warn(`[AssetRegistry] Found orphaned fingerprint for hash: ${hash}, cleaning up...`);
+          await this.storage.deleteFingerprint(hash);
+          return null;
+        }
       }
       
       return null;
@@ -412,12 +422,29 @@ export class AssetRegistry {
     this.ensureInitialized();
 
     try {
-      // 1. 获取文件数据以计算哈希（用于删除指纹）
+      // 1. 检查资产是否存在
+      const metadata = await this.storage.getMetadata(id);
+      if (!metadata) {
+        throw new Error(`Asset not found: ${id}`);
+      }
+
+      // 2. 获取文件数据以计算哈希（用于删除指纹）
       const fileData = await this.storage.getFile(id);
       
       if (fileData) {
         try {
-          const hash = await this.calculateHash(fileData);
+          // 确保 Blob 转换为 ArrayBuffer
+          // 兼容 fake-indexeddb：检查是否有 arrayBuffer 方法
+          let arrayBuffer: ArrayBuffer;
+          if (typeof (fileData as any).arrayBuffer === 'function') {
+            arrayBuffer = await fileData.arrayBuffer();
+          } else {
+            // fallback: 使用 FileReader (同步版本不可用，跳过指纹删除)
+            console.warn(`[AssetRegistry] Blob.arrayBuffer() not available, skipping fingerprint deletion for asset ${id}`);
+            throw new Error('arrayBuffer() not available');
+          }
+          
+          const hash = await this.calculateHash(arrayBuffer);
           await this.storage.deleteFingerprint(hash);
           console.log(`[AssetRegistry] Deleted fingerprint for asset: ${id}`);
         } catch (error) {
@@ -426,16 +453,16 @@ export class AssetRegistry {
         }
       }
 
-      // 2. 从 IndexedDB 删除（metadata + files）
+      // 3. 从 IndexedDB 删除（metadata + files）
       await this.storage.deleteAsset(id);
 
-      // 3. 从 Blob 缓存删除
+      // 4. 从 Blob 缓存删除
       this.cache.delete(id);
 
-      // 4. 从元数据缓存删除
+      // 5. 从元数据缓存删除
       this.metadataCache.delete(id);
 
-      // 5. 如果是 HDR 资产，清理 envMap 纹理
+      // 6. 如果是 HDR 资产，清理 envMap 纹理
       const envMap = this.envMapCache.get(id);
       if (envMap) {
         envMap.dispose();

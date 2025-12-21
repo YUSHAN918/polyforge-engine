@@ -2,7 +2,7 @@
 
 **最后更新**: 2025-12-21  
 **当前版本**: v1.3.0  
-**整体进度**: 8/16 阶段完成 (50%)
+**整体进度**: 9/16 阶段完成 (56%)
 
 ---
 
@@ -17,7 +17,7 @@
 | Phase 4 | Clock 时钟系统 | ✅ 完成 | 2025-12-20 | [PHASE4_DELIVERY.md](./PHASE4_DELIVERY.md) |
 | Phase 5 | CommandManager 命令系统 | ✅ 完成 | 2025-12-20 | [PHASE5_DELIVERY.md](./PHASE5_DELIVERY.md) |
 | Phase 6 | InputMappingSystem | ✅ 完成 | 2025-12-21 | [PHASE6_DELIVERY.md](./PHASE6_DELIVERY.md) |
-| Phase 7 | AssetRegistry | ⏳ 待开始 | - | - |
+| Phase 7 | AssetRegistry | ✅ 完成 | 2025-12-21 | [PHASE7_COMPLETION_REPORT.md](./PHASE7_COMPLETION_REPORT.md) |
 | Phase 8 | PhysicsSystem | ✅ 完成 | 2025-12-21 | [PHASE8_DELIVERY.md](./PHASE8_DELIVERY.md) |
 | Phase 9 | AudioSystem | ⏳ 待开始 | - | - |
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
@@ -76,6 +76,15 @@
 - **上下文栈** - 支持输入上下文切换
 - **Command 集成** - Ctrl+Z/Y 自动撤销/重做
 - 完整演示（方向键移动方块）
+
+### ✅ Phase 7: AssetRegistry 资产管线
+- **IndexedDBStorage** - 原生 IndexedDB 封装（v2，含指纹表）
+- **ModelImporter** - GLB/GLTF 导入 + Draco 压缩
+- **AudioImporter** - MP3/WAV/OGG 导入 + 元数据解析
+- **HDRImporter** - HDR 环境贴图 + PMREMGenerator
+- **AssetRegistry** - 单例注册表 + 三层缓存 + 内容去重
+- **FileSystemService** - 本地文件夹扫描 + 批量导入
+- **集成测试** - 15 个测试（100% 通过）
 
 ### ✅ Phase 8: PhysicsSystem 物理系统
 - **Rapier 3D 集成** - 高性能物理引擎
@@ -250,15 +259,16 @@ window.showCameraStatus();           // 显示相机状态
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~6200 行
-- **测试代码**: ~1200 行
-- **演示代码**: ~3200 行
-- **总计**: ~10600 行
+- **核心代码**: ~8200 行
+- **测试代码**: ~1800 行
+- **演示代码**: ~3500 行
+- **总计**: ~13500 行
 
 ### 组件数量
 - **核心组件**: 8 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera）
 - **核心系统**: 6 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, Clock, CommandManager）
-- **测试套件**: 17 个
+- **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）
+- **测试套件**: 18 个（含 AssetPipeline 15 个测试）
 
 ### 测试覆盖
 - **单元测试**: 17 个测试套件

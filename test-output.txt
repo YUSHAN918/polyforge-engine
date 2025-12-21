@@ -1,0 +1,914 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90mF:/工作/LOW3D编辑文件储存点/polyforge-engine-v130-251221[39m
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[IndexedDBStorage] Created metadata store with indexes
+[IndexedDBStorage] Created files store
+[IndexedDBStorage] Created fingerprints store for deduplication
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[AssetRegistry] Registered asset: file1.txt (asset_1766328877244_t626495qx)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[AssetRegistry] Content duplication detected! Hash: 1283994ed70a0cfaf2d0be5a3b296120a54e6d2ae6282eddd4f081fea3dbe741, Existing asset: asset_1766328877244_t626495qx
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[AssetRegistry] Skipping duplicate content, reusing asset: asset_1766328877244_t626495qx
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould detect duplicate content and reuse existing asset
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[AssetRegistry] Registered asset: fileA.txt (asset_1766328877247_gs5jnabc5)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[AssetRegistry] Registered asset: fileB.txt (asset_1766328877248_inbpcbp1p)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould store different content separately
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[AssetRegistry] Registered asset: large1.bin (asset_1766328877253_29jzzn3ei)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[AssetRegistry] Content duplication detected! Hash: fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83, Existing asset: asset_1766328877253_29jzzn3ei
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[AssetRegistry] Skipping duplicate content, reusing asset: asset_1766328877253_29jzzn3ei
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mContent Deduplication[2m > [22m[2mshould handle large file deduplication
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Registered asset: model1.glb (asset_1766328877257_5f4hk3mor)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Registered asset: audio1.mp3 (asset_1766328877257_i5zh3bzfp)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Registered asset: env1.hdr (asset_1766328877258_vejouht4o)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Loaded from IndexedDB: asset_1766328877257_5f4hk3mor
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Loaded from IndexedDB: asset_1766328877257_i5zh3bzfp
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] Loaded from IndexedDB: asset_1766328877258_vejouht4o
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould complete full import and retrieval cycle
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[AssetRegistry] Registered asset: persistent.txt (asset_1766328877260_6lwwuqn8o)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[AssetRegistry] Initialized with 1 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[AssetRegistry] Loaded from IndexedDB: asset_1766328877260_6lwwuqn8o
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mEnd-to-End Workflow[2m > [22m[2mshould persist data across registry instances
+[22m[39m[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Initialized with 1 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_0 (asset_1766328877261_ka0urtesn)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_1 (asset_1766328877261_fbdmxhl54)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_2 (asset_1766328877262_3f2egvftb)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_3 (asset_1766328877262_rr1oh262g)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_4 (asset_1766328877262_zjyql5g1i)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_5 (asset_1766328877262_tv8pp47p1)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_6 (asset_1766328877263_ynp0rjtst)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_7 (asset_1766328877263_fmuhr0to4)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_8 (asset_1766328877263_ut71sc5qo)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_9 (asset_1766328877264_ilqq7wenz)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_10 (asset_1766328877264_6nv6pganq)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_11 (asset_1766328877265_tedby17zo)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_12 (asset_1766328877265_ueiiwvaer)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_13 (asset_1766328877265_onrwez1e6)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_14 (asset_1766328877266_0a5qjiemn)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_15 (asset_1766328877266_fwea9dyu4)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_16 (asset_1766328877266_vajtg2mda)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_17 (asset_1766328877266_zqldpq8iu)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_18 (asset_1766328877266_lkjwnkgfs)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_19 (asset_1766328877267_aw2fj1vb7)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_20 (asset_1766328877267_a2kj3ej7i)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_21 (asset_1766328877267_66prrxn2a)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_22 (asset_1766328877267_gxi3xyu2p)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_23 (asset_1766328877268_jdd64ojar)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_24 (asset_1766328877268_azkayfzfy)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_25 (asset_1766328877268_0jg56je3f)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_26 (asset_1766328877268_r39uw91ge)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_27 (asset_1766328877269_6z3v1ge8j)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_28 (asset_1766328877269_xmi7url3a)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_29 (asset_1766328877269_rq6rp9150)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_30 (asset_1766328877269_z0z8rusee)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_31 (asset_1766328877270_epz6qyvzp)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_32 (asset_1766328877270_6rxtwe8oe)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_33 (asset_1766328877270_ti89zymt0)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_34 (asset_1766328877270_1b3k0zjh4)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_35 (asset_1766328877270_chem0cfy6)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_36 (asset_1766328877270_htwoj584z)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_37 (asset_1766328877271_vbjkr96vo)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_38 (asset_1766328877271_y0jztx6m6)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_39 (asset_1766328877271_bmfxqxff9)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_40 (asset_1766328877271_9dz67fzsz)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_41 (asset_1766328877271_bqafq4b1o)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_42 (asset_1766328877271_pb2lgt0xt)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_43 (asset_1766328877272_ksbnxprrt)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_44 (asset_1766328877272_db9v2f5br)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_45 (asset_1766328877272_mwbq0zkgb)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_46 (asset_1766328877272_et6qow6y2)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_47 (asset_1766328877272_hxqzng67c)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_48 (asset_1766328877273_i2gib7mph)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Registered asset: asset_49 (asset_1766328877273_5dby62vds)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Query returned 50 assets {}
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Query returned 13 assets { type: [32m'model'[39m }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Query returned 13 assets { category: [32m'characters'[39m }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] Query returned 13 assets { type: [32m'model'[39m, category: [32m'characters'[39m, tags: [ [32m'test'[39m, [32m'model'[39m ] }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[Performance] 50+ assets query completed in 1.73ms
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould handle 50+ assets query efficiently
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_0 (asset_1766328877276_g3a9q1m7z)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_1 (asset_1766328877276_qofivekah)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_2 (asset_1766328877276_3qgb3m6fk)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_3 (asset_1766328877276_ul582o116)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_4 (asset_1766328877277_bj0rrhdvh)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_5 (asset_1766328877277_6we5fersd)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_6 (asset_1766328877277_f49okyonc)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_7 (asset_1766328877277_91uuxomtd)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_8 (asset_1766328877277_wmbswolxd)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Registered asset: asset_9 (asset_1766328877277_7dx5f32nr)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Query returned 10 assets { type: [32m'model'[39m }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] Query returned 10 assets { type: [32m'model'[39m }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[Performance] First query: 0.16ms, Second query: 0.15ms
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mQuery Performance[2m > [22m[2mshould cache metadata for fast repeated queries
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[AssetRegistry] Registered asset: to_delete.txt (asset_1766328877279_bmytpub9k)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[AssetRegistry] Loaded from IndexedDB: asset_1766328877279_bmytpub9k
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877279_bmytpub9k
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould completely remove asset from all storage layers
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] Registered asset: dup1.txt (asset_1766328877288_xk7q6sh4n)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] Content duplication detected! Hash: 2d23bd58f3ddcaf4518f2ae51cbab27774e727787da21cfb94434a4c6cb01e75, Existing asset: asset_1766328877288_xk7q6sh4n
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] Skipping duplicate content, reusing asset: asset_1766328877288_xk7q6sh4n
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877288_xk7q6sh4n
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] Registered asset: dup3.txt (asset_1766328877289_6496ve9gk)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould clean up fingerprints when deleting assets
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_0.txt (asset_1766328877290_la4kxn06y)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_1.txt (asset_1766328877290_hx3zxhctq)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_2.txt (asset_1766328877290_s092fdlsu)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_3.txt (asset_1766328877290_hkkxm6bx4)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_4.txt (asset_1766328877291_y6yt72itc)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_5.txt (asset_1766328877291_ivku6101l)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_6.txt (asset_1766328877291_le1jku08f)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_7.txt (asset_1766328877291_agtr30kko)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_8.txt (asset_1766328877291_o16qqs999)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_9.txt (asset_1766328877291_hrzhdbi92)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_10.txt (asset_1766328877291_wzylq3tyv)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_11.txt (asset_1766328877292_6oipbjelq)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_12.txt (asset_1766328877292_9ghj05npz)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_13.txt (asset_1766328877292_ta3ijvi2p)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_14.txt (asset_1766328877292_sv8wyyzw3)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_15.txt (asset_1766328877292_motiwzei7)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_16.txt (asset_1766328877292_q9rsfglje)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_17.txt (asset_1766328877293_gw9w0dbfv)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_18.txt (asset_1766328877293_567gris8m)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Registered asset: batch_19.txt (asset_1766328877293_kxkloa1dq)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877290_la4kxn06y
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877290_hx3zxhctq
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877290_s092fdlsu
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877290_hkkxm6bx4
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_y6yt72itc
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_ivku6101l
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_le1jku08f
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_agtr30kko
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_o16qqs999
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_hrzhdbi92
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877291_wzylq3tyv
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877292_6oipbjelq
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877292_9ghj05npz
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877292_ta3ijvi2p
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877292_sv8wyyzw3
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877292_motiwzei7
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877292_q9rsfglje
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877293_gw9w0dbfv
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877293_567gris8m
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] Deleted asset: asset_1766328877293_kxkloa1dq
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[Performance] Batch deletion of 20 assets completed in 8.51ms
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mPhysical Cleanup[2m > [22m[2mshould handle batch deletion efficiently
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[AssetRegistry] Registered asset: empty.txt (asset_1766328877303_1lr4d6lrr)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle corrupted data gracefully
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle non-existent asset queries
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mError Handling[2m > [22m[2mshould handle deletion of non-existent assets
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_0.txt (asset_1766328877307_5bydxjsma)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_2.txt (asset_1766328877307_7p7cez2hw)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_1.txt (asset_1766328877307_dpo8pez7d)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_4.txt (asset_1766328877307_r2ja83myo)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_3.txt (asset_1766328877307_o20ypc4x6)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_5.txt (asset_1766328877307_6l9k2l453)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_6.txt (asset_1766328877307_8n302alyv)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_7.txt (asset_1766328877307_niebqtjp9)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_8.txt (asset_1766328877307_70qdylm0c)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] Registered asset: concurrent_9.txt (asset_1766328877307_whmprs7s4)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent imports correctly
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[ModelImporter] Initialized with local Draco decoder at /draco/
+[AudioImporter] Initialized with native Web Audio API
+[HDRImporter] Initialized with local RGBELoader
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[IndexedDBStorage] Database initialized successfully
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Initialized with 0 assets
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Registered asset: asset_0.txt (asset_1766328877310_58uatpzv0)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Registered asset: asset_1.txt (asset_1766328877310_9eicichpg)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Registered asset: asset_2.txt (asset_1766328877310_n6s0yzxug)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Registered asset: asset_3.txt (asset_1766328877310_9flz5avow)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Registered asset: asset_4.txt (asset_1766328877310_xy4t1m852)
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Query returned 5 assets { tags: [ [32m'test'[39m ] }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Query returned 5 assets { type: [32m'model'[39m }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] Query returned 5 assets { category: [32m'test'[39m }
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[IndexedDBStorage] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[AssetRegistry] All data cleared
+
+[90mstdout[2m | src/core/assets/__tests__/AssetPipeline.test.ts[2m > [22m[2mAsset Pipeline Integration Tests[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle concurrent queries correctly
+[22m[39m[IndexedDBStorage] Database connection closed
+[ModelImporter] Resources disposed
+[HDRImporter] Resources disposed
+[AssetRegistry] Closed
+
+ [32m✓[39m src/core/assets/__tests__/AssetPipeline.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+[2m   Start at [22m 22:54:36
+[2m   Duration [22m 1.04s[2m (transform 310ms, setup 234ms, import 347ms, tests 74ms, environment 1.95s)[22m
+
