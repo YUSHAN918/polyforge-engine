@@ -58,3 +58,15 @@ export interface ImportOptions {
   category?: string;       // 指定分类
   tags?: string[];         // 指定标签
 }
+
+/**
+ * 模型元数据
+ */
+export interface ModelMetadata {
+  vertices: number;        // 顶点数
+  faces: number;           // 面数
+  bones: number;           // 骨骼数
+  animations: number;      // 动画数
+  materials: number;       // 材质数
+  textures: number;        // 纹理数
+}

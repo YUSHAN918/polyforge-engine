@@ -12,7 +12,7 @@
 
 import { getAssetRegistry } from './assets/AssetRegistry';
 import { AssetType } from './assets/types';
-import type { AssetMetadata } from './assets/types';
+import type { AssetMetadata, ModelMetadata } from './assets/types';
 
 /**
  * 创建一个测试图片 Blob
@@ -275,4 +275,206 @@ if (typeof window !== 'undefined') {
   (window as any).listAssets = listAssets;
   (window as any).clearAssets = clearAssets;
   (window as any).assetStats = assetStats;
+}
+
+
+/**
+ * 模型上传演示
+ * 创建一个文件上传界面，允许用户上传 GLB 文件
+ */
+export function modelUploadDemo(): void {
+  console.clear();
+  console.log('='.repeat(60));
+  console.log('PolyForge Model Upload Demo');
+  console.log('='.repeat(60));
+
+  // 创建或获取容器
+  let container = document.getElementById('model-upload-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'model-upload-container';
+    container.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.95);
+      border-radius: 15px;
+      z-index: 10000;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      min-width: 400px;
+      max-width: 600px;
+    `;
+    document.body.appendChild(container);
+  }
+
+  // 清空容器
+  container.innerHTML = '';
+
+  // 创建标题
+  const title = document.createElement('h2');
+  title.textContent = '📦 Model Upload';
+  title.style.cssText = 'color: white; margin: 0 0 20px 0; font-family: Arial; text-align: center;';
+  container.appendChild(title);
+
+  // 创建文件输入
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.glb,.gltf';
+  fileInput.style.cssText = `
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed #4ECDC4;
+    border-radius: 8px;
+    color: white;
+    font-family: Arial;
+    cursor: pointer;
+  `;
+  container.appendChild(fileInput);
+
+  // 创建上传按钮
+  const uploadButton = document.createElement('button');
+  uploadButton.textContent = 'Upload Model';
+  uploadButton.disabled = true;
+  uploadButton.style.cssText = `
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  `;
+  container.appendChild(uploadButton);
+
+  // 创建进度显示
+  const progressDiv = document.createElement('div');
+  progressDiv.style.cssText = 'color: #4ECDC4; font-family: monospace; font-size: 14px; margin-bottom: 15px; display: none;';
+  container.appendChild(progressDiv);
+
+  // 创建结果显示区域
+  const resultDiv = document.createElement('div');
+  resultDiv.style.cssText = 'color: white; font-family: Arial; font-size: 14px;';
+  container.appendChild(resultDiv);
+
+  // 创建关闭按钮
+  const closeButton = document.createElement('button');
+  closeButton.textContent = '✕ Close';
+  closeButton.style.cssText = `
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 15px;
+  `;
+  closeButton.onclick = () => container?.remove();
+  container.appendChild(closeButton);
+
+  // 文件选择事件
+  let selectedFile: File | null = null;
+  fileInput.onchange = (e) => {
+    const files = (e.target as HTMLInputElement).files;
+    if (files && files.length > 0) {
+      selectedFile = files[0];
+      uploadButton.disabled = false;
+      uploadButton.style.opacity = '1';
+      console.log(`[ModelUpload] File selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`);
+    }
+  };
+
+  // 上传按钮事件
+  uploadButton.onclick = async () => {
+    if (!selectedFile) return;
+
+    try {
+      // 禁用按钮
+      uploadButton.disabled = true;
+      uploadButton.textContent = 'Uploading...';
+      progressDiv.style.display = 'block';
+      progressDiv.textContent = '⏳ Initializing...';
+      resultDiv.innerHTML = '';
+
+      // 初始化注册表
+      const registry = getAssetRegistry();
+      await registry.initialize();
+      progressDiv.textContent = '⏳ Parsing model...';
+
+      // 导入模型
+      const startTime = Date.now();
+      const { id, metadata } = await registry.importModel(selectedFile);
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+      progressDiv.textContent = `✓ Upload complete in ${duration}s`;
+
+      // 显示结果
+      const assetMetadata = await registry.getMetadata(id);
+      if (assetMetadata) {
+        resultDiv.innerHTML = `
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px; margin-top: 15px;">
+            <h3 style="margin: 0 0 10px 0; color: #4ECDC4;">✓ Model Imported</h3>
+            <p style="margin: 5px 0;"><strong>Name:</strong> ${assetMetadata.name}</p>
+            <p style="margin: 5px 0;"><strong>ID:</strong> <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">${id}</code></p>
+            <p style="margin: 5px 0;"><strong>Size:</strong> ${(assetMetadata.size / 1024).toFixed(2)} KB</p>
+            <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0;">
+            <h4 style="margin: 10px 0 5px 0; color: #4ECDC4;">Model Statistics:</h4>
+            <p style="margin: 5px 0;"><strong>Vertices:</strong> ${metadata.vertices.toLocaleString()}</p>
+            <p style="margin: 5px 0;"><strong>Faces:</strong> ${metadata.faces.toLocaleString()}</p>
+            <p style="margin: 5px 0;"><strong>Bones:</strong> ${metadata.bones}</p>
+            <p style="margin: 5px 0;"><strong>Animations:</strong> ${metadata.animations}</p>
+            <p style="margin: 5px 0;"><strong>Materials:</strong> ${metadata.materials}</p>
+            <p style="margin: 5px 0;"><strong>Textures:</strong> ${metadata.textures}</p>
+            ${assetMetadata.thumbnail ? `
+              <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0;">
+              <h4 style="margin: 10px 0 5px 0; color: #4ECDC4;">Preview:</h4>
+              <img src="${assetMetadata.thumbnail}" style="width: 128px; height: 128px; border: 2px solid #4ECDC4; border-radius: 8px; display: block; margin: 10px 0;">
+            ` : ''}
+          </div>
+        `;
+      }
+
+      // 重置按钮
+      uploadButton.textContent = 'Upload Another Model';
+      uploadButton.disabled = false;
+      fileInput.value = '';
+      selectedFile = null;
+
+      console.log('[ModelUpload] Upload complete!');
+      console.log('Model ID:', id);
+      console.log('Metadata:', metadata);
+
+    } catch (error) {
+      console.error('[ModelUpload] Upload failed:', error);
+      progressDiv.textContent = '❌ Upload failed';
+      progressDiv.style.color = '#FF6B6B';
+      resultDiv.innerHTML = `
+        <div style="background: rgba(255, 107, 107, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #FF6B6B;">
+          <p style="margin: 0; color: #FF6B6B;"><strong>Error:</strong> ${(error as Error).message}</p>
+        </div>
+      `;
+      uploadButton.textContent = 'Try Again';
+      uploadButton.disabled = false;
+    }
+  };
+
+  console.log('\n✓ Model upload interface created');
+  console.log('Select a GLB/GLTF file and click "Upload Model"');
+}
+
+// 导出到 window 对象
+if (typeof window !== 'undefined') {
+  (window as any).modelUploadDemo = modelUploadDemo;
 }

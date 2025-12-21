@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -274,6 +274,7 @@ if (typeof window !== 'undefined') {
   (window as any).listAssets = listAssets;
   (window as any).clearAssets = clearAssets;
   (window as any).assetStats = assetStats;
+  (window as any).modelUploadDemo = modelUploadDemo;
   
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
@@ -339,5 +340,6 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.listAssets()          ', 'color: #FF9800;', '- List all assets');
   console.log('%c  window.clearAssets()         ', 'color: #FF9800;', '- Clear all assets');
   console.log('%c  window.assetStats()          ', 'color: #FF9800;', '- Show cache statistics');
+  console.log('%c  window.modelUploadDemo()     ', 'color: #FF9800;', '- Upload GLB/GLTF model 🆕');
   console.log('');
 }

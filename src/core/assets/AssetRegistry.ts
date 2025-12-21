@@ -11,7 +11,8 @@
  */
 
 import { IndexedDBStorage } from './IndexedDBStorage';
-import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData } from './types';
+import { ModelImporter } from './ModelImporter';
+import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata } from './types';
 
 /**
  * 资产注册表（单例）
@@ -20,6 +21,7 @@ export class AssetRegistry {
   private static instance: AssetRegistry | null = null;
   
   private storage: IndexedDBStorage;
+  private modelImporter: ModelImporter;
   private cache: Map<string, any>;           // 内存缓存
   private metadataCache: Map<string, AssetMetadata>; // 元数据缓存
   private initialized: boolean = false;
@@ -29,6 +31,7 @@ export class AssetRegistry {
    */
   private constructor() {
     this.storage = new IndexedDBStorage();
+    this.modelImporter = new ModelImporter();
     this.cache = new Map();
     this.metadataCache = new Map();
   }
@@ -113,6 +116,48 @@ export class AssetRegistry {
       return fullMetadata.id;
     } catch (error) {
       console.error('[AssetRegistry] Failed to register asset:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 导入模型资产
+   * 
+   * @param file 模型文件（GLB/GLTF）
+   * @param options 导入选项
+   * @returns 资产 ID 和元数据
+   */
+  async importModel(file: File, options: ImportOptions = {}): Promise<{ id: string; metadata: ModelMetadata }> {
+    this.ensureInitialized();
+
+    console.log(`[AssetRegistry] Importing model: ${file.name}`);
+
+    try {
+      // 1. 使用 ModelImporter 导入模型
+      const { blob, metadata, thumbnail } = await this.modelImporter.importModel(file);
+
+      // 2. 注册资产
+      const assetId = await this.registerAsset(
+        {
+          name: file.name.replace(/\.(glb|gltf)$/i, ''),
+          type: 'model' as any,
+          category: options.category || 'models',
+          tags: options.tags || ['imported', 'model'],
+          size: blob.size,
+          thumbnail,
+        },
+        blob
+      );
+
+      console.log(`[AssetRegistry] Model imported successfully: ${assetId}`);
+      console.log(`[AssetRegistry] Metadata:`, metadata);
+
+      return {
+        id: assetId,
+        metadata,
+      };
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to import model:', error);
       throw error;
     }
   }
@@ -292,6 +337,7 @@ export class AssetRegistry {
    */
   close(): void {
     this.storage.close();
+    this.modelImporter.dispose();
     this.cache.clear();
     this.metadataCache.clear();
     this.initialized = false;

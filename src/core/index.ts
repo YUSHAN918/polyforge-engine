@@ -83,6 +83,7 @@ export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCam
 // 资产系统（阶段 7）
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
 export { IndexedDBStorage } from './assets/IndexedDBStorage';
+export { ModelImporter } from './assets/ModelImporter';
 export { AssetType } from './assets/types';
-export type { AssetMetadata, AssetData, AssetFilter, ImportOptions } from './assets/types';
-export { assetDemo, listAssets, clearAssets, assetStats } from './assetDemo';
+export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata } from './assets/types';
+export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo } from './assetDemo';
