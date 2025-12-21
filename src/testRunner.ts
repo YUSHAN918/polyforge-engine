@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -187,6 +187,18 @@ export function runPhysicsDemoWrapper(): void {
   }
 }
 
+/**
+ * 运行相机系统演示（阶段 10）
+ */
+export function runCameraDemoWrapper(): void {
+  console.clear();
+  try {
+    cameraDemo();
+  } catch (error) {
+    console.error('Camera demo failed:', error);
+  }
+}
+
 // 暴露到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
   (window as any).runPolyForgeTests = runAllTests;
@@ -202,6 +214,7 @@ if (typeof window !== 'undefined') {
   (window as any).commandDemo = runCommandDemoWrapper; // 🆕 阶段 5
   (window as any).inputDemo = runInputDemoWrapper; // 🆕 阶段 6
   (window as any).physicsDemo = runPhysicsDemoWrapper; // 🆕 阶段 8
+  (window as any).cameraDemo = runCameraDemoWrapper; // 🆕 阶段 10
   
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
@@ -233,6 +246,17 @@ if (typeof window !== 'undefined') {
   (window as any).spawnPhysicsBox = spawnPhysicsBox;
   (window as any).showPhysicsStatus = showPhysicsStatus;
   
+  // 相机控制函数
+  (window as any).stopCameraDemo = stopCameraDemo;
+  (window as any).startCameraDemo = startCameraDemo;
+  (window as any).switchCameraMode = switchCameraMode;
+  (window as any).applyCameraPreset = applyCameraPreset;
+  (window as any).getCameraSnapshot = getCameraSnapshot;
+  (window as any).moveCameraTarget = moveCameraTarget;
+  (window as any).rotateCameraView = rotateCameraView;
+  (window as any).setCameraDistance = setCameraDistance;
+  (window as any).showCameraStatus = showCameraStatus;
+  
   console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
   console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
@@ -243,6 +267,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.commandDemo()         ', 'color: #FF9800;', '- Command system demo 🔄 NEW!');
   console.log('%c  window.inputDemo()           ', 'color: #FF9800;', '- Input system demo 🎮 NEW!');
   console.log('%c  window.physicsDemo()         ', 'color: #FF9800;', '- Physics system demo 🎱 NEW!');
+  console.log('%c  window.cameraDemo()          ', 'color: #FF9800;', '- Camera system demo 📷 NEW!');
   console.log('%c  window.hierarchyDemo()       ', 'color: #FF9800;', '- Hierarchy & Socket demo 🔗');
   console.log('%c  window.visualDemo()          ', 'color: #FF9800;', '- Visual components demo ⚔️✨');
   console.log('%c  window.vehicleDemo()         ', 'color: #FF9800;', '- Vehicle demo 🚁🔊');
@@ -281,5 +306,14 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.setGravity(x,y,z)     ', 'color: #FF9800;', '- Change gravity');
   console.log('%c  window.spawnPhysicsBox()     ', 'color: #FF9800;', '- Spawn new box');
   console.log('%c  window.showPhysicsStatus()   ', 'color: #FF9800;', '- Show physics status');
+  console.log('');
+  console.log('%c📷 Camera Controls:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  window.switchCameraMode(mode)', 'color: #FF9800;', '- Switch camera mode');
+  console.log('%c  window.applyCameraPreset(name)', 'color: #FF9800;', '- Apply camera preset');
+  console.log('%c  window.getCameraSnapshot()   ', 'color: #FF9800;', '- Get camera snapshot');
+  console.log('%c  window.moveCameraTarget(x,y,z)', 'color: #FF9800;', '- Move target');
+  console.log('%c  window.rotateCameraView(p,y)', 'color: #FF9800;', '- Rotate camera');
+  console.log('%c  window.setCameraDistance(d)  ', 'color: #FF9800;', '- Set camera distance');
+  console.log('%c  window.showCameraStatus()    ', 'color: #FF9800;', '- Show camera status');
   console.log('');
 }

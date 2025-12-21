@@ -56,6 +56,8 @@ export type {
 } from './components/VehicleComponent';
 export { AudioSourceComponent } from './components/AudioSourceComponent';
 export type { AudioType } from './components/AudioSourceComponent';
+export { CameraComponent } from './components/CameraComponent';
+export type { CameraMode, CameraSnapshot } from './components/CameraComponent';
 
 // 核心系统（阶段 3）
 export { MovementSystem } from './systems/MovementSystem';
@@ -63,6 +65,7 @@ export { HierarchySystem } from './systems/HierarchySystem';
 export { InputSystem } from './systems/InputSystem';
 export type { InputAction, InputPreset } from './systems/InputSystem';
 export { PhysicsSystem } from './systems/PhysicsSystem';
+export { CameraSystem } from './systems/CameraSystem';
 
 // 演示和测试
 export { runCoreDemo } from './demo';
@@ -75,3 +78,4 @@ export { clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus
 export { commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory } from './commandDemo';
 export { inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './inputDemo';
 export { physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './physicsDemo';
+export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './cameraDemo';
