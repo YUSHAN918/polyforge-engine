@@ -12,7 +12,8 @@
 
 import { IndexedDBStorage } from './IndexedDBStorage';
 import { ModelImporter } from './ModelImporter';
-import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata } from './types';
+import { AudioImporter } from './AudioImporter';
+import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata, AudioMetadata } from './types';
 
 /**
  * 资产注册表（单例）
@@ -22,6 +23,7 @@ export class AssetRegistry {
   
   private storage: IndexedDBStorage;
   private modelImporter: ModelImporter;
+  private audioImporter: AudioImporter;
   private cache: Map<string, any>;           // 内存缓存
   private metadataCache: Map<string, AssetMetadata>; // 元数据缓存
   private initialized: boolean = false;
@@ -32,6 +34,7 @@ export class AssetRegistry {
   private constructor() {
     this.storage = new IndexedDBStorage();
     this.modelImporter = new ModelImporter();
+    this.audioImporter = new AudioImporter();
     this.cache = new Map();
     this.metadataCache = new Map();
   }
@@ -158,6 +161,47 @@ export class AssetRegistry {
       };
     } catch (error) {
       console.error('[AssetRegistry] Failed to import model:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 导入音频资产
+   * 
+   * @param file 音频文件（MP3/WAV/OGG）
+   * @param options 导入选项
+   * @returns 资产 ID 和元数据
+   */
+  async importAudio(file: File, options: ImportOptions = {}): Promise<{ id: string; metadata: AudioMetadata }> {
+    this.ensureInitialized();
+
+    console.log(`[AssetRegistry] Importing audio: ${file.name}`);
+
+    try {
+      // 1. 使用 AudioImporter 导入音频
+      const { blob, metadata } = await this.audioImporter.importAudio(file);
+
+      // 2. 注册资产
+      const assetId = await this.registerAsset(
+        {
+          name: file.name.replace(/\.(mp3|wav|ogg)$/i, ''),
+          type: 'audio' as any,
+          category: options.category || 'audio',
+          tags: options.tags || ['imported', 'audio', metadata.format],
+          size: blob.size,
+        },
+        blob
+      );
+
+      console.log(`[AssetRegistry] Audio imported successfully: ${assetId}`);
+      console.log(`[AssetRegistry] Metadata:`, metadata);
+
+      return {
+        id: assetId,
+        metadata,
+      };
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to import audio:', error);
       throw error;
     }
   }
@@ -338,6 +382,7 @@ export class AssetRegistry {
   close(): void {
     this.storage.close();
     this.modelImporter.dispose();
+    this.audioImporter.dispose();
     this.cache.clear();
     this.metadataCache.clear();
     this.initialized = false;

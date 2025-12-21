@@ -84,6 +84,7 @@ export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCam
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
 export { IndexedDBStorage } from './assets/IndexedDBStorage';
 export { ModelImporter } from './assets/ModelImporter';
+export { AudioImporter } from './assets/AudioImporter';
 export { AssetType } from './assets/types';
-export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata } from './assets/types';
-export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo } from './assetDemo';
+export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata, AudioMetadata } from './assets/types';
+export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo } from './assetDemo';

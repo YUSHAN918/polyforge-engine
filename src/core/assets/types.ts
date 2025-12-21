@@ -70,3 +70,13 @@ export interface ModelMetadata {
   materials: number;       // 材质数
   textures: number;        // 纹理数
 }
+
+/**
+ * 音频元数据
+ */
+export interface AudioMetadata {
+  duration: number;        // 时长（秒）
+  sampleRate: number;      // 采样率（Hz）
+  numberOfChannels: number; // 声道数
+  format: string;          // 文件格式（mp3/wav/ogg）
+}
