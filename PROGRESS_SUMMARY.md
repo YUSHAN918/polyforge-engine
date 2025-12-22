@@ -2,7 +2,7 @@
 
 **最后更新**: 2025-12-22  
 **当前版本**: v1.3.0  
-**整体进度**: 12/16 阶段完成 (75%)
+**整体进度**: 12.75/16 阶段完成 (79.7%)
 
 ---
 
@@ -22,6 +22,7 @@
 | Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
 | Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
+| Phase 11.2 | TerrainSystem | ⏳ 75% | 2025-12-22 | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
 | Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
 | Phase 13 | Standalone Bundle | ⏳ 待开始 | - | - |
 | Phase 14 | MOD 扩展系统 | ⏳ 待开始 | - | - |
@@ -121,6 +122,17 @@
 - **LocalStorage 持久化** - 刷新页面后恢复
 - **节拍脉冲接口** - 预留与 AudioSystem 联动
 - 完整演示（昼夜交替 + 存档/恢复）
+
+### ⏳ Phase 11.2: TerrainSystem 动态地形引擎（75% 完成）
+- **TerrainComponent** - Float32Array 高度数据 + 序列化（150 行）
+- **TerrainSystem** - 核心地壳引擎（300+ 行）
+- **笔刷引擎（The God Hand）** - radius, strength, hardness
+- **modifyHeight() 接口** - 世界坐标 → 网格坐标 + 衰减计算
+- **射线检测定位** - raycastTerrain() + 双线性插值
+- **局部顶点更新优化** - 脏区域追踪，确保 60FPS
+- **工具函数集** - resetTerrain, generateRandomTerrain
+- **terrainDemo** - 15+ 控制接口（250+ 行）
+- ⏳ **待实现**: R3F 渲染集成 + 鼠标交互编辑
 
 ### ✅ Phase 12: RenderSystem 渲染系统
 - **EngineBridge** - ECS 到 R3F 的桥接层（350+ 行）
@@ -288,6 +300,22 @@ window.worldStateControls.saveSnapshot();    // 保存全场景快照
 window.worldStateControls.loadSnapshot();    // 加载快照
 window.worldStateControls.clearSnapshot();   // 清除快照
 
+// ⭐ 地形引擎（Phase 11.2 新增）
+await window.terrainDemo();          // 运行地形系统演示
+window.terrainDemoControls.setBrushRadius(5);   // 设置笔刷半径
+window.terrainDemoControls.setBrushStrength(0.2); // 设置笔刷强度
+window.terrainDemoControls.setBrushHardness(0.8); // 设置笔刷硬度
+window.terrainDemoControls.getBrush();          // 查看笔刷配置
+window.terrainDemoControls.raise(5, 5);         // 抬高指定位置
+window.terrainDemoControls.lower(-5, -5);       // 降低指定位置
+window.terrainDemoControls.flatten();           // 重置为平坦
+window.terrainDemoControls.randomize(10);       // 生成随机地形
+window.terrainDemoControls.createMountain();    // 创建一座山
+window.terrainDemoControls.createValley();      // 创建一个山谷
+window.terrainDemoControls.getTerrainInfo();    // 查看地形信息
+window.terrainDemoControls.getHeightAt(0, 0);   // 查看指定位置高度
+window.terrainDemoControls.listEntities();      // 列出所有实体
+
 // ⭐ 渲染系统（Phase 12 新增）
 await window.renderDemo();           // 运行渲染系统演示
 window.renderDemoControls.setTimeOfDay(18);  // 设置时间（18:00 日落）
@@ -328,14 +356,14 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~11000 行
+- **核心代码**: ~11700 行（+700 行 TerrainSystem）
 - **测试代码**: ~1800 行
-- **演示代码**: ~5000 行
-- **总计**: ~17800 行
+- **演示代码**: ~5250 行（+250 行 terrainDemo）
+- **总计**: ~18750 行
 
 ### 组件数量
-- **核心组件**: 8 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera）
-- **核心系统**: 7 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager）
+- **核心组件**: 9 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera, **Terrain**）
+- **核心系统**: 8 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager, **TerrainSystem**）
 - **环境管理**: 1 个（WorldStateManager）
 - **渲染系统**: 2 个（EngineBridge, PostProcessing）
 - **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）
@@ -343,7 +371,7 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 
 ### 测试覆盖
 - **单元测试**: 17 个测试套件
-- **演示场景**: 14 个
+- **演示场景**: 15 个（新增 terrainDemo）
 - **测试状态**: 全部通过 ✅
 
 ---

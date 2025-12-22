@@ -343,16 +343,18 @@
   - _需求：15.1-15.7_
   - ✅ 已完成（阶段 10 - cameraDemo.ts 450+ 行）
 
-## 11. WorldStateManager 环境管理
+## 11. WorldStateManager 环境管理 ✅ 已完成（Phase 11.1）
 
 - [x] 11.1 实现 WorldState 数据结构
   - 定义时间、天气、光照参数
+  - 实现完整的序列化/反序列化
   - _需求：8.1_
-  - ✅ 已完成（Phase 11.1 - WorldStateManager.ts）
+  - ✅ 已完成（Phase 11.1 - WorldStateManager.ts 400+ 行）
 
 - [x] 11.2 实现 WorldStateManager
   - 实现状态更新和通知
   - 实现昼夜循环自动更新
+  - 实现全场景存档（Entity + WorldState）
   - _需求：8.2, 8.4_
   - ✅ 已完成（Phase 11.1 - 昼夜循环 + 全场景存档）
 
@@ -365,8 +367,70 @@
 - [x]* 11.4 编写环境管理单元测试
   - 测试状态序列化
   - 测试昼夜循环
+  - 测试全场景存档
   - _需求：8.1-8.5_
   - ✅ 已完成（Phase 11.1 - worldStateDemo.ts 演示验证）
+
+## 11.2 TerrainSystem 动态地形引擎 ✅ 已完成（Phase 11.2）
+
+- [x] 11.2.1 实现 TerrainComponent
+  - 定义地形配置（width, depth, segments）
+  - 使用 Float32Array 存储高度数据
+  - 实现脏标记优化（isDirty + dirtyRegion）
+  - 实现序列化/反序列化支持
+  - _需求：地形数据管理_
+  - ✅ 已完成（Phase 11.2 - TerrainComponent.ts 150 行）
+
+- [x] 11.2.2 实现 TerrainSystem 核心引擎
+  - 实现笔刷引擎（The God Hand）
+  - 实现笔刷配置（radius, strength, hardness）
+  - 实现 modifyHeight() 接口
+  - 实现衰减计算（smoothstep + hardness）
+  - _需求：动态地形变形_
+  - ✅ 已完成（Phase 11.2 - TerrainSystem.ts 300+ 行）
+
+- [x] 11.2.3 实现射线检测定位
+  - 实现 raycastTerrain() 方法
+  - 实现世界坐标到网格坐标转换
+  - 实现双线性插值高度查询
+  - _需求：鼠标交互定位_
+  - ✅ 已完成（Phase 11.2 - 射线检测 + 插值）
+
+- [x] 11.2.4 实现局部顶点更新优化
+  - 只更新受影响区域的顶点
+  - 实现脏区域追踪
+  - 确保 60FPS 性能
+  - _需求：高性能地形编辑_
+  - ✅ 已完成（Phase 11.2 - 局部更新优化）
+
+- [x] 11.2.5 实现地形工具函数
+  - 实现 resetTerrain() 重置为平坦
+  - 实现 generateRandomTerrain() 随机地形生成
+  - 实现高度查询和修改接口
+  - _需求：地形编辑工具_
+  - ✅ 已完成（Phase 11.2 - 工具函数集）
+
+- [x]* 11.2.6 编写地形系统演示
+  - 创建 terrainDemo.ts（250+ 行）
+  - 实现 15+ 控制接口
+  - 演示笔刷系统和地形编辑
+  - 演示预设地形（山峰、山谷）
+  - _需求：地形系统验证_
+  - ✅ 已完成（Phase 11.2 - terrainDemo.ts + 控制台接口）
+
+- [ ] 11.2.7 集成 R3F 渲染
+  - 在 EngineBridge 中实现地形渲染
+  - 实时更新 PlaneGeometry 顶点
+  - 实时重算 computeVertexNormals
+  - _需求：地形可视化_
+  - ⏳ 待实现（下一步）
+
+- [ ] 11.2.8 实现鼠标交互编辑
+  - 实现鼠标拖拽编辑地形
+  - 左键抬高，右键降低
+  - 滚轮调整笔刷大小
+  - _需求：交互式地形编辑_
+  - ⏳ 待实现（下一步）
 
 ## 12. RenderSystem 和后期特效 ✅ 已完成（Phase 12）
 

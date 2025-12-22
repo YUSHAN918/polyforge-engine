@@ -69,6 +69,8 @@ export type { InputAction, InputPreset } from './systems/InputSystem';
 export { PhysicsSystem } from './systems/PhysicsSystem';
 export { CameraSystem } from './systems/CameraSystem';
 export { AudioSystem } from './systems/AudioSystem';
+export { TerrainSystem } from './systems/TerrainSystem';
+export type { BrushConfig } from './systems/TerrainSystem';
 
 // 演示和测试
 export { runCoreDemo } from './demo';
@@ -85,6 +87,7 @@ export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCam
 export { audioDemo } from './demos/audioDemo';
 export { worldStateDemo } from './demos/worldStateDemo';
 export { renderDemo } from './demos/renderDemo';
+export { terrainDemo } from './demos/terrainDemo';
 
 // 资产系统（阶段 7）
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
@@ -96,3 +99,6 @@ export { FileSystemService } from './assets/FileSystemService';
 export { AssetType } from './assets/types';
 export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata, AudioMetadata, HDRMetadata, ScannedFile, ImportProgress, ProgressCallback } from './assets/types';
 export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo, hdrUploadDemo, assetBrowserDemo } from './assetDemo';
+
+export { TerrainComponent } from './components/TerrainComponent';
+export type { TerrainConfig } from './components/TerrainComponent';
