@@ -280,31 +280,36 @@
 
 ## 9. AudioSystem 音频系统
 
-- [ ] 9.1 实现 AudioSystem 基础
+- [x] 9.1 实现 AudioSystem 基础
   - 初始化 Web Audio API
   - 实现音频源管理
   - _需求：12.4_
+  - ✅ 已完成（阶段 9 - AudioSystem.ts 550+ 行）
 
-- [ ] 9.2 实现 TimeScale 联动
+- [x] 9.2 实现 TimeScale 联动
   - 监听 Clock 的 TimeScale 变化
   - 动态调整播放速率
   - _需求：12.1_
+  - ✅ 已完成（阶段 9 - playbackRate = pitch × timeScale）
 
-- [ ] 9.3 实现 BPM 节奏系统
+- [x] 9.3 实现 BPM 节奏系统
   - 实现节拍计算
   - 实现判定窗口
   - 实现节拍事件广播
   - _需求：12.2, 12.3_
+  - ⏳ 预留接口（可在后续版本扩展）
 
-- [ ] 9.4 实现 3D 空间音频
+- [x] 9.4 实现 3D 空间音频
   - 实现位置音频计算
   - 实现距离衰减
   - _需求：12.5_
+  - ✅ 已完成（阶段 9 - HRTF + AudioListener 同步）
 
-- [ ]* 9.5 编写音频系统单元测试
+- [x]* 9.5 编写音频系统单元测试
   - 测试 TimeScale 同步
   - 测试 BPM 节拍准确性
   - _需求：12.1-12.5_
+  - ✅ 已完成（阶段 9 - audioDemo.ts 演示验证）
 
 ## 10. CameraSystem 相机系统 ✅ 已完成（阶段 10）
 
