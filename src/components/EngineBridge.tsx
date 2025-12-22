@@ -18,10 +18,12 @@ import { EntityManager } from '../core/EntityManager';
 import { Entity } from '../core/Entity';
 import { TransformComponent } from '../core/components/TransformComponent';
 import { VisualComponent } from '../core/components/VisualComponent';
+import { TerrainComponent } from '../core/components/TerrainComponent';
 import { WorldStateManager } from '../core/WorldStateManager';
 import { getAssetRegistry } from '../core/assets/AssetRegistry';
 import { AssetType } from '../core/assets/types';
 import { PostProcessing } from './PostProcessing';
+import { TerrainVisual } from './rendering/TerrainVisual';
 
 /**
  * EngineBridge Props
@@ -29,6 +31,7 @@ import { PostProcessing } from './PostProcessing';
 interface EngineBridgeProps {
   entityManager: EntityManager;
   worldStateManager?: WorldStateManager;
+  terrainSystem?: any; // TerrainSystem 实例（用于鼠标交互）
   postProcessingEnabled?: boolean;
   bloomEnabled?: boolean;
   bloomStrength?: number;
@@ -44,7 +47,8 @@ interface EngineBridgeProps {
 const EntityRenderer = React.memo<{
   entity: Entity;
   worldState?: any;
-}>(({ entity, worldState }) => {
+  terrainSystem?: any;
+}>(({ entity, worldState, terrainSystem }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [meshes, setMeshes] = useState<THREE.Mesh[]>([]);
   const [modelLoaded, setModelLoaded] = useState(false);
@@ -52,6 +56,12 @@ const EntityRenderer = React.memo<{
   // 获取组件
   const transform = entity.getComponent<TransformComponent>('Transform');
   const visual = entity.getComponent<VisualComponent>('Visual');
+  const terrain = entity.getComponent<TerrainComponent>('Terrain');
+
+  // 如果是地形实体，使用 TerrainVisual 渲染
+  if (terrain) {
+    return <TerrainVisual entity={entity} terrainSystem={terrainSystem} />;
+  }
 
   // 加载模型资产
   useEffect(() => {
@@ -239,7 +249,7 @@ const EntityRenderer = React.memo<{
 
       {/* 递归渲染子实体 */}
       {entity.children.map((child) => (
-        <EntityRenderer key={child.id} entity={child} worldState={worldState} />
+        <EntityRenderer key={child.id} entity={child} worldState={worldState} terrainSystem={terrainSystem} />
       ))}
     </group>
   );
@@ -253,6 +263,7 @@ EntityRenderer.displayName = 'EntityRenderer';
 export const EngineBridge: React.FC<EngineBridgeProps> = ({
   entityManager,
   worldStateManager,
+  terrainSystem,
   postProcessingEnabled = true,
   bloomEnabled = true,
   bloomStrength = 1.5,
@@ -426,7 +437,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
       {/* 渲染所有根实体 */}
       {rootEntities.map((entity) => (
-        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} />
+        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} />
       ))}
     </>
   );

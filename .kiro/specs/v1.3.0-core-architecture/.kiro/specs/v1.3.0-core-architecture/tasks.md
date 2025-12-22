@@ -418,19 +418,19 @@
   - _需求：地形系统验证_
   - ✅ 已完成（Phase 11.2 - terrainDemo.ts + 控制台接口）
 
-- [ ] 11.2.7 集成 R3F 渲染
+- [x] 11.2.7 集成 R3F 渲染
   - 在 EngineBridge 中实现地形渲染
   - 实时更新 PlaneGeometry 顶点
   - 实时重算 computeVertexNormals
   - _需求：地形可视化_
-  - ⏳ 待实现（下一步）
+  - ✅ 已完成（Phase 11.2 - TerrainVisual.tsx 150+ 行）
 
-- [ ] 11.2.8 实现鼠标交互编辑
+- [x] 11.2.8 实现鼠标交互编辑
   - 实现鼠标拖拽编辑地形
   - 左键抬高，右键降低
   - 滚轮调整笔刷大小
   - _需求：交互式地形编辑_
-  - ⏳ 待实现（下一步）
+  - ✅ 已完成（Phase 11.2 - TerrainVisual 鼠标事件集成）
 
 ## 12. RenderSystem 和后期特效 ✅ 已完成（Phase 12）
 

@@ -2,7 +2,7 @@
 
 **最后更新**: 2025-12-22  
 **当前版本**: v1.3.0  
-**整体进度**: 12.75/16 阶段完成 (79.7%)
+**整体进度**: 13/16 阶段完成 (81.25%)
 
 ---
 
@@ -22,7 +22,7 @@
 | Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
 | Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
-| Phase 11.2 | TerrainSystem | ⏳ 75% | 2025-12-22 | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
+| Phase 11.2 | TerrainSystem | ✅ 完成 | 2025-12-22 | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
 | Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
 | Phase 13 | Standalone Bundle | ⏳ 待开始 | - | - |
 | Phase 14 | MOD 扩展系统 | ⏳ 待开始 | - | - |
@@ -123,7 +123,7 @@
 - **节拍脉冲接口** - 预留与 AudioSystem 联动
 - 完整演示（昼夜交替 + 存档/恢复）
 
-### ⏳ Phase 11.2: TerrainSystem 动态地形引擎（75% 完成）
+### ⏳ Phase 11.2: TerrainSystem 动态地形引擎（100% 完成 ✅）
 - **TerrainComponent** - Float32Array 高度数据 + 序列化（150 行）
 - **TerrainSystem** - 核心地壳引擎（300+ 行）
 - **笔刷引擎（The God Hand）** - radius, strength, hardness
@@ -132,7 +132,9 @@
 - **局部顶点更新优化** - 脏区域追踪，确保 60FPS
 - **工具函数集** - resetTerrain, generateRandomTerrain
 - **terrainDemo** - 15+ 控制接口（250+ 行）
-- ⏳ **待实现**: R3F 渲染集成 + 鼠标交互编辑
+- ✅ **TerrainVisual.tsx** - R3F 渲染集成（150+ 行）
+- ✅ **鼠标交互编辑** - 左键抬高，右键降低，滚轮调整笔刷
+- ✅ **标准化全局控制器** - terrainControls, worldControls, renderControls
 
 ### ✅ Phase 12: RenderSystem 渲染系统
 - **EngineBridge** - ECS 到 R3F 的桥接层（350+ 行）
@@ -356,10 +358,10 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~11700 行（+700 行 TerrainSystem）
+- **核心代码**: ~12000 行（+300 行 TerrainVisual + testRunner 重构）
 - **测试代码**: ~1800 行
-- **演示代码**: ~5250 行（+250 行 terrainDemo）
-- **总计**: ~18750 行
+- **演示代码**: ~5250 行
+- **总计**: ~19050 行
 
 ### 组件数量
 - **核心组件**: 9 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera, **Terrain**）

@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioDemo, worldStateDemo, renderDemo, terrainDemo } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -276,11 +276,219 @@ if (typeof window !== 'undefined') {
   (window as any).assetStats = assetStats;
   (window as any).modelUploadDemo = modelUploadDemo;
   
-  console.log('%c╔════════════════════════════════════════════════════════════╗', 'color: #4CAF50;');
-  console.log('%c║  PolyForge v1.3.0 Core ECS - Test Runner Loaded          ║', 'color: #4CAF50; font-weight: bold;');
-  console.log('%c╚════════════════════════════════════════════════════════════╝', 'color: #4CAF50;');
+  // ============================================================================
+  // 🆕 Phase 11.2: 标准化全局控制器（上帝接口）
+  // ============================================================================
+  
+  /**
+   * 地形控制器 - window.terrainControls
+   */
+  (window as any).terrainControls = {
+    // 笔刷控制
+    setBrush: (config: { radius?: number; strength?: number; hardness?: number }) => {
+      console.log(`%c🖌️ Brush updated:`, 'color: #FF9800; font-weight: bold;', config);
+      // 实际调用需要 terrainSystem 实例
+      if ((window as any).terrainDemoControls) {
+        if (config.radius !== undefined) (window as any).terrainDemoControls.setBrushRadius(config.radius);
+        if (config.strength !== undefined) (window as any).terrainDemoControls.setBrushStrength(config.strength);
+        if (config.hardness !== undefined) (window as any).terrainDemoControls.setBrushHardness(config.hardness);
+      }
+    },
+    
+    // 地形生成
+    generateRandom: (amplitude: number = 5) => {
+      console.log(`%c🎲 Generating random terrain (amplitude: ${amplitude})`, 'color: #FF9800; font-weight: bold;');
+      if ((window as any).terrainDemoControls) {
+        (window as any).terrainDemoControls.randomize(amplitude);
+      }
+    },
+    
+    // 重置地形
+    reset: () => {
+      console.log(`%c🏜️ Resetting terrain to flat`, 'color: #FF9800; font-weight: bold;');
+      if ((window as any).terrainDemoControls) {
+        (window as any).terrainDemoControls.flatten();
+      }
+    },
+    
+    // 创建山峰
+    createMountain: () => {
+      console.log(`%c⛰️ Creating mountain`, 'color: #FF9800; font-weight: bold;');
+      if ((window as any).terrainDemoControls) {
+        (window as any).terrainDemoControls.createMountain();
+      }
+    },
+    
+    // 创建山谷
+    createValley: () => {
+      console.log(`%c🏞️ Creating valley`, 'color: #FF9800; font-weight: bold;');
+      if ((window as any).terrainDemoControls) {
+        (window as any).terrainDemoControls.createValley();
+      }
+    },
+    
+    // 查看地形信息
+    getInfo: () => {
+      if ((window as any).terrainDemoControls) {
+        return (window as any).terrainDemoControls.getTerrainInfo();
+      }
+    },
+  };
+  
+  /**
+   * 世界控制器 - window.worldControls
+   */
+  (window as any).worldControls = {
+    // 设置时间
+    setHour: (hour: number) => {
+      console.log(`%c🕐 Setting time to ${hour}:00`, 'color: #2196F3; font-weight: bold;');
+      if ((window as any).worldStateControls) {
+        (window as any).worldStateControls.setTimeOfDay(hour);
+      }
+    },
+    
+    // 设置天气（预留接口）
+    setWeather: (type: string) => {
+      console.log(`%c🌤️ Setting weather to: ${type}`, 'color: #2196F3; font-weight: bold;');
+      console.log('%c  (Weather system not yet implemented)', 'color: #999;');
+    },
+    
+    // 设置光照强度
+    setLightIntensity: (intensity: number) => {
+      console.log(`%c💡 Setting light intensity to ${intensity}`, 'color: #2196F3; font-weight: bold;');
+      if ((window as any).worldStateControls) {
+        (window as any).worldStateControls.setLightIntensity(intensity);
+      }
+    },
+    
+    // 切换昼夜循环
+    toggleDayNightCycle: () => {
+      console.log(`%c🌓 Toggling day/night cycle`, 'color: #2196F3; font-weight: bold;');
+      if ((window as any).worldStateControls) {
+        (window as any).worldStateControls.toggleDayNightCycle();
+      }
+    },
+    
+    // 查看状态
+    getState: () => {
+      if ((window as any).worldStateControls) {
+        return (window as any).worldStateControls.getState();
+      }
+    },
+  };
+  
+  /**
+   * 渲染控制器 - window.renderControls
+   */
+  (window as any).renderControls = {
+    // 切换后处理
+    togglePostProcessing: () => {
+      console.log(`%c✨ Toggling post-processing`, 'color: #9C27B0; font-weight: bold;');
+      if ((window as any).renderDemoControls) {
+        (window as any).renderDemoControls.togglePostProcessing();
+      }
+    },
+    
+    // 切换辉光效果
+    toggleBloom: () => {
+      console.log(`%c🌟 Toggling bloom effect`, 'color: #9C27B0; font-weight: bold;');
+      if ((window as any).renderDemoControls) {
+        (window as any).renderDemoControls.toggleBloom();
+      }
+    },
+    
+    // 设置辉光强度
+    setBloomStrength: (strength: number) => {
+      console.log(`%c🌟 Setting bloom strength to ${strength}`, 'color: #9C27B0; font-weight: bold;');
+      if ((window as any).renderDemoControls) {
+        (window as any).renderDemoControls.setBloomStrength(strength);
+      }
+    },
+    
+    // 切换抗锯齿
+    toggleSMAA: () => {
+      console.log(`%c🔲 Toggling SMAA`, 'color: #9C27B0; font-weight: bold;');
+      if ((window as any).renderDemoControls) {
+        (window as any).renderDemoControls.toggleSMAA();
+      }
+    },
+    
+    // 查看设置
+    getSettings: () => {
+      if ((window as any).renderDemoControls) {
+        return (window as any).renderDemoControls.getPostProcessingSettings();
+      }
+    },
+  };
+  
+  // ============================================================================
+  // 🎨 启动菜单（带颜色、易读、对齐美感）
+  // ============================================================================
+  
   console.log('');
-  console.log('%c📋 Available Commands:', 'color: #2196F3; font-weight: bold;');
+  console.log('%c╔══════════════════════════════════════════════════════════════════╗', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c║                                                                  ║', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c║     🏔️  PolyForge v1.3.0 - Phase 11.2 TerrainSystem 🏔️        ║', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c║                                                                  ║', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c╚══════════════════════════════════════════════════════════════════╝', 'color: #4CAF50; font-weight: bold;');
+  console.log('');
+  
+  console.log('%c┌─────────────────────────────────────────────────────────────────┐', 'color: #2196F3;');
+  console.log('%c│  🎮 标准化全局控制器（上帝接口）                                │', 'color: #2196F3; font-weight: bold;');
+  console.log('%c└─────────────────────────────────────────────────────────────────┘', 'color: #2196F3;');
+  console.log('');
+  
+  console.log('%c🏔️  地形控制器 - window.terrainControls', 'color: #FF9800; font-weight: bold;');
+  console.log('%c  ├─ setBrush({radius, strength, hardness})', 'color: #666;', '  设置笔刷参数');
+  console.log('%c  ├─ generateRandom(amplitude)             ', 'color: #666;', '  生成随机地形');
+  console.log('%c  ├─ reset()                               ', 'color: #666;', '  重置为平坦');
+  console.log('%c  ├─ createMountain()                      ', 'color: #666;', '  创建山峰');
+  console.log('%c  ├─ createValley()                        ', 'color: #666;', '  创建山谷');
+  console.log('%c  └─ getInfo()                             ', 'color: #666;', '  查看地形信息');
+  console.log('');
+  
+  console.log('%c🌍  世界控制器 - window.worldControls', 'color: #2196F3; font-weight: bold;');
+  console.log('%c  ├─ setHour(n)                            ', 'color: #666;', '  设置时间（0-24）');
+  console.log('%c  ├─ setWeather(type)                      ', 'color: #666;', '  设置天气（预留）');
+  console.log('%c  ├─ setLightIntensity(n)                  ', 'color: #666;', '  设置光照强度');
+  console.log('%c  ├─ toggleDayNightCycle()                 ', 'color: #666;', '  切换昼夜循环');
+  console.log('%c  └─ getState()                            ', 'color: #666;', '  查看世界状态');
+  console.log('');
+  
+  console.log('%c✨  渲染控制器 - window.renderControls', 'color: #9C27B0; font-weight: bold;');
+  console.log('%c  ├─ togglePostProcessing()                ', 'color: #666;', '  切换后处理');
+  console.log('%c  ├─ toggleBloom()                         ', 'color: #666;', '  切换辉光效果');
+  console.log('%c  ├─ setBloomStrength(n)                   ', 'color: #666;', '  设置辉光强度');
+  console.log('%c  ├─ toggleSMAA()                          ', 'color: #666;', '  切换抗锯齿');
+  console.log('%c  └─ getSettings()                         ', 'color: #666;', '  查看渲染设置');
+  console.log('');
+  
+  console.log('%c┌─────────────────────────────────────────────────────────────────┐', 'color: #FF5722;');
+  console.log('%c│  🚀 快速启动演示                                                │', 'color: #FF5722; font-weight: bold;');
+  console.log('%c└─────────────────────────────────────────────────────────────────┘', 'color: #FF5722;');
+  console.log('');
+  
+  console.log('%c  await window.terrainDemo()               ', 'color: #FF9800; font-weight: bold;', '  🏔️  地形系统演示');
+  console.log('%c  await window.worldStateDemo()            ', 'color: #FF9800; font-weight: bold;', '  🌍  环境管理演示');
+  console.log('%c  await window.renderDemo()                ', 'color: #FF9800; font-weight: bold;', '  ✨  渲染系统演示');
+  console.log('%c  await window.audioDemo()                 ', 'color: #FF9800; font-weight: bold;', '  🔊  音频系统演示');
+  console.log('%c  await window.cameraDemo()                ', 'color: #FF9800; font-weight: bold;', '  📷  相机系统演示');
+  console.log('');
+  
+  console.log('%c┌─────────────────────────────────────────────────────────────────┐', 'color: #607D8B;');
+  console.log('%c│  💡 提示                                                         │', 'color: #607D8B; font-weight: bold;');
+  console.log('%c└─────────────────────────────────────────────────────────────────┘', 'color: #607D8B;');
+  console.log('');
+  console.log('%c  • 左键点击地形：抬高                                            ', 'color: #999;');
+  console.log('%c  • 右键点击地形：降低                                            ', 'color: #999;');
+  console.log('%c  • 滚轮：调整笔刷大小                                            ', 'color: #999;');
+  console.log('%c  • 所有控制器都有智能提示和日志输出                              ', 'color: #999;');
+  console.log('');
+  console.log('%c  🎯 推荐：先运行 await window.terrainDemo() 体验完整功能！      ', 'color: #4CAF50; font-weight: bold;');
+  console.log('');
+  
+  // 保留原有的详细菜单（折叠显示）
+  console.groupCollapsed('%c📋 查看完整命令列表', 'color: #2196F3; font-weight: bold;');
   console.log('%c  window.quickDemo()           ', 'color: #FF9800;', '- Quick demo (recommended)');
   console.log('%c  window.clockDemo()           ', 'color: #FF9800;', '- Clock system demo ⏱️ NEW!');
   console.log('%c  window.commandDemo()         ', 'color: #FF9800;', '- Command system demo 🔄 NEW!');
@@ -342,4 +550,5 @@ if (typeof window !== 'undefined') {
   console.log('%c  window.assetStats()          ', 'color: #FF9800;', '- Show cache statistics');
   console.log('%c  window.modelUploadDemo()     ', 'color: #FF9800;', '- Upload GLB/GLTF model 🆕');
   console.log('');
+  console.groupEnd();
 }
