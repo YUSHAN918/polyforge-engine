@@ -15,8 +15,10 @@ import { Clock } from '../Clock';
 import { TransformComponent } from '../components/TransformComponent';
 import { VisualComponent } from '../components/VisualComponent';
 import { TerrainComponent } from '../components/TerrainComponent';
+import { CameraComponent } from '../components/CameraComponent';
 import { HierarchySystem } from '../systems/HierarchySystem';
 import { TerrainSystem } from '../systems/TerrainSystem';
+import { CameraSystem } from '../systems/CameraSystem';
 
 // 全局变量（用于控制台交互）
 let globalEntityManager: EntityManager;
@@ -52,8 +54,10 @@ export async function terrainDemo(): Promise<void> {
 
   // 注册系统
   const hierarchySystem = new HierarchySystem();
+  const cameraSystem = new CameraSystem();
   systemManager.registerSystem('HierarchySystem', hierarchySystem);
   systemManager.registerSystem('TerrainSystem', terrainSystem);
+  systemManager.registerSystem('CameraSystem', cameraSystem);
 
   // 创建地形
   console.log('🏗️ Creating terrain...');
@@ -62,6 +66,25 @@ export async function terrainDemo(): Promise<void> {
   console.log(`  Entity ID: ${globalTerrainEntity.id}`);
   console.log(`  Components: ${Array.from(globalTerrainEntity.components.keys()).join(', ')}`);
   console.log('✓ Terrain created (50x50 units, 100x100 segments)');
+  console.log('');
+
+  // 🎥 创建上帝视角相机
+  const cameraEntity = entityManager.createEntity('GodCamera');
+  
+  const cameraTransform = new TransformComponent();
+  cameraTransform.position = [0, 100, 0]; // 高空俯瞰
+  cameraEntity.addComponent(cameraTransform);
+
+  const camera = new CameraComponent();
+  camera.mode = 'orbit'; // 上帝视角模式
+  camera.distance = 100; // 距离目标 100 单位
+  camera.pitch = -60; // 向下倾斜 60 度
+  camera.yaw = 0; // 正面朝向
+  camera.fov = 60;
+  camera.targetEntityId = globalTerrainEntity.id; // 锁定地形中心
+  cameraEntity.addComponent(camera);
+
+  console.log('✓ God camera created (Orbit mode, distance: 100, pitch: -60°)');
   console.log('');
 
   // 更新循环

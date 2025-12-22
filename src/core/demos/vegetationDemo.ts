@@ -14,9 +14,11 @@ import { Clock } from '../Clock';
 import { WorldStateManager } from '../WorldStateManager';
 import { TerrainSystem } from '../systems/TerrainSystem';
 import { VegetationSystem } from '../systems/VegetationSystem';
+import { CameraSystem } from '../systems/CameraSystem';
 import { TransformComponent } from '../components/TransformComponent';
 import { TerrainComponent } from '../components/TerrainComponent';
 import { VegetationComponent } from '../components/VegetationComponent';
+import { CameraComponent } from '../components/CameraComponent';
 
 /**
  * 植被演示控制器
@@ -58,12 +60,14 @@ export async function vegetationDemo(): Promise<VegetationDemoControls> {
   // 注意：Terrain 和 Vegetation 组件需要参数，不在此注册
   console.log('✓ Core components registered');
 
-  // 创建地形系统和植被系统
+  // 创建地形系统、植被系统和相机系统
   const terrainSystem = new TerrainSystem();
   const vegetationSystem = new VegetationSystem(worldStateManager);
+  const cameraSystem = new CameraSystem();
 
   systemManager.registerSystem('TerrainSystem', terrainSystem);
   systemManager.registerSystem('VegetationSystem', vegetationSystem);
+  systemManager.registerSystem('CameraSystem', cameraSystem);
 
   // 创建地形实体
   const terrainEntity = entityManager.createEntity('MainTerrain');
@@ -84,6 +88,24 @@ export async function vegetationDemo(): Promise<VegetationDemoControls> {
   terrainSystem.generateRandomTerrain(terrainEntity, 3);
 
   console.log('✓ Terrain created');
+
+  // 🎥 创建上帝视角相机
+  const cameraEntity = entityManager.createEntity('GodCamera');
+  
+  const cameraTransform = new TransformComponent();
+  cameraTransform.position = [0, 100, 0]; // 高空俯瞰
+  cameraEntity.addComponent(cameraTransform);
+
+  const camera = new CameraComponent();
+  camera.mode = 'orbit'; // 上帝视角模式
+  camera.distance = 100; // 距离目标 100 单位
+  camera.pitch = -60; // 向下倾斜 60 度
+  camera.yaw = 0; // 正面朝向
+  camera.fov = 60;
+  camera.targetEntityId = terrainEntity.id; // 锁定地形中心
+  cameraEntity.addComponent(camera);
+
+  console.log('✓ God camera created (Orbit mode, distance: 100, pitch: -60°)');
 
   // 启动更新循环
   let animationId: number;
@@ -237,6 +259,21 @@ export async function vegetationDemo(): Promise<VegetationDemoControls> {
   console.log('💡 快速开始：');
   console.log('  vegetationControls.spawnGrass(5000)  // 生成 5000 棵草');
   console.log('  vegetationControls.createMountain()  // 创建山峰（草会自动对齐）\n');
+
+  // 🎬 最终战果汇报
+  console.log('\n╔══════════════════════════════════════════════════════════════════╗');
+  console.log('║                                                                  ║');
+  console.log('║  🎉  制作人，请看屏幕左侧，PolyForge 的世界已经诞生！  🎉      ║');
+  console.log('║                                                                  ║');
+  console.log('║  ✅ TerrainSystem - 动态地形引擎已就绪                          ║');
+  console.log('║  ✅ VegetationSystem - 植被引擎已就绪                           ║');
+  console.log('║  ✅ 上帝视角 - 俯瞰 (0,0,0) 距离 100 单位                       ║');
+  console.log('║  ✅ 塞尔达式风场 Shader - 草随风摆动                            ║');
+  console.log('║                                                                  ║');
+  console.log('║  🌾 现在，让我们播种第一片草原...                               ║');
+  console.log('║     vegetationControls.spawnGrass(5000)                         ║');
+  console.log('║                                                                  ║');
+  console.log('╚══════════════════════════════════════════════════════════════════╝\n');
 
   // 暴露到全局
   (window as any).vegetationControls = controls;
