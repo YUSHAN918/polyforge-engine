@@ -70,6 +70,16 @@ export class SystemManager {
     this.systemMap.set(name, system);
     this.sorted = false; // 标记需要重新排序
 
+    // 🆕 自动调用 initialize（如果存在）
+    if (typeof (system as any).initialize === 'function') {
+      try {
+        (system as any).initialize(this.entityManager, this.clock);
+        console.log(`✓ System initialized: ${name}`);
+      } catch (error) {
+        console.error(`✗ System initialization failed: ${name}`, error);
+      }
+    }
+
     console.log(`✓ System registered: ${name} (priority: ${system.priority})`);
   }
 

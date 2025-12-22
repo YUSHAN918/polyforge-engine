@@ -132,6 +132,14 @@ export interface System {
   /** 需要的组件类型 */
   requiredComponents: string[];
   
+  /**
+   * 初始化方法（可选）
+   * 在 System 注册时由 SystemManager 自动调用
+   * @param entityManager - 实体管理器引用
+   * @param clock - 时钟引用
+   */
+  initialize?(entityManager: any, clock: any): void;
+  
   /** 更新逻辑 */
   update(deltaTime: number, entities: Entity[]): void;
   

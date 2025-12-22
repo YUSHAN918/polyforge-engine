@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioDemo, worldStateDemo, renderDemo, terrainDemo } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioDemo, worldStateDemo, renderDemo, terrainDemo, vegetationDemo } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -229,6 +229,13 @@ if (typeof window !== 'undefined') {
   (window as any).cameraDemo = runCameraDemoWrapper; // 🆕 阶段 10
   (window as any).assetDemo = runAssetDemoWrapper; // 🆕 阶段 7
   
+  // 🆕 Phase 11: 环境和地形系统
+  (window as any).audioDemo = audioDemo; // 🆕 Phase 9
+  (window as any).worldStateDemo = worldStateDemo; // 🆕 Phase 11.1
+  (window as any).renderDemo = renderDemo; // 🆕 Phase 12
+  (window as any).terrainDemo = terrainDemo; // 🆕 Phase 11.2
+  (window as any).vegetationDemo = vegetationDemo; // 🆕 Phase 11.3
+  
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
   (window as any).pauseGame = pauseGame;
@@ -428,7 +435,7 @@ if (typeof window !== 'undefined') {
   console.log('');
   console.log('%c╔══════════════════════════════════════════════════════════════════╗', 'color: #4CAF50; font-weight: bold;');
   console.log('%c║                                                                  ║', 'color: #4CAF50; font-weight: bold;');
-  console.log('%c║     🏔️  PolyForge v1.3.0 - Phase 11.2 TerrainSystem 🏔️        ║', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c║     🌾  PolyForge v1.3.0 - Phase 11.3 VegetationSystem 🌾      ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c║                                                                  ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚══════════════════════════════════════════════════════════════════╝', 'color: #4CAF50; font-weight: bold;');
   console.log('');
@@ -445,6 +452,16 @@ if (typeof window !== 'undefined') {
   console.log('%c  ├─ createMountain()                      ', 'color: #666;', '  创建山峰');
   console.log('%c  ├─ createValley()                        ', 'color: #666;', '  创建山谷');
   console.log('%c  └─ getInfo()                             ', 'color: #666;', '  查看地形信息');
+  console.log('');
+  
+  console.log('%c🌾  植被控制器 - window.vegetationControls', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c  ├─ spawnGrass(density)                   ', 'color: #666;', '  生成草地（推荐: 5000）');
+  console.log('%c  ├─ spawnFlowers(density)                 ', 'color: #666;', '  生成花朵（推荐: 1000）');
+  console.log('%c  ├─ clearVegetation()                     ', 'color: #666;', '  清除所有植被');
+  console.log('%c  ├─ createMountain()                      ', 'color: #666;', '  创建山峰');
+  console.log('%c  ├─ createValley()                        ', 'color: #666;', '  创建山谷');
+  console.log('%c  ├─ flattenTerrain()                      ', 'color: #666;', '  重置为平坦');
+  console.log('%c  └─ getInfo()                             ', 'color: #666;', '  查看植被信息');
   console.log('');
   
   console.log('%c🌍  世界控制器 - window.worldControls', 'color: #2196F3; font-weight: bold;');
@@ -469,6 +486,7 @@ if (typeof window !== 'undefined') {
   console.log('');
   
   console.log('%c  await window.terrainDemo()               ', 'color: #FF9800; font-weight: bold;', '  🏔️  地形系统演示');
+  console.log('%c  await window.vegetationDemo()            ', 'color: #FF9800; font-weight: bold;', '  🌾  植被系统演示 🆕');
   console.log('%c  await window.worldStateDemo()            ', 'color: #FF9800; font-weight: bold;', '  🌍  环境管理演示');
   console.log('%c  await window.renderDemo()                ', 'color: #FF9800; font-weight: bold;', '  ✨  渲染系统演示');
   console.log('%c  await window.audioDemo()                 ', 'color: #FF9800; font-weight: bold;', '  🔊  音频系统演示');
@@ -484,7 +502,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  • 滚轮：调整笔刷大小                                            ', 'color: #999;');
   console.log('%c  • 所有控制器都有智能提示和日志输出                              ', 'color: #999;');
   console.log('');
-  console.log('%c  🎯 推荐：先运行 await window.terrainDemo() 体验完整功能！      ', 'color: #4CAF50; font-weight: bold;');
+  console.log('%c  🎯 推荐：先运行 await window.vegetationDemo() 体验完整功能！  ', 'color: #4CAF50; font-weight: bold;');
   console.log('');
   
   // 保留原有的详细菜单（折叠显示）

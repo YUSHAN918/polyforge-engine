@@ -2,7 +2,7 @@
 
 **最后更新**: 2025-12-22  
 **当前版本**: v1.3.0  
-**整体进度**: 13/16 阶段完成 (81.25%)
+**整体进度**: 14/16 阶段完成 (87.5%)
 
 ---
 
@@ -23,6 +23,7 @@
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
 | Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
 | Phase 11.2 | TerrainSystem | ✅ 完成 | 2025-12-22 | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
+| Phase 11.3 | VegetationSystem | ✅ 完成 | 2025-12-22 | [PHASE11.3_VEGETATION_DELIVERY.md](./PHASE11.3_VEGETATION_DELIVERY.md) |
 | Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
 | Phase 13 | Standalone Bundle | ⏳ 待开始 | - | - |
 | Phase 14 | MOD 扩展系统 | ⏳ 待开始 | - | - |
@@ -135,6 +136,18 @@
 - ✅ **TerrainVisual.tsx** - R3F 渲染集成（150+ 行）
 - ✅ **鼠标交互编辑** - 左键抬高，右键降低，滚轮调整笔刷
 - ✅ **标准化全局控制器** - terrainControls, worldControls, renderControls
+
+### ✅ Phase 11.3: VegetationSystem 植被引擎（100% 完成 ✅）
+- **VegetationComponent** - 植被配置组件（密度、类型、种子）（150 行）
+- **VegetationSystem** - GPU Instancing 高性能渲染（300+ 行）
+- **空间采样逻辑** - 实时读取 TerrainComponent heightMap
+- **地形高度对齐** - 双线性插值自动对齐
+- **塞尔达式风场 Shader** - 顶点着色器摆动（sin + 噪声）
+- **VegetationVisual.tsx** - R3F InstancedMesh 渲染（200+ 行）
+- **vegetationDemo** - 交互式演示（200+ 行）
+- ✅ **window.vegetationControls** - 上帝指令接口
+- ✅ **编译错误修复** - 修复 9 个 TypeScript 错误
+- ✅ **全局挂载** - vegetationDemo 和 vegetationControls 正确挂载
 
 ### ✅ Phase 12: RenderSystem 渲染系统
 - **EngineBridge** - ECS 到 R3F 的桥接层（350+ 行）
@@ -318,6 +331,17 @@ window.terrainDemoControls.getTerrainInfo();    // 查看地形信息
 window.terrainDemoControls.getHeightAt(0, 0);   // 查看指定位置高度
 window.terrainDemoControls.listEntities();      // 列出所有实体
 
+// ⭐ 植被引擎（Phase 11.3 新增）
+await window.vegetationDemo();          // 运行植被系统演示
+window.vegetationControls.spawnGrass(5000);    // 生成 5000 棵草
+window.vegetationControls.spawnFlowers(1000);  // 生成 1000 朵花
+window.vegetationControls.clearVegetation();   // 清除所有植被
+window.vegetationControls.createMountain();    // 创建山峰（草会自动对齐）
+window.vegetationControls.createValley();      // 创建山谷
+window.vegetationControls.flattenTerrain();    // 重置为平坦
+window.vegetationControls.getInfo();           // 查看植被信息
+window.vegetationControls.listEntities();      // 列出所有实体
+
 // ⭐ 渲染系统（Phase 12 新增）
 await window.renderDemo();           // 运行渲染系统演示
 window.renderDemoControls.setTimeOfDay(18);  // 设置时间（18:00 日落）
@@ -358,14 +382,14 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~12000 行（+300 行 TerrainVisual + testRunner 重构）
+- **核心代码**: ~13500 行（+1500 行 VegetationSystem）
 - **测试代码**: ~1800 行
-- **演示代码**: ~5250 行
-- **总计**: ~19050 行
+- **演示代码**: ~5450 行
+- **总计**: ~20750 行
 
 ### 组件数量
-- **核心组件**: 9 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera, **Terrain**）
-- **核心系统**: 8 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager, **TerrainSystem**）
+- **核心组件**: 10 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera, **Terrain**, **Vegetation**）
+- **核心系统**: 9 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager, **TerrainSystem**, **VegetationSystem**）
 - **环境管理**: 1 个（WorldStateManager）
 - **渲染系统**: 2 个（EngineBridge, PostProcessing）
 - **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）

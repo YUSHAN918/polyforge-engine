@@ -88,6 +88,7 @@ export { audioDemo } from './demos/audioDemo';
 export { worldStateDemo } from './demos/worldStateDemo';
 export { renderDemo } from './demos/renderDemo';
 export { terrainDemo } from './demos/terrainDemo';
+export { vegetationDemo } from './demos/vegetationDemo';
 
 // 资产系统（阶段 7）
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
@@ -102,3 +103,7 @@ export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioU
 
 export { TerrainComponent } from './components/TerrainComponent';
 export type { TerrainConfig } from './components/TerrainComponent';
+export { VegetationComponent } from './components/VegetationComponent';
+export type { VegetationConfig } from './components/VegetationComponent';
+export { VegetationType } from './components/VegetationComponent';
+export { VegetationSystem } from './systems/VegetationSystem';

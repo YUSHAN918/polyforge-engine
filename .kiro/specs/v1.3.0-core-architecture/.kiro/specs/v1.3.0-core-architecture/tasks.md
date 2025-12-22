@@ -432,6 +432,59 @@
   - _需求：交互式地形编辑_
   - ✅ 已完成（Phase 11.2 - TerrainVisual 鼠标事件集成）
 
+## 11.3 VegetationSystem 植被引擎 ✅ 已完成（Phase 11.3）
+
+- [x] 11.3.1 实现 VegetationComponent
+  - 定义植被配置（密度、类型、种子、高度、宽度、颜色）
+  - 实现脏标记优化（isDirty）
+  - 实现序列化/反序列化支持
+  - _需求：植被数据管理_
+  - ✅ 已完成（Phase 11.3 - VegetationComponent.ts 150 行）
+
+- [x] 11.3.2 实现 VegetationSystem 核心引擎
+  - 实现 GPU Instancing 高性能渲染
+  - 实时读取 TerrainComponent heightMap
+  - 双线性插值地形高度对齐
+  - 伪随机数生成器（基于种子）
+  - _需求：高性能植被渲染_
+  - ✅ 已完成（Phase 11.3 - VegetationSystem.ts 300+ 行）
+
+- [x] 11.3.3 实现塞尔达式风场 Shader
+  - 顶点着色器实现风场摆动
+  - sin 函数 + 噪声
+  - 风力参数对接 WorldStateManager
+  - _需求：自然风场效果_
+  - ✅ 已完成（Phase 11.3 - VegetationVisual.tsx 200+ 行）
+
+- [x] 11.3.4 实现植被生成工具
+  - 实现 spawnGrass() 生成草地
+  - 实现 spawnFlowers() 生成花朵
+  - 实现 clearAllVegetation() 清除植被
+  - _需求：植被编辑工具_
+  - ✅ 已完成（Phase 11.3 - VegetationSystem 工具方法）
+
+- [x] 11.3.5 实现 R3F 渲染集成
+  - 在 EngineBridge 中实现植被渲染
+  - 使用 InstancedMesh 优化性能
+  - 实时响应 VegetationSystem 数据
+  - _需求：植被可视化_
+  - ✅ 已完成（Phase 11.3 - VegetationVisual.tsx + EngineBridge 集成）
+
+- [x]* 11.3.6 编写植被系统演示
+  - 创建 vegetationDemo.ts（200+ 行）
+  - 实现 15+ 控制接口
+  - 演示植被生成和地形交互
+  - 演示风场效果
+  - _需求：植被系统验证_
+  - ✅ 已完成（Phase 11.3 - vegetationDemo.ts + 控制台接口）
+
+- [x] 11.3.7 实现全局控制器
+  - 挂载 window.vegetationDemo
+  - 挂载 window.vegetationControls
+  - 更新启动菜单
+  - _需求：交互式上帝指令_
+  - ✅ 已完成（Phase 11.3 - testRunner.ts 集成）
+
 ## 12. RenderSystem 和后期特效 ✅ 已完成（Phase 12）
 
 - [x] 12.1 实现 RenderSystem

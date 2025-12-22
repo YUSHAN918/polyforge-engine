@@ -48,6 +48,11 @@ export async function worldStateDemo(): Promise<void> {
   globalClock = clock;
   globalSystemManager = systemManager;
 
+  // 🆕 注册核心组件（必须在任何实体创建之前）
+  entityManager.registerComponent('Transform', TransformComponent);
+  entityManager.registerComponent('Visual', VisualComponent);
+  console.log('✓ Core components registered');
+
   // 注册系统
   const hierarchySystem = new HierarchySystem();
   systemManager.registerSystem('HierarchySystem', hierarchySystem);

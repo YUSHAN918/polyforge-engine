@@ -19,11 +19,13 @@ import { Entity } from '../core/Entity';
 import { TransformComponent } from '../core/components/TransformComponent';
 import { VisualComponent } from '../core/components/VisualComponent';
 import { TerrainComponent } from '../core/components/TerrainComponent';
+import { VegetationComponent } from '../core/components/VegetationComponent';
 import { WorldStateManager } from '../core/WorldStateManager';
 import { getAssetRegistry } from '../core/assets/AssetRegistry';
 import { AssetType } from '../core/assets/types';
 import { PostProcessing } from './PostProcessing';
 import { TerrainVisual } from './rendering/TerrainVisual';
+import { VegetationVisual } from './rendering/VegetationVisual';
 
 /**
  * EngineBridge Props
@@ -32,6 +34,7 @@ interface EngineBridgeProps {
   entityManager: EntityManager;
   worldStateManager?: WorldStateManager;
   terrainSystem?: any; // TerrainSystem 实例（用于鼠标交互）
+  vegetationSystem?: any; // VegetationSystem 实例
   postProcessingEnabled?: boolean;
   bloomEnabled?: boolean;
   bloomStrength?: number;
@@ -48,7 +51,8 @@ const EntityRenderer = React.memo<{
   entity: Entity;
   worldState?: any;
   terrainSystem?: any;
-}>(({ entity, worldState, terrainSystem }) => {
+  vegetationSystem?: any;
+}>(({ entity, worldState, terrainSystem, vegetationSystem }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [meshes, setMeshes] = useState<THREE.Mesh[]>([]);
   const [modelLoaded, setModelLoaded] = useState(false);
@@ -57,10 +61,16 @@ const EntityRenderer = React.memo<{
   const transform = entity.getComponent<TransformComponent>('Transform');
   const visual = entity.getComponent<VisualComponent>('Visual');
   const terrain = entity.getComponent<TerrainComponent>('Terrain');
+  const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
 
   // 如果是地形实体，使用 TerrainVisual 渲染
   if (terrain) {
     return <TerrainVisual entity={entity} terrainSystem={terrainSystem} />;
+  }
+
+  // 如果是植被实体，使用 VegetationVisual 渲染
+  if (vegetation) {
+    return <VegetationVisual entity={entity} vegetationSystem={vegetationSystem} />;
   }
 
   // 加载模型资产
@@ -249,7 +259,7 @@ const EntityRenderer = React.memo<{
 
       {/* 递归渲染子实体 */}
       {entity.children.map((child) => (
-        <EntityRenderer key={child.id} entity={child} worldState={worldState} terrainSystem={terrainSystem} />
+        <EntityRenderer key={child.id} entity={child} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} />
       ))}
     </group>
   );
@@ -264,6 +274,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   entityManager,
   worldStateManager,
   terrainSystem,
+  vegetationSystem,
   postProcessingEnabled = true,
   bloomEnabled = true,
   bloomStrength = 1.5,
@@ -437,7 +448,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
       {/* 渲染所有根实体 */}
       {rootEntities.map((entity) => (
-        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} />
+        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} />
       ))}
     </>
   );

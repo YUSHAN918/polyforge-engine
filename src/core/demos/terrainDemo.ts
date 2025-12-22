@@ -44,6 +44,12 @@ export async function terrainDemo(): Promise<void> {
   globalClock = clock;
   globalSystemManager = systemManager;
 
+  // 🆕 注册核心组件（必须在序列化之前）
+  entityManager.registerComponent('Transform', TransformComponent);
+  entityManager.registerComponent('Visual', VisualComponent);
+  // 注意：Terrain 组件需要参数，不在此注册
+  console.log('✓ Core components registered');
+
   // 注册系统
   const hierarchySystem = new HierarchySystem();
   systemManager.registerSystem('HierarchySystem', hierarchySystem);
