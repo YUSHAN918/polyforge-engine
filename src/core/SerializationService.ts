@@ -22,6 +22,9 @@ export interface SerializedWorld {
   /** 使用的资产 ID 列表（预留） */
   assetReferences: string[];
   
+  /** 全局环境状态（Phase 11 新增） */
+  worldState?: any;
+  
   /** 元数据 */
   metadata?: {
     name?: string;

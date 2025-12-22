@@ -2,7 +2,7 @@
 
 **最后更新**: 2025-12-22  
 **当前版本**: v1.3.0  
-**整体进度**: 10/16 阶段完成 (62.5%)
+**整体进度**: 11/16 阶段完成 (68.75%)
 
 ---
 
@@ -21,7 +21,7 @@
 | Phase 8 | PhysicsSystem | ✅ 完成 | 2025-12-21 | [PHASE8_DELIVERY.md](./PHASE8_DELIVERY.md) |
 | Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
-| Phase 11 | WorldStateManager | ⏳ 待开始 | - | - |
+| Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
 | Phase 12 | RenderSystem | ⏳ 待开始 | - | - |
 | Phase 13 | Standalone Bundle | ⏳ 待开始 | - | - |
 | Phase 14 | MOD 扩展系统 | ⏳ 待开始 | - | - |
@@ -113,6 +113,15 @@
 - **浏览器交互解锁** - 自动 resume AudioContext
 - 完整演示（发光小球环绕运动 + 空间音频）
 
+### ✅ Phase 11: WorldStateManager 环境管理
+- **WorldStateManager** - 全局环境状态管理器
+- **昼夜循环系统** - 自动更新光照强度和色温
+- **色温转换算法** - Kelvin to RGB（1000K-20000K）
+- **全场景存档** - 实体 + 环境状态一键保存
+- **LocalStorage 持久化** - 刷新页面后恢复
+- **节拍脉冲接口** - 预留与 AudioSystem 联动
+- 完整演示（昼夜交替 + 存档/恢复）
+
 ---
 
 ## 🔧 核心架构特性
@@ -152,6 +161,7 @@ src/core/
 ├── SerializationService.ts           # 序列化服务
 ├── Clock.ts                          # ⭐ Clock 时钟系统
 ├── CommandManager.ts                 # ⭐ 命令管理器
+├── WorldStateManager.ts              # ⭐ 环境状态管理器
 ├── index.ts                          # 模块导出
 │
 ├── components/
@@ -190,7 +200,8 @@ src/core/
     ├── physicsDemo.ts                # ⭐ 物理系统演示
     ├── cameraDemo.ts                 # ⭐ 相机系统演示
     └── demos/
-        └── audioDemo.ts              # ⭐ 音频系统演示
+        ├── audioDemo.ts              # ⭐ 音频系统演示
+        └── worldStateDemo.ts         # ⭐ 环境管理演示
 ```
 
 ---
@@ -249,6 +260,18 @@ window.audioDemoControls.setPitch(1.5);      // 设置音调
 window.audioDemoControls.toggleLoop();       // 切换循环
 window.audioDemoControls.setMasterVolume(0.5); // 主音量
 window.audioDemoControls.getStats();         // 查看统计
+
+// ⭐ 环境管理（Phase 11 新增）
+await window.worldStateDemo();       // 运行环境管理演示
+window.worldStateControls.setTimeOfDay(18);  // 设置时间（18:00）
+window.worldStateControls.setDayDuration(30); // 设置一天时长（30秒）
+window.worldStateControls.toggleDayNightCycle(); // 切换昼夜循环
+window.worldStateControls.setLightIntensity(0.5); // 设置光照强度
+window.worldStateControls.getState();        // 查看当前状态
+window.worldStateControls.debug();           // 调试信息
+window.worldStateControls.saveSnapshot();    // 保存全场景快照
+window.worldStateControls.loadSnapshot();    // 加载快照
+window.worldStateControls.clearSnapshot();   // 清除快照
 ```
 
 ---
@@ -257,40 +280,36 @@ window.audioDemoControls.getStats();         // 查看统计
 
 ### 推荐顺序
 
-1. **Phase 11: WorldStateManager** - 世界状态管理
-   - 实现场景保存/加载
-   - 实现快照系统
-   - 实现状态回放
-
-2. **Phase 12: RenderSystem** - 渲染系统
+1. **Phase 12: RenderSystem** - 渲染系统
    - 集成 R3F
    - 实现后期特效
    - 实现 Bloom 辉光
 
 ### 可选顺序
 
-- **Phase 7: AssetRegistry** - 资产管线（如需资产管理）
-- **Phase 12: RenderSystem** - 渲染系统（Three.js/R3F 集成）
+- **Phase 13: Standalone Bundle** - 分发系统
+- **Phase 14: MOD 扩展系统** - 动态组件/系统注册
 
 ---
 
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~9000 行
+- **核心代码**: ~9800 行
 - **测试代码**: ~1800 行
-- **演示代码**: ~4000 行
-- **总计**: ~14800 行
+- **演示代码**: ~4300 行
+- **总计**: ~15900 行
 
 ### 组件数量
 - **核心组件**: 8 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera）
 - **核心系统**: 7 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager）
+- **环境管理**: 1 个（WorldStateManager）
 - **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）
 - **测试套件**: 18 个（含 AssetPipeline 15 个测试）
 
 ### 测试覆盖
 - **单元测试**: 17 个测试套件
-- **演示场景**: 12 个
+- **演示场景**: 13 个
 - **测试状态**: 全部通过 ✅
 
 ---
@@ -301,9 +320,10 @@ window.audioDemoControls.getStats();         // 查看统计
 2. **完整层级系统** - 父子关系、Socket 挂点、世界矩阵
 3. **统一时间管理** - TimeScale、暂停、FPS 监控
 4. **撤销/重做系统** - 完整的命令模式实现
-5. **类型安全** - TypeScript 严格模式，零告警
-6. **测试驱动** - 完整的单元测试和演示场景
-7. **影子构建** - 不影响现有代码，平滑迁移
+5. **全场景存档** - 实体 + 环境状态一键保存/恢复
+6. **类型安全** - TypeScript 严格模式，零告警
+7. **测试驱动** - 完整的单元测试和演示场景
+8. **影子构建** - 不影响现有代码，平滑迁移
 
 ---
 

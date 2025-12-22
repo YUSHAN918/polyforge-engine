@@ -15,6 +15,8 @@ export type { SerializedWorld } from './SerializationService';
 export { Clock } from './Clock';
 export { CommandManager, CreateEntityCommand, DeleteEntityCommand, ModifyComponentCommand, AttachToSocketCommand } from './CommandManager';
 export type { ICommand } from './CommandManager';
+export { WorldStateManager } from './WorldStateManager';
+export type { WorldState, WorldStateChangeCallback, BeatPulseCallback } from './WorldStateManager';
 
 // 工具函数
 export * from './utils';
@@ -81,6 +83,7 @@ export { inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHi
 export { physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './physicsDemo';
 export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './cameraDemo';
 export { audioDemo } from './demos/audioDemo';
+export { worldStateDemo } from './demos/worldStateDemo';
 
 // 资产系统（阶段 7）
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
