@@ -26,6 +26,14 @@ let globalEntityManager: EntityManager;
 let globalWorldStateManager: WorldStateManager;
 let globalClock: Clock;
 let globalSystemManager: SystemManager;
+let globalPostProcessingSettings = {
+  enabled: true,
+  bloomEnabled: true,
+  bloomStrength: 1.5,
+  bloomRadius: 0.4,
+  bloomThreshold: 0.85,
+  smaaEnabled: true,
+};
 
 /**
  * 渲染系统演示场景
@@ -155,6 +163,53 @@ export async function renderDemo(): Promise<void> {
       
       return { models, hdrs };
     },
+    
+    // 后处理控制
+    togglePostProcessing: () => {
+      globalPostProcessingSettings.enabled = !globalPostProcessingSettings.enabled;
+      console.log(`🎬 Post-processing: ${globalPostProcessingSettings.enabled ? 'enabled' : 'disabled'}`);
+      console.log('⚠️ Reload the page to apply changes');
+      return globalPostProcessingSettings;
+    },
+    
+    toggleBloom: () => {
+      globalPostProcessingSettings.bloomEnabled = !globalPostProcessingSettings.bloomEnabled;
+      console.log(`✨ Bloom: ${globalPostProcessingSettings.bloomEnabled ? 'enabled' : 'disabled'}`);
+      console.log('⚠️ Reload the page to apply changes');
+      return globalPostProcessingSettings;
+    },
+    
+    setBloomStrength: (strength: number) => {
+      globalPostProcessingSettings.bloomStrength = strength;
+      console.log(`✨ Bloom strength set to ${strength.toFixed(2)}`);
+      console.log('⚠️ Reload the page to apply changes');
+      return globalPostProcessingSettings;
+    },
+    
+    setBloomThreshold: (threshold: number) => {
+      globalPostProcessingSettings.bloomThreshold = threshold;
+      console.log(`✨ Bloom threshold set to ${threshold.toFixed(2)}`);
+      console.log('⚠️ Reload the page to apply changes');
+      return globalPostProcessingSettings;
+    },
+    
+    toggleSMAA: () => {
+      globalPostProcessingSettings.smaaEnabled = !globalPostProcessingSettings.smaaEnabled;
+      console.log(`🔲 SMAA: ${globalPostProcessingSettings.smaaEnabled ? 'enabled' : 'disabled'}`);
+      console.log('⚠️ Reload the page to apply changes');
+      return globalPostProcessingSettings;
+    },
+    
+    getPostProcessingSettings: () => {
+      console.log('=== Post-Processing Settings ===');
+      console.log(`Enabled: ${globalPostProcessingSettings.enabled}`);
+      console.log(`Bloom Enabled: ${globalPostProcessingSettings.bloomEnabled}`);
+      console.log(`Bloom Strength: ${globalPostProcessingSettings.bloomStrength}`);
+      console.log(`Bloom Radius: ${globalPostProcessingSettings.bloomRadius}`);
+      console.log(`Bloom Threshold: ${globalPostProcessingSettings.bloomThreshold}`);
+      console.log(`SMAA Enabled: ${globalPostProcessingSettings.smaaEnabled}`);
+      return globalPostProcessingSettings;
+    },
   };
 
   console.log('');
@@ -168,8 +223,17 @@ export async function renderDemo(): Promise<void> {
   console.log('window.renderDemoControls.listEntities()       - 列出所有实体');
   console.log('window.renderDemoControls.listAssets()         - 列出所有资产');
   console.log('');
+  console.log('🎬 === Post-Processing Controls ===');
+  console.log('window.renderDemoControls.togglePostProcessing() - 切换后处理');
+  console.log('window.renderDemoControls.toggleBloom()        - 切换辉光效果');
+  console.log('window.renderDemoControls.setBloomStrength(2.0) - 设置辉光强度');
+  console.log('window.renderDemoControls.setBloomThreshold(0.5) - 设置辉光阈值');
+  console.log('window.renderDemoControls.toggleSMAA()         - 切换抗锯齿');
+  console.log('window.renderDemoControls.getPostProcessingSettings() - 查看后处理设置');
+  console.log('');
   console.log('💡 Tip: 观察金属物体表面的 HDR 反射随太阳位置实时流转！');
   console.log('💡 Tip: 在深夜时刻，自发光部分会产生辉光效果！');
+  console.log('💡 Tip: 调整 bloomThreshold 可以控制哪些物体产生辉光！');
 }
 
 /**
@@ -372,3 +436,10 @@ async function createDemoScene(): Promise<void> {
 
 // 暴露到全局
 (window as any).renderDemo = renderDemo;
+
+/**
+ * 获取后处理设置（供 App.tsx 使用）
+ */
+export function getPostProcessingSettings() {
+  return globalPostProcessingSettings;
+}

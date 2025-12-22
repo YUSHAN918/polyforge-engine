@@ -11,7 +11,7 @@
  * - 支持 WorldStateManager 光影联动
  */
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EntityManager } from '../core/EntityManager';
@@ -21,6 +21,7 @@ import { VisualComponent } from '../core/components/VisualComponent';
 import { WorldStateManager } from '../core/WorldStateManager';
 import { getAssetRegistry } from '../core/assets/AssetRegistry';
 import { AssetType } from '../core/assets/types';
+import { PostProcessing } from './PostProcessing';
 
 /**
  * EngineBridge Props
@@ -28,6 +29,12 @@ import { AssetType } from '../core/assets/types';
 interface EngineBridgeProps {
   entityManager: EntityManager;
   worldStateManager?: WorldStateManager;
+  postProcessingEnabled?: boolean;
+  bloomEnabled?: boolean;
+  bloomStrength?: number;
+  bloomRadius?: number;
+  bloomThreshold?: number;
+  smaaEnabled?: boolean;
 }
 
 /**
@@ -246,6 +253,12 @@ EntityRenderer.displayName = 'EntityRenderer';
 export const EngineBridge: React.FC<EngineBridgeProps> = ({
   entityManager,
   worldStateManager,
+  postProcessingEnabled = true,
+  bloomEnabled = true,
+  bloomStrength = 1.5,
+  bloomRadius = 0.4,
+  bloomThreshold = 0.85,
+  smaaEnabled = true,
 }) => {
   const [rootEntities, setRootEntities] = useState<Entity[]>([]);
   const [worldState, setWorldState] = useState<any>(null);
@@ -380,6 +393,18 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
   return (
     <>
+      {/* 后处理管线 */}
+      {postProcessingEnabled && (
+        <PostProcessing
+          enabled={postProcessingEnabled}
+          bloomEnabled={bloomEnabled}
+          bloomStrength={bloomStrength}
+          bloomRadius={bloomRadius}
+          bloomThreshold={bloomThreshold}
+          smaaEnabled={smaaEnabled}
+        />
+      )}
+
       {/* 环境光 */}
       <ambientLight intensity={worldState?.lightIntensity * 0.3 || 0.3} color={worldState?.ambientColor || '#ffffff'} />
       
