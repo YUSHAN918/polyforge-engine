@@ -84,6 +84,7 @@ export { physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawn
 export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './cameraDemo';
 export { audioDemo } from './demos/audioDemo';
 export { worldStateDemo } from './demos/worldStateDemo';
+export { renderDemo } from './demos/renderDemo';
 
 // 资产系统（阶段 7）
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';

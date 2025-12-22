@@ -2,13 +2,13 @@
  * PolyForge Asset System - HDR Importer
  * 
  * HDR 环境贴图导入工具
- * 支持 .hdr 格式，使用 Three.js RGBELoader
+ * 支持 .hdr 格式，使用 Three.js HDRLoader
  * 
  * 铁律：严禁引用外部库，所有 Loader 必须本地化
  */
 
 import * as THREE from 'three';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
 /**
  * HDR 元数据接口
@@ -22,17 +22,17 @@ export interface HDRMetadata {
 
 /**
  * HDR 导入器
- * 使用 Three.js RGBELoader 解析 HDR 文件
+ * 使用 Three.js HDRLoader 解析 HDR 文件
  */
 export class HDRImporter {
-  private rgbeLoader: RGBELoader;
+  private hdrLoader: HDRLoader;
   private renderer: THREE.WebGLRenderer | null = null;
   private pmremGenerator: THREE.PMREMGenerator | null = null;
 
   constructor() {
-    // 初始化 RGBE Loader（本地化，零外部依赖）
-    this.rgbeLoader = new RGBELoader();
-    console.log('[HDRImporter] Initialized with local RGBELoader');
+    // 初始化 HDR Loader（本地化，零外部依赖）
+    this.hdrLoader = new HDRLoader();
+    console.log('[HDRImporter] Initialized with local HDRLoader');
   }
 
   /**
@@ -56,7 +56,7 @@ export class HDRImporter {
       // 2. 读取文件为 ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
 
-      // 3. 使用 RGBELoader 解析 HDR
+      // 3. 使用 HDRLoader 解析 HDR
       const texture = await this.loadHDR(arrayBuffer);
 
       // 4. 使用 PMREMGenerator 预处理纹理（生成 envMap）
@@ -100,11 +100,11 @@ export class HDRImporter {
   }
 
   /**
-   * 使用 RGBELoader 加载 HDR
+   * 使用 HDRLoader 加载 HDR
    */
   private loadHDR(arrayBuffer: ArrayBuffer): Promise<THREE.DataTexture> {
     return new Promise((resolve, reject) => {
-      this.rgbeLoader.load(
+      this.hdrLoader.load(
         // 使用 Data URL 避免网络请求
         this.arrayBufferToDataURL(arrayBuffer),
         (texture) => resolve(texture),
