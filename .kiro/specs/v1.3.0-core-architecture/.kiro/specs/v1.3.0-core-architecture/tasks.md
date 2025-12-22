@@ -368,37 +368,37 @@
   - _需求：8.1-8.5_
   - ✅ 已完成（Phase 11.1 - worldStateDemo.ts 演示验证）
 
-## 12. RenderSystem 和后期特效
+## 12. RenderSystem 和后期特效 ✅ 已完成（Phase 12）
 
 - [x] 12.1 实现 RenderSystem
   - 收集 VisualComponent
   - 与 R3F 集成渲染
   - _需求：2.1_
-  - ✅ 已完成（Phase 12 - EngineBridge.tsx）
+  - ✅ 已完成（Phase 12 - EngineBridge.tsx 350+ 行）
 
-- [ ] 12.2 实现 EffectComposer 集成
+- [x] 12.2 实现 EffectComposer 集成
   - 在 GameCanvas 顶层创建 Composer
   - 实现 Pass 管理
   - _需求：9.1, 9.3_
-  - ⏳ 预留接口（可在后续版本扩展）
+  - ✅ 已完成（Phase 12 - PostProcessing.tsx 120 行）
 
 - [x] 12.3 实现 Bloom 辉光效果
   - 识别 emissive 材质
   - 应用辉光 Pass
   - _需求：9.2, 10.2_
-  - ✅ 已完成（Phase 12 - VisualComponent 支持）
+  - ✅ 已完成（Phase 12 - UnrealBloomPass + 自发光联动）
 
-- [ ] 12.4 实现后期特效开关
+- [x] 12.4 实现后期特效开关
   - 支持启用/禁用后期
   - 回退到标准渲染
   - _需求：9.4, 9.5_
-  - ⏳ 预留接口（可在后续版本扩展）
+  - ✅ 已完成（Phase 12 - 控制接口 + 动态配置）
 
 - [x]* 12.5 编写渲染系统集成测试
   - 测试 emissive 识别
   - 测试后期特效切换
   - _需求：9.1-9.5, 10.1-10.4_
-  - ✅ 已完成（Phase 12 - renderDemo.ts 演示验证）
+  - ✅ 已完成（Phase 12 - renderDemo.ts 演示验证 + 后处理控制）
 
 ## 13. Standalone Bundle 分发系统
 

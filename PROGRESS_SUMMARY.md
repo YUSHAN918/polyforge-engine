@@ -10,10 +10,10 @@
 
 | 阶段 | 名称 | 状态 | 完成日期 | 交付文档 |
 |------|------|------|----------|----------|
-| Phase 1 | 核心 ECS 基础设施 | ✅ 完成 | 2024-12 | [PHASE1_DELIVERY.md](./PHASE1_DELIVERY.md) |
-| Phase 2.1 | Visual & Rig 组件 | ✅ 完成 | 2024-12 | [PHASE2.1_DELIVERY.md](./PHASE2.1_DELIVERY.md) |
-| Phase 2.2 | Physics, Vehicle & Audio | ✅ 完成 | 2024-12 | [PHASE2.2_DELIVERY.md](./PHASE2.2_DELIVERY.md) |
-| Phase 3 | Socket/Anchor 系统 | ✅ 完成 | 2024-12-20 | [PHASE3_DELIVERY.md](./PHASE3_DELIVERY.md) |
+| Phase 1 | 核心 ECS 基础设施 | ✅ 完成 | 2025-12 | [PHASE1_DELIVERY.md](./PHASE1_DELIVERY.md) |
+| Phase 2.1 | Visual & Rig 组件 | ✅ 完成 | 2025-12 | [PHASE2.1_DELIVERY.md](./PHASE2.1_DELIVERY.md) |
+| Phase 2.2 | Physics, Vehicle & Audio | ✅ 完成 | 2025-12 | [PHASE2.2_DELIVERY.md](./PHASE2.2_DELIVERY.md) |
+| Phase 3 | Socket/Anchor 系统 | ✅ 完成 | 2025-12-20 | [PHASE3_DELIVERY.md](./PHASE3_DELIVERY.md) |
 | Phase 4 | Clock 时钟系统 | ✅ 完成 | 2025-12-20 | [PHASE4_DELIVERY.md](./PHASE4_DELIVERY.md) |
 | Phase 5 | CommandManager 命令系统 | ✅ 完成 | 2025-12-20 | [PHASE5_DELIVERY.md](./PHASE5_DELIVERY.md) |
 | Phase 6 | InputMappingSystem | ✅ 完成 | 2025-12-21 | [PHASE6_DELIVERY.md](./PHASE6_DELIVERY.md) |
@@ -22,7 +22,7 @@
 | Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
 | Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
-| Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [PHASE12_DELIVERY.md](./PHASE12_DELIVERY.md) |
+| Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
 | Phase 13 | Standalone Bundle | ⏳ 待开始 | - | - |
 | Phase 14 | MOD 扩展系统 | ⏳ 待开始 | - | - |
 | Phase 15 | React 19 + R3F | ⏳ 待开始 | - | - |
@@ -123,14 +123,18 @@
 - 完整演示（昼夜交替 + 存档/恢复）
 
 ### ✅ Phase 12: RenderSystem 渲染系统
-- **EngineBridge** - ECS 到 R3F 的桥接层
+- **EngineBridge** - ECS 到 R3F 的桥接层（350+ 行）
 - **实体层级映射** - 1:1 映射到 R3F 场景
-- **VisualComponent 集成** - 深度渲染支持
-- **HDR 环境贴图** - 自动加载和应用
+- **VisualComponent 集成** - 基础几何体 + GLTF 模型
+- **HDR 环境贴图** - 自动加载和应用（HDRLoader）
 - **塞尔达式光影** - 太阳位置随时间动态更新
 - **材质响应式** - 自动响应 WorldState 变化
+- **PostProcessing** - 电影级后处理管线（120 行）
+- **UnrealBloomPass** - 电影级辉光效果
+- **SMAAPass** - 边缘抗锯齿
+- **自发光联动** - emissiveIntensity 触发辉光
 - **React.memo 优化** - 避免不必要的重渲染
-- 完整演示（金属反射 + 辉光效果）
+- 完整演示（金属反射 + 辉光效果 + 后处理控制）
 
 ---
 
@@ -294,6 +298,13 @@ window.renderDemoControls.getState();        // 查看当前状态
 window.renderDemoControls.debug();           // 调试信息
 window.renderDemoControls.listEntities();    // 列出所有实体
 window.renderDemoControls.listAssets();      // 列出所有资产
+// ⭐ 后处理控制（Phase 12 新增）
+window.renderDemoControls.togglePostProcessing(); // 切换后处理
+window.renderDemoControls.toggleBloom();     // 切换辉光效果
+window.renderDemoControls.setBloomStrength(2.0); // 设置辉光强度
+window.renderDemoControls.setBloomThreshold(0.5); // 设置辉光阈值
+window.renderDemoControls.toggleSMAA();      // 切换抗锯齿
+window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 ```
 
 ---
@@ -317,16 +328,16 @@ window.renderDemoControls.listAssets();      // 列出所有资产
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~10500 行
+- **核心代码**: ~11000 行
 - **测试代码**: ~1800 行
-- **演示代码**: ~4600 行
-- **总计**: ~16900 行
+- **演示代码**: ~5000 行
+- **总计**: ~17800 行
 
 ### 组件数量
 - **核心组件**: 8 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera）
 - **核心系统**: 7 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager）
 - **环境管理**: 1 个（WorldStateManager）
-- **渲染系统**: 1 个（EngineBridge）
+- **渲染系统**: 2 个（EngineBridge, PostProcessing）
 - **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）
 - **测试套件**: 18 个（含 AssetPipeline 15 个测试）
 
