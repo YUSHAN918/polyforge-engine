@@ -66,6 +66,7 @@ export { InputSystem } from './systems/InputSystem';
 export type { InputAction, InputPreset } from './systems/InputSystem';
 export { PhysicsSystem } from './systems/PhysicsSystem';
 export { CameraSystem } from './systems/CameraSystem';
+export { AudioSystem } from './systems/AudioSystem';
 
 // 演示和测试
 export { runCoreDemo } from './demo';
@@ -79,6 +80,7 @@ export { commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, show
 export { inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './inputDemo';
 export { physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './physicsDemo';
 export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './cameraDemo';
+export { audioDemo } from './demos/audioDemo';
 
 // 资产系统（阶段 7）
 export { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';

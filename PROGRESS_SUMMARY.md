@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
-**最后更新**: 2025-12-21  
+**最后更新**: 2025-12-22  
 **当前版本**: v1.3.0  
-**整体进度**: 9/16 阶段完成 (56%)
+**整体进度**: 10/16 阶段完成 (62.5%)
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase 6 | InputMappingSystem | ✅ 完成 | 2025-12-21 | [PHASE6_DELIVERY.md](./PHASE6_DELIVERY.md) |
 | Phase 7 | AssetRegistry | ✅ 完成 | 2025-12-21 | [PHASE7_COMPLETION_REPORT.md](./PHASE7_COMPLETION_REPORT.md) |
 | Phase 8 | PhysicsSystem | ✅ 完成 | 2025-12-21 | [PHASE8_DELIVERY.md](./PHASE8_DELIVERY.md) |
-| Phase 9 | AudioSystem | ⏳ 待开始 | - | - |
+| Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
 | Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
 | Phase 11 | WorldStateManager | ⏳ 待开始 | - | - |
 | Phase 12 | RenderSystem | ⏳ 待开始 | - | - |
@@ -104,6 +104,15 @@
 - **预设系统** - 4 个预设快照
 - 完整演示（第三人称跟随、横版卷轴、等距视角）
 
+### ✅ Phase 9: AudioSystem 音频系统
+- **AudioSystem** - Web Audio API 集成
+- **3D 空间音频** - HRTF + 距离衰减
+- **TimeScale 联动** - pitch × timeScale 实时计算
+- **音源节点池** - 避免重复创建，防止内存泄漏
+- **AudioListener 同步** - 自动跟随相机位置和朝向
+- **浏览器交互解锁** - 自动 resume AudioContext
+- 完整演示（发光小球环绕运动 + 空间音频）
+
 ---
 
 ## 🔧 核心架构特性
@@ -157,7 +166,9 @@ src/core/
 ├── systems/
 │   ├── HierarchySystem.ts            # ⭐ 层级系统
 │   ├── InputSystem.ts                # ⭐ 输入系统
-│   └── PhysicsSystem.ts              # ⭐ 物理系统
+│   ├── PhysicsSystem.ts              # ⭐ 物理系统
+│   ├── CameraSystem.ts               # ⭐ 相机系统
+│   └── AudioSystem.ts                # ⭐ 音频系统
 │
 ├── __tests__/
 │   ├── EntityManager.test.ts         # EntityManager 测试
@@ -176,7 +187,10 @@ src/core/
     ├── clockDemo.ts                  # ⭐ 时钟系统演示
     ├── commandDemo.ts                # ⭐ 命令系统演示
     ├── inputDemo.ts                  # ⭐ 输入系统演示
-    └── physicsDemo.ts                # ⭐ 物理系统演示
+    ├── physicsDemo.ts                # ⭐ 物理系统演示
+    ├── cameraDemo.ts                 # ⭐ 相机系统演示
+    └── demos/
+        └── audioDemo.ts              # ⭐ 音频系统演示
 ```
 
 ---
@@ -226,6 +240,15 @@ window.moveCameraTarget(5,3,0);      // 移动跟随目标
 window.rotateCameraView(-30,45);     // 旋转相机视角
 window.setCameraDistance(10);        // 设置相机距离
 window.showCameraStatus();           // 显示相机状态
+
+// ⭐ 音频控制（Phase 9 新增）
+await window.audioDemo();            // 运行音频系统演示
+window.audioDemoControls.setTimeScale(0.5);  // 慢动作（音频变慢）
+window.audioDemoControls.setVolume(0.5);     // 设置音量
+window.audioDemoControls.setPitch(1.5);      // 设置音调
+window.audioDemoControls.toggleLoop();       // 切换循环
+window.audioDemoControls.setMasterVolume(0.5); // 主音量
+window.audioDemoControls.getStats();         // 查看统计
 ```
 
 ---
@@ -234,20 +257,15 @@ window.showCameraStatus();           // 显示相机状态
 
 ### 推荐顺序
 
-1. **Phase 9: AudioSystem** - 音频系统
-   - 集成 Web Audio API
-   - 实现空间音频
-   - 实现音频混音
-
-2. **Phase 10: CameraSystem** - 相机系统
-   - 实现相机控制
-   - 实现相机跟随
-   - 实现相机碰撞
-
-3. **Phase 11: WorldStateManager** - 世界状态管理
+1. **Phase 11: WorldStateManager** - 世界状态管理
    - 实现场景保存/加载
    - 实现快照系统
    - 实现状态回放
+
+2. **Phase 12: RenderSystem** - 渲染系统
+   - 集成 R3F
+   - 实现后期特效
+   - 实现 Bloom 辉光
 
 ### 可选顺序
 
@@ -259,26 +277,20 @@ window.showCameraStatus();           // 显示相机状态
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~8200 行
+- **核心代码**: ~9000 行
 - **测试代码**: ~1800 行
-- **演示代码**: ~3500 行
-- **总计**: ~13500 行
+- **演示代码**: ~4000 行
+- **总计**: ~14800 行
 
 ### 组件数量
 - **核心组件**: 8 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera）
-- **核心系统**: 6 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, Clock, CommandManager）
+- **核心系统**: 7 个（HierarchySystem, InputSystem, PhysicsSystem, CameraSystem, AudioSystem, Clock, CommandManager）
 - **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）
 - **测试套件**: 18 个（含 AssetPipeline 15 个测试）
 
 ### 测试覆盖
 - **单元测试**: 17 个测试套件
-- **演示场景**: 11 个
-- **测试状态**: 全部通过 ✅
-- **测试套件**: 17 个
-
-### 测试覆盖
-- **单元测试**: 17 个测试套件
-- **演示场景**: 8 个
+- **演示场景**: 12 个
 - **测试状态**: 全部通过 ✅
 
 ---
@@ -305,4 +317,4 @@ window.showCameraStatus();           // 显示相机状态
 ---
 
 **制作人**: _YUSHAN_
-**最后审计**: 2025-12-20
+**最后审计**: 2025-12-22
