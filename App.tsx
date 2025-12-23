@@ -10,6 +10,8 @@ import { ActionStudioPanel } from './components/ActionStudioPanel';
 import { AIAssistant } from './components/AIAssistant'; 
 import { VfxEditorPanel } from './components/VfxEditorPanel'; // NEW
 import { ArchitectureEditor } from './components/ArchitectureEditor/ArchitectureEditor'; // NEW
+import { ArchitectureValidationPanel } from './components/ArchitectureValidationPanel'; // NEW: 架构验证观测窗口
+import { ArchitectureValidationManager } from './core/ArchitectureValidationManager'; // NEW: 核心管理器
 import { SettingsModal } from './components/SettingsModal'; // NEW
 import './i18n'; // 初始化国际化
 import i18n from 'i18next'; // 导入 i18n 实例
@@ -44,6 +46,9 @@ export const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.CHARACTER_EDITOR);
   const [config, setConfig] = useState<CharacterConfig>(DEFAULT_CONFIG);
   const [savedCharacters, setSavedCharacters] = useState<SavedCharacter[]>([SAMPLE_CHARACTER]);
+  
+  // 架构验证观测窗口状态
+  const [archValidationManager, setArchValidationManager] = useState<ArchitectureValidationManager | null>(null);
 
   const [mapConfig, setMapConfig] = useState<MapConfig>(DEFAULT_MAP_CONFIG);
   const [mapHistory, setMapHistory] = useState<MapConfig[]>([]);
@@ -112,6 +117,40 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
   useEffect(() => {
     primitivesRef.current = workshopPrimitives;
   }, [workshopPrimitives]);
+  
+  // 架构验证观测窗口：监听模式切换
+  useEffect(() => {
+    if (mode === AppMode.ARCHITECTURE_VALIDATOR) {
+      console.log('🏗️ [App] Entering Architecture Validation mode...');
+      
+      // 创建管理器
+      const manager = new ArchitectureValidationManager();
+      manager.start();
+      setArchValidationManager(manager);
+      
+      // 启动更新循环
+      const updateLoop = () => {
+        manager.update();
+        requestAnimationFrame(updateLoop);
+      };
+      const loopId = requestAnimationFrame(updateLoop);
+      
+      console.log('✓ Architecture Validation Manager initialized');
+      
+      // 清理函数
+      return () => {
+        cancelAnimationFrame(loopId);
+        setArchValidationManager(null);
+        console.log('✓ Architecture Validation Manager cleaned up');
+      };
+    } else {
+      // 清理管理器
+      if (archValidationManager) {
+        setArchValidationManager(null);
+        console.log('✓ Architecture Validation Manager cleaned up (mode changed)');
+      }
+    }
+  }, [mode]);
 
   const [customActions, setCustomActions] = useState<CustomAction[]>(INITIAL_CUSTOM_ACTIONS);
   const [currentActionId, setCurrentActionId] = useState<string | null>(null);
@@ -1287,6 +1326,8 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
                 // NEW: Gizmo control for VFX Emitters
                 selectedVfxEmitterId={selectedVfxEmitterId}
                 onVfxEmitterUpdate={currentVfxAssetId ? (emitterId, updates) => handleVfxEmitterUpdate(currentVfxAssetId, emitterId, updates) : undefined}
+                // NEW: Architecture Validation Manager
+                archValidationManager={archValidationManager}
             />
             {mode === AppMode.GAMEPLAY && (
                 <div className="absolute top-4 left-4 z-40 bg-gray-900/80 backdrop-blur border border-gray-700 p-3 rounded-xl shadow-xl flex flex-col gap-2 min-w-[200px]">
@@ -1472,7 +1513,7 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
         )}
         
         {mode === AppMode.ARCHITECTURE_VALIDATOR && (
-            <ArchitectureEditor />
+            <ArchitectureValidationPanel manager={archValidationManager} />
         )}
         
         {/* AI Assistant at the end for z-index layering */}

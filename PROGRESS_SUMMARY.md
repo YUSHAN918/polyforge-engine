@@ -1,34 +1,60 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
-**最后更新**: 2025-12-22  
+**最后更新**: 2025-12-23  
 **当前版本**: v1.3.0  
-**整体进度**: 14/16 阶段完成 (87.5%)
+**整体进度**: 15/17 阶段完成 (88.2%)
+
+---
+
+## 📚 文档导航
+
+### 核心文档
+- **[需求文档](./docs/requirements.md)** - 完整的功能需求和验收标准
+- **[设计文档](./docs/design.md)** - 架构设计和技术方案
+- **[AI 协作 SOP](./docs/SOP_AI_Collaboration.md)** - AI 协同开发标准操作流程
+
+### 任务清单（分片）
+- **[基础设施任务](./docs/tasks/tasks_infra.md)** - Phase 1-7（核心 ECS 至资产管线）
+- **[核心功能任务](./docs/tasks/tasks_features.md)** - Phase 8-12（物理、音频、相机、环境、地形、植被、渲染）
+- **[最终阶段任务](./docs/tasks/tasks_v1.3_final.md)** - Phase 13-17（分发系统、架构验证、MOD、React 19、最终优化）
+
+### 历史归档
+- **[Phase 交付报告](./docs/archive/reports/)** - 所有历史 Phase 交付文档和验证报告
 
 ---
 
 ## 📊 阶段完成状态
 
-| 阶段 | 名称 | 状态 | 完成日期 | 交付文档 |
-|------|------|------|----------|----------|
-| Phase 1 | 核心 ECS 基础设施 | ✅ 完成 | 2025-12 | [PHASE1_DELIVERY.md](./PHASE1_DELIVERY.md) |
-| Phase 2.1 | Visual & Rig 组件 | ✅ 完成 | 2025-12 | [PHASE2.1_DELIVERY.md](./PHASE2.1_DELIVERY.md) |
-| Phase 2.2 | Physics, Vehicle & Audio | ✅ 完成 | 2025-12 | [PHASE2.2_DELIVERY.md](./PHASE2.2_DELIVERY.md) |
-| Phase 3 | Socket/Anchor 系统 | ✅ 完成 | 2025-12-20 | [PHASE3_DELIVERY.md](./PHASE3_DELIVERY.md) |
-| Phase 4 | Clock 时钟系统 | ✅ 完成 | 2025-12-20 | [PHASE4_DELIVERY.md](./PHASE4_DELIVERY.md) |
-| Phase 5 | CommandManager 命令系统 | ✅ 完成 | 2025-12-20 | [PHASE5_DELIVERY.md](./PHASE5_DELIVERY.md) |
-| Phase 6 | InputMappingSystem | ✅ 完成 | 2025-12-21 | [PHASE6_DELIVERY.md](./PHASE6_DELIVERY.md) |
-| Phase 7 | AssetRegistry | ✅ 完成 | 2025-12-21 | [PHASE7_COMPLETION_REPORT.md](./PHASE7_COMPLETION_REPORT.md) |
-| Phase 8 | PhysicsSystem | ✅ 完成 | 2025-12-21 | [PHASE8_DELIVERY.md](./PHASE8_DELIVERY.md) |
-| Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
-| Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
-| Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
-| Phase 11.2 | TerrainSystem | ✅ 完成 | 2025-12-22 | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
-| Phase 11.3 | VegetationSystem | ✅ 完成 | 2025-12-22 | [PHASE11.3_VEGETATION_DELIVERY.md](./PHASE11.3_VEGETATION_DELIVERY.md) |
-| Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
-| Phase 13 | Standalone Bundle | ⏳ 待开始 | - | - |
-| Phase 14 | MOD 扩展系统 | ⏳ 待开始 | - | - |
-| Phase 15 | React 19 + R3F | ⏳ 待开始 | - | - |
-| Phase 16 | 最终集成优化 | ⏳ 待开始 | - | - |
+### 🎯 最新战果（2025-12-23）
+
+- ✅ **架构验证视口落地** - 独立 ECS 实例 + 实时性能监测
+- ✅ **FPS 实时统计** - 使用 useRef 直接操作 DOM，高频更新无卡顿
+- ✅ **顶点/植被数统计** - 实时显示地形顶点数和植被实例数
+- ✅ **一键演示功能** - 山峰 + 植被 + 日落光影自动演示
+- ✅ **全系统联动** - 相机、环境、渲染、地形、植被完美闭环
+
+| 阶段 | 名称 | 状态 | 完成日期 | 任务清单 | 交付文档 |
+|------|------|------|----------|----------|----------|
+| Phase 1 | 核心 ECS 基础设施 | ✅ 完成 | 2025-12 | [📋 任务](./docs/tasks/tasks_infra.md#phase-1-核心-ecs-基础设施-) | [PHASE1_DELIVERY.md](./PHASE1_DELIVERY.md) |
+| Phase 2.1 | Visual & Rig 组件 | ✅ 完成 | 2025-12 | [📋 任务](./docs/tasks/tasks_infra.md#phase-2-核心组件实现-) | [PHASE2.1_DELIVERY.md](./PHASE2.1_DELIVERY.md) |
+| Phase 2.2 | Physics, Vehicle & Audio | ✅ 完成 | 2025-12 | [📋 任务](./docs/tasks/tasks_infra.md#phase-2-核心组件实现-) | [PHASE2.2_DELIVERY.md](./PHASE2.2_DELIVERY.md) |
+| Phase 3 | Socket/Anchor 系统 | ✅ 完成 | 2025-12-20 | [📋 任务](./docs/tasks/tasks_infra.md#phase-3-socketanchor-系统-) | [PHASE3_DELIVERY.md](./PHASE3_DELIVERY.md) |
+| Phase 4 | Clock 时钟系统 | ✅ 完成 | 2025-12-20 | [📋 任务](./docs/tasks/tasks_infra.md#phase-4-clock-时钟系统-) | [PHASE4_DELIVERY.md](./PHASE4_DELIVERY.md) |
+| Phase 5 | CommandManager 命令系统 | ✅ 完成 | 2025-12-20 | [📋 任务](./docs/tasks/tasks_infra.md#phase-5-commandmanager-命令系统-) | [PHASE5_DELIVERY.md](./PHASE5_DELIVERY.md) |
+| Phase 6 | InputMappingSystem | ✅ 完成 | 2025-12-21 | [📋 任务](./docs/tasks/tasks_infra.md#phase-6-inputmappingsystem-输入系统-) | [PHASE6_DELIVERY.md](./PHASE6_DELIVERY.md) |
+| Phase 7 | AssetRegistry | ✅ 完成 | 2025-12-21 | [📋 任务](./docs/tasks/tasks_infra.md#phase-7-assetregistry-资产管线-) | [PHASE7_COMPLETION_REPORT.md](./PHASE7_COMPLETION_REPORT.md) |
+| Phase 8 | PhysicsSystem | ✅ 完成 | 2025-12-21 | [📋 任务](./docs/tasks/tasks_features.md#phase-8-physicssystem-物理系统-) | [PHASE8_DELIVERY.md](./PHASE8_DELIVERY.md) |
+| Phase 9 | AudioSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-9-audiosystem-音频系统-) | [PHASE9_DELIVERY.md](./PHASE9_DELIVERY.md) |
+| Phase 10 | CameraSystem | ✅ 完成 | 2025-12-21 | [📋 任务](./docs/tasks/tasks_features.md#phase-10-camerasystem-相机系统-) | [PHASE10_DELIVERY.md](./PHASE10_DELIVERY.md) |
+| Phase 11 | WorldStateManager | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-11-worldstatemanager-环境管理-) | [PHASE11_DELIVERY.md](./PHASE11_DELIVERY.md) |
+| Phase 11.2 | TerrainSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-112-terrainsystem-动态地形引擎-) | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
+| Phase 11.3 | VegetationSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-113-vegetationsystem-植被引擎-) | [PHASE11.3_VEGETATION_DELIVERY.md](./PHASE11.3_VEGETATION_DELIVERY.md) |
+| Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-12-rendersystem-渲染系统-) | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
+| Phase 13 | Standalone Bundle | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-13-standalone-bundle-分发系统-) | - |
+| Phase 14 | Architecture Validation View | ✅ 完成 | 2025-12-23 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-14-architecture-validation-view-架构验证观测窗口-) | [ARCHITECTURE_VALIDATION_VIEW_DELIVERY.md](./ARCHITECTURE_VALIDATION_VIEW_DELIVERY.md) |
+| Phase 15 | MOD 扩展系统 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-15-mod-扩展系统-) | - |
+| Phase 16 | React 19 + R3F | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-16-react-19--r3f-优化-) | - |
+| Phase 17 | 最终集成优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-17-最终集成优化-) | - |
 
 ---
 
@@ -162,6 +188,18 @@
 - **自发光联动** - emissiveIntensity 触发辉光
 - **React.memo 优化** - 避免不必要的重渲染
 - 完整演示（金属反射 + 辉光效果 + 后处理控制）
+
+### ✅ Phase 14: Architecture Validation View 架构验证观测窗口
+- **ArchitectureValidationManager** - 独立 ECS 实例管理器（300+ 行）
+- **自动场景初始化** - 地形 + 上帝视角相机
+- **ArchitectureValidationPanel** - 实时性能监测面板（200+ 行）
+- **FPS 实时统计** - 使用 useRef 直接操作 DOM（高频更新）
+- **顶点/植被数统计** - 实时显示地形和植被数据
+- **一键演示功能** - 山峰 + 植被 + 日落光影自动演示
+- **上帝视角相机** - Orbit 模式，距离 100，俯仰 -60°
+- **控制接口** - 地形编辑、植被生成、环境控制
+- **全系统联动** - 相机、环境、渲染、地形、植被完美闭环
+- 完整演示（架构验证视口落地，实现 FPS/顶点/植被数实时统计）
 
 ---
 
@@ -382,10 +420,10 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 ## 📊 统计数据
 
 ### 代码量
-- **核心代码**: ~13500 行（+1500 行 VegetationSystem）
+- **核心代码**: ~14000 行（+500 行 ArchitectureValidationManager + ArchitectureValidationPanel）
 - **测试代码**: ~1800 行
 - **演示代码**: ~5450 行
-- **总计**: ~20750 行
+- **总计**: ~21250 行
 
 ### 组件数量
 - **核心组件**: 10 个（Transform, Visual, Rig, Physics, Vehicle, Audio, Name, Camera, **Terrain**, **Vegetation**）
@@ -393,6 +431,7 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 - **环境管理**: 1 个（WorldStateManager）
 - **渲染系统**: 2 个（EngineBridge, PostProcessing）
 - **资产系统**: 7 个（IndexedDBStorage, AssetRegistry, ModelImporter, AudioImporter, HDRImporter, FileSystemService）
+- **架构验证**: 2 个（ArchitectureValidationManager, ArchitectureValidationPanel）
 - **测试套件**: 18 个（含 AssetPipeline 15 个测试）
 
 ### 测试覆盖
@@ -424,5 +463,11 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 
 ---
 
-**制作人**: _YUSHAN_
-**最后审计**: 2025-12-22
+## 📦 历史归档
+
+所有历史 Phase 交付报告和验证文档已归档：**[点击查看存档报告](./docs/archive/reports/)**
+
+---
+
+**制作人**: _YUSHAN_  
+**最后审计**: 2025-12-23

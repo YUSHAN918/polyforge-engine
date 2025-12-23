@@ -17,6 +17,7 @@ export { CommandManager, CreateEntityCommand, DeleteEntityCommand, ModifyCompone
 export type { ICommand } from './CommandManager';
 export { WorldStateManager } from './WorldStateManager';
 export type { WorldState, WorldStateChangeCallback, BeatPulseCallback } from './WorldStateManager';
+export { ArchitectureValidationManager } from './ArchitectureValidationManager'; // NEW: 架构验证观测窗口
 
 // 工具函数
 export * from './utils';

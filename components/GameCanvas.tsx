@@ -5,6 +5,8 @@ import { OrbitControls, Grid, Environment, Html, TransformControls, PerspectiveC
 import { CharacterConfig, AppMode, CharacterAction, Enemy, MapConfig, MapElement, MapItemType, GearTransformMap, AssetTransformMap, AnimationConfig, ModelPrimitive, CustomModel, CustomAction, BoneName, SavedCharacter, CameraMode, WorkshopRefType, CameraSettings, ShadowSettings, VfxAsset, VfxTestParams, VfxEmitterConfig } from '../types';
 import { Character3D, CustomModelRenderer } from './Character3D';
 import { VfxRenderer } from './VfxRenderer';
+import { ArchitectureValidationManager } from '../core/ArchitectureValidationManager'; // NEW
+import { EngineBridge } from './EngineBridge'; // NEW
 import * as THREE from 'three';
 
 interface GameCanvasProps {
@@ -61,6 +63,8 @@ interface GameCanvasProps {
   vfxAssets?: VfxAsset[]; // NEW: Pass available assets to scenes
   selectedVfxEmitterId?: string | null; // NEW: Gizmo logic
   onVfxEmitterUpdate?: (emitterId: string, updates: Partial<VfxEmitterConfig>) => void; // NEW
+  // Architecture Validation Props
+  archValidationManager?: ArchitectureValidationManager; // NEW
 }
 
 // --- HELPER COMPONENT FOR ORBIT CONTROLS LOGIC ---
@@ -1037,7 +1041,8 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
     savedCharacters, cameraMode = CameraMode.ISOMETRIC, cameraSettings, shadowSettings, isProceduralPaused = false,
     onBoneChange, gizmoMode, currentVfxAsset, vfxTestParams, vfxAssets,
     // NEW Props
-    selectedVfxEmitterId, onVfxEmitterUpdate
+    selectedVfxEmitterId, onVfxEmitterUpdate,
+    archValidationManager // NEW
 }) => {
   const [bonesVersion, setBonesVersion] = useState(0);
   const boneMap = useRef<Record<string, THREE.Object3D> | null>(null);
@@ -1107,6 +1112,19 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
                         customModels={customModels}
                         selectedEmitterId={selectedVfxEmitterId} // Propagate selection
                         onUpdateEmitter={onVfxEmitterUpdate} // Propagate update logic
+                    />
+                ) : mode === AppMode.ARCHITECTURE_VALIDATOR && archValidationManager ? (
+                    <EngineBridge
+                        entityManager={archValidationManager.getEntityManager()}
+                        worldStateManager={archValidationManager.getWorldStateManager()}
+                        terrainSystem={archValidationManager.getTerrainSystem()}
+                        vegetationSystem={archValidationManager.getVegetationSystem()}
+                        postProcessingEnabled={true}
+                        bloomEnabled={true}
+                        bloomStrength={1.5}
+                        bloomRadius={0.4}
+                        bloomThreshold={0.85}
+                        smaaEnabled={true}
                     />
                 ) : mode === AppMode.GAMEPLAY ? (
                      <GameplayScene 
