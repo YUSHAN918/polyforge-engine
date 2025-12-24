@@ -442,9 +442,10 @@ export class ArchitectureValidationManager {
     entities.forEach(entity => {
       const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
       if (vegetation && vegetation.enabled) {
-        // 更新配置并标记为脏
+        // 🔥 数据-渲染分离：仅更新配置和缩放脏标记
+        // 不触发 isDirty，避免重新生成实例
         vegetation.config.scale = scale;
-        vegetation.markDirty();
+        vegetation.isScaleDirty = true;
       }
     });
     console.log(`🌿 Grass scale set to ${scale}x`);

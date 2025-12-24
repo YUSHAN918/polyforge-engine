@@ -69,6 +69,9 @@ export class VegetationComponent implements Component {
 
   // 脏标记（用于触发重新生成）
   isDirty: boolean = true;
+  
+  // 🔥 缩放脏标记（用于触发矩阵重新灌入，不重新生成实例）
+  isScaleDirty: boolean = false;
 
   constructor(config: Partial<VegetationConfig> = {}) {
     // 默认配置
@@ -80,6 +83,7 @@ export class VegetationComponent implements Component {
       maxHeight: 1.0,
       minWidth: 0.1,
       maxWidth: 0.2,
+      scale: 1.0, // 🔥 默认全局缩放为 1.0
       baseColor: '#4a7c3a',
       colorVariation: 0.2,
       windStrength: 0.5,

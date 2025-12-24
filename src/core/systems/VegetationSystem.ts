@@ -78,20 +78,28 @@ export class VegetationSystem implements System {
       return;
     }
 
-    // 检查所有植被实体，如果脏标记为 true，重新生成
+    // 检查所有植被实体
     const entities = this.entityManager.getAllEntities();
     
     for (const entity of entities) {
       const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
       
-      if (vegetation && vegetation.enabled && vegetation.isDirty) {
-        this.generateVegetation(entity);
-        vegetation.clearDirty();
+      if (vegetation && vegetation.enabled) {
+        // 🔥 数据层净化：isDirty 触发重新生成实例（仅当密度、种子等改变时）
+        if (vegetation.isDirty) {
+          this.generateVegetation(entity);
+          vegetation.clearDirty();
+        }
+        // 🔥 缩放脏标记：仅触发矩阵重新灌入，不重新生成实例
+        // 这样可以保证拖动滑块时，新旧草都能实时响应
+        if (vegetation.isScaleDirty) {
+          vegetation.isScaleDirty = false; // 清除标记，矩阵会在下面统一灌入
+        }
       }
     }
     
     // 🔥 架构剥离：物理灌入矩阵
-    // 如果 meshHandle 存在，直接在系统内调用 setMatrixAt
+    // 每帧都灌入矩阵，确保 globalScale 实时生效
     if (this.meshHandle && this.instanceCache.size > 0) {
       this.injectMatricesToMesh();
     }
@@ -234,9 +242,11 @@ export class VegetationSystem implements System {
       // 随机旋转
       const rotation = rng() * Math.PI * 2;
       
-      // 随机缩放
-      const height = config.minHeight + rng() * (config.maxHeight - config.minHeight);
-      const width = config.minWidth + rng() * (config.maxWidth - config.minWidth);
+      // 🔥 数据层净化：严禁参考任何滑块值
+      // 所有草的 instance.scale 必须是固定的常数或基于种子的随机偏离
+      // 目标：无论滑块在 0.1 还是 1.0，新生成的草存入 ECS 的数据必须是一模一样的"标准体"
+      const baseScale = 1.0; // 固定基准缩放
+      const randomVariation = 0.8 + rng() * 0.4; // 0.8 到 1.2 的随机偏离
       
       // 🔥 PERFORMANCE: 复用对象池中的 Vector3 和 Color
       const position = new THREE.Vector3(finalX, y, finalZ);
@@ -250,7 +260,7 @@ export class VegetationSystem implements System {
       instances[i] = {
         position,
         rotation,
-        scale: new THREE.Vector3(width, height, width),
+        scale: new THREE.Vector3(randomVariation, randomVariation, randomVariation),
         colorOffset,
       };
     }
