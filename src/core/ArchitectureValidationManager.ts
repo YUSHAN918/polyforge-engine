@@ -513,6 +513,10 @@ export class ArchitectureValidationManager {
       console.log(`Instance Count: ${vegetation.instanceCount}`);
       console.log(`Density: ${vegetation.config.density}`);
       console.log(`Type: ${vegetation.config.type}`);
+      console.log(`Scale: ${vegetation.config.scale}`);
+      console.log(`Wind Strength: ${vegetation.config.windStrength}`);
+      console.log(`Base Color: ${vegetation.config.baseColor}`);
+      console.log(`Is Dirty: ${vegetation.isDirty}`);
       console.log(`Terrain Entity ID: ${vegetation.config.terrainEntityId}`);
       
       // 从 VegetationSystem 获取实例数据
@@ -520,14 +524,45 @@ export class ArchitectureValidationManager {
       console.log(`Cached Instances: ${instances ? instances.length : 'NULL'}`);
       
       if (instances && instances.length > 0) {
-        console.log(`First 3 instances:`, instances.slice(0, 3).map(inst => ({
+        console.log(`First 5 instances:`, instances.slice(0, 5).map(inst => ({
           position: inst.position.toArray(),
           scale: inst.scale.toArray(),
           rotation: inst.rotation,
+          color: inst.colorOffset.getHexString(),
+        })));
+        
+        console.log(`Last 5 instances:`, instances.slice(-5).map(inst => ({
+          position: inst.position.toArray(),
+          scale: inst.scale.toArray(),
+          rotation: inst.rotation,
+          color: inst.colorOffset.getHexString(),
         })));
       }
     });
     
     console.log('\n=== 🔍 VEGETATION DEBUG END ===');
+  }
+  
+  /**
+   * 🔍 调试方法：强制重新生成植被
+   */
+  forceRegenerateVegetation(): void {
+    console.log('=== 🔄 FORCE REGENERATE VEGETATION ===');
+    
+    const entities = this.entityManager.getAllEntities();
+    const vegetationEntities = entities.filter(e => e.hasComponent('Vegetation'));
+    
+    vegetationEntities.forEach((entity) => {
+      const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
+      if (vegetation) {
+        console.log(`Marking ${entity.name} as dirty...`);
+        vegetation.markDirty();
+      }
+    });
+    
+    // 手动触发一次 update
+    this.vegetationSystem.update();
+    
+    console.log('✓ Regeneration complete');
   }
 }

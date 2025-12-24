@@ -457,6 +457,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             🔍 调试植被渲染
           </button>
           
+          {/* 🔄 强制重新生成按钮 */}
+          <button
+            onClick={() => manager?.forceRegenerateVegetation()}
+            className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+          >
+            <i className="fas fa-sync-alt"></i>
+            🔄 强制重新生成
+          </button>
+          
           <button
             onClick={handleCreateMountain}
             disabled={isGenerating}

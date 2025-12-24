@@ -47,6 +47,10 @@ export class VegetationSystem implements System {
   // 🔥 PERFORMANCE: 对象池 - 复用 Vector3 和 Color 对象
   private tempVector = new THREE.Vector3();
   private tempColor = new THREE.Color();
+  private _tempMatrix = new THREE.Matrix4(); // 🔥 预分配矩阵，严禁 new
+  
+  // 🔥 架构剥离：哑组件 + 智系统
+  private meshHandle: THREE.InstancedMesh | null = null;
 
   constructor(worldStateManager?: WorldStateManager) {
     this.worldStateManager = worldStateManager;
@@ -56,6 +60,15 @@ export class VegetationSystem implements System {
     this.entityManager = entityManager;
     this.clock = clock;
     console.log('[VegetationSystem] Initialized');
+  }
+
+  /**
+   * 🔥 架构剥离：注册 InstancedMesh 句柄
+   * 哑组件在挂载时调用此方法，将 mesh 引用传递给系统
+   */
+  registerMesh(mesh: THREE.InstancedMesh): void {
+    this.meshHandle = mesh;
+    console.log('[VegetationSystem] 🔥 Mesh registered, handle acquired');
   }
 
   update(): void {
@@ -75,6 +88,74 @@ export class VegetationSystem implements System {
         this.generateVegetation(entity);
         vegetation.clearDirty();
       }
+    }
+    
+    // 🔥 架构剥离：物理灌入矩阵
+    // 如果 meshHandle 存在，直接在系统内调用 setMatrixAt
+    if (this.meshHandle && this.instanceCache.size > 0) {
+      this.injectMatricesToMesh();
+    }
+  }
+
+  /**
+   * 🔥 架构剥离：物理灌入矩阵
+   * 在系统内直接操作 InstancedMesh，避免 React 同步延迟
+   */
+  private injectMatricesToMesh(): void {
+    if (!this.meshHandle) return;
+    
+    const mesh = this.meshHandle;
+    const dummy = new THREE.Object3D();
+    
+    let totalInstances = 0;
+    
+    // 遍历所有植被实体
+    for (const [entityId, instances] of this.instanceCache.entries()) {
+      const entity = this.entityManager.getEntity(entityId);
+      if (!entity) continue;
+      
+      const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
+      if (!vegetation || !vegetation.enabled) continue;
+      
+      const globalScale = vegetation.config.scale ?? 1.0;
+      
+      // 物理灌入矩阵
+      for (let i = 0; i < instances.length; i++) {
+        const instance = instances[i];
+        const matrixIndex = totalInstances + i;
+        
+        // 设置位置
+        dummy.position.copy(instance.position);
+        dummy.rotation.y = instance.rotation;
+        
+        // 应用缩放
+        dummy.scale.set(
+          instance.scale.x * globalScale,
+          instance.scale.y * globalScale,
+          instance.scale.z * globalScale
+        );
+        
+        // 🔥 使用预分配的 _tempMatrix，严禁 new
+        dummy.updateMatrix();
+        this._tempMatrix.copy(dummy.matrix);
+        mesh.setMatrixAt(matrixIndex, this._tempMatrix);
+        
+        // 设置颜色
+        if (mesh.instanceColor) {
+          mesh.setColorAt(matrixIndex, instance.colorOffset);
+        }
+      }
+      
+      totalInstances += instances.length;
+    }
+    
+    // 🔥 设置实际显示数量
+    mesh.count = totalInstances;
+    
+    // 🔥 标记需要更新
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) {
+      mesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -178,6 +259,9 @@ export class VegetationSystem implements System {
     this.instanceCache.set(entity.id, instances);
     vegetation.instanceCount = instanceCount;
 
+    // 🔥 关键：递增版本号，打破引用不变的魔咒
+    vegetation.version++;
+
     // 🔥 调试日志：检查前几个实例的位置
     if (instances.length > 0) {
       console.log(`[VegetationSystem] Sample positions:`, {
@@ -187,7 +271,7 @@ export class VegetationSystem implements System {
       });
     }
 
-    console.log(`[VegetationSystem] Generated ${instanceCount} instances for ${entity.name}`);
+    console.log(`[VegetationSystem] Generated ${instanceCount} instances for ${entity.name}, version=${vegetation.version}`);
   }
 
   /**

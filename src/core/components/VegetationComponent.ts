@@ -64,6 +64,9 @@ export class VegetationComponent implements Component {
   instanceCount: number = 0;
   instanceData: Float32Array | null = null; // 位置、旋转、缩放数据
 
+  // 🔥 版本控制：每次数据重写时递增，用于触发渲染层更新
+  version: number = 0;
+
   // 脏标记（用于触发重新生成）
   isDirty: boolean = true;
 
