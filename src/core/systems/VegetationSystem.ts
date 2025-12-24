@@ -43,6 +43,10 @@ export class VegetationSystem implements System {
 
   // 植被实例缓存（entityId -> instances）
   private instanceCache: Map<string, VegetationInstance[]> = new Map();
+  
+  // 🔥 PERFORMANCE: 对象池 - 复用 Vector3 和 Color 对象
+  private tempVector = new THREE.Vector3();
+  private tempColor = new THREE.Color();
 
   constructor(worldStateManager?: WorldStateManager) {
     this.worldStateManager = worldStateManager;
@@ -76,8 +80,12 @@ export class VegetationSystem implements System {
 
   onEntityAdded(entity: any): void {
     if (entity?.hasComponent('Vegetation')) {
-      console.log(`[VegetationSystem] Vegetation entity added: ${entity.name}`);
+      console.log(`[VegetationSystem] 🌱 Vegetation entity added: ${entity.name} (ID: ${entity.id})`);
       this.generateVegetation(entity);
+      
+      // 🔥 调试：立即检查生成结果
+      const instances = this.instanceCache.get(entity.id);
+      console.log(`[VegetationSystem] 🌱 After generation, instances count:`, instances ? instances.length : 'NULL');
     }
   }
 
@@ -124,13 +132,23 @@ export class VegetationSystem implements System {
     const instances: VegetationInstance[] = [];
     const rng = this.seededRandom(config.seed);
 
+    // 🔥 PERFORMANCE: 预分配数组容量
+    instances.length = instanceCount;
+
     for (let i = 0; i < instanceCount; i++) {
-      // 随机位置（在地形范围内）
+      // 🔥 随机位置（在地形范围内）- 使用更大的分布范围
       const x = (rng() - 0.5) * terrain.config.width;
       const z = (rng() - 0.5) * terrain.config.depth;
       
+      // 🔥 添加更大的随机偏移，确保分布更均匀
+      const jitterX = (rng() - 0.5) * 2.0; // 增加到 2.0
+      const jitterZ = (rng() - 0.5) * 2.0; // 增加到 2.0
+      
+      const finalX = x + jitterX;
+      const finalZ = z + jitterZ;
+      
       // 获取地形高度
-      const y = this.getTerrainHeightAt(terrain, x, z);
+      const y = this.getTerrainHeightAt(terrain, finalX, finalZ);
       
       // 随机旋转
       const rotation = rng() * Math.PI * 2;
@@ -139,22 +157,35 @@ export class VegetationSystem implements System {
       const height = config.minHeight + rng() * (config.maxHeight - config.minHeight);
       const width = config.minWidth + rng() * (config.maxWidth - config.minWidth);
       
-      // 颜色变化
-      const colorOffset = new THREE.Color(config.baseColor);
-      const variation = (rng() - 0.5) * config.colorVariation;
-      colorOffset.offsetHSL(0, 0, variation);
+      // 🔥 PERFORMANCE: 复用对象池中的 Vector3 和 Color
+      const position = new THREE.Vector3(finalX, y, finalZ);
       
-      instances.push({
-        position: new THREE.Vector3(x, y, z),
+      // 颜色变化
+      this.tempColor.set(config.baseColor);
+      const variation = (rng() - 0.5) * config.colorVariation;
+      this.tempColor.offsetHSL(0, 0, variation);
+      const colorOffset = this.tempColor.clone();
+      
+      instances[i] = {
+        position,
         rotation,
         scale: new THREE.Vector3(width, height, width),
         colorOffset,
-      });
+      };
     }
 
     // 缓存实例数据
     this.instanceCache.set(entity.id, instances);
     vegetation.instanceCount = instanceCount;
+
+    // 🔥 调试日志：检查前几个实例的位置
+    if (instances.length > 0) {
+      console.log(`[VegetationSystem] Sample positions:`, {
+        first: instances[0].position.toArray(),
+        middle: instances[Math.floor(instanceCount / 2)]?.position.toArray(),
+        last: instances[instanceCount - 1].position.toArray(),
+      });
+    }
 
     console.log(`[VegetationSystem] Generated ${instanceCount} instances for ${entity.name}`);
   }
@@ -222,24 +253,64 @@ export class VegetationSystem implements System {
 
   /**
    * 生成指定密度的草地
+   * @param density 密度（每平方单位的实例数）或总实例数（如果 > 1000）
+   * @param terrainEntityId 地形实体 ID
    */
   spawnGrass(density: number, terrainEntityId: string): string {
     // 🆕 健壮性检查
     if (!this.entityManager) {
-      console.error('[VegetationSystem] EntityManager not initialized, cannot spawn grass');
+      console.error('[VegetationSystem] ❌ EntityManager not initialized, cannot spawn grass');
       return '';
     }
 
+    console.log(`[VegetationSystem] 🌱 spawnGrass called with density=${density}, terrainEntityId=${terrainEntityId}`);
+
+    // 🔥 CRITICAL: 防止实例数过载
+    // 如果 density > 1000，视为总实例数而非密度
+    let actualDensity = density;
+    if (density > 1000) {
+      // 获取地形面积
+      const terrainEntity = this.entityManager.getEntity(terrainEntityId);
+      if (terrainEntity) {
+        const terrain = terrainEntity.getComponent('Terrain') as TerrainComponent;
+        if (terrain) {
+          const area = terrain.config.width * terrain.config.depth;
+          actualDensity = density / area;
+          console.log(`[VegetationSystem] Converting total count ${density} to density ${actualDensity.toFixed(4)} (area: ${area})`);
+        }
+      } else {
+        console.error(`[VegetationSystem] ❌ Terrain entity not found: ${terrainEntityId}`);
+        return '';
+      }
+    }
+    
+    // 🔥 CRITICAL: 强制上限保护（单次生成不超过 100,000 实例）
+    const MAX_INSTANCES = 100000;
+    const terrainEntity = this.entityManager.getEntity(terrainEntityId);
+    if (terrainEntity) {
+      const terrain = terrainEntity.getComponent('Terrain') as TerrainComponent;
+      if (terrain) {
+        const area = terrain.config.width * terrain.config.depth;
+        const estimatedCount = Math.floor(area * actualDensity);
+        
+        if (estimatedCount > MAX_INSTANCES) {
+          console.warn(`[VegetationSystem] ⚠️ Instance count ${estimatedCount} exceeds limit ${MAX_INSTANCES}, capping density`);
+          actualDensity = MAX_INSTANCES / area;
+        }
+      }
+    }
+
     const entity = this.entityManager.createEntity(`Grass_${Date.now()}`);
+    console.log(`[VegetationSystem] 🌱 Created entity: ${entity.name} (ID: ${entity.id})`);
     
     const vegetation = new VegetationComponent({
-      density,
+      density: actualDensity,
       type: VegetationType.GRASS,
       seed: Math.random() * 10000,
-      minHeight: 0.3,
-      maxHeight: 0.8,
-      minWidth: 0.05,
-      maxWidth: 0.15,
+      minHeight: 1.0,      // 🔥 增大高度：0.3 → 1.0
+      maxHeight: 2.0,      // 🔥 增大高度：0.8 → 2.0
+      minWidth: 0.3,       // 🔥 增大宽度：0.05 → 0.3
+      maxWidth: 0.6,       // 🔥 增大宽度：0.15 → 0.6
       baseColor: '#4a7c3a',
       colorVariation: 0.3,
       windStrength: 0.6,
@@ -248,15 +319,18 @@ export class VegetationSystem implements System {
       terrainEntityId,
     });
 
-    entity.addComponent(vegetation);
+    this.entityManager.addComponent(entity.id, vegetation);
+    console.log(`[VegetationSystem] 🌱 Added VegetationComponent to entity`);
     
-    console.log(`[VegetationSystem] Spawned grass with density ${density}`);
+    console.log(`[VegetationSystem] Spawned grass with density ${actualDensity.toFixed(4)}`);
     
     return entity.id;
   }
 
   /**
    * 生成指定密度的花朵
+   * @param density 密度（每平方单位的实例数）或总实例数（如果 > 1000）
+   * @param terrainEntityId 地形实体 ID
    */
   spawnFlowers(density: number, terrainEntityId: string): string {
     // 🆕 健壮性检查
@@ -265,10 +339,40 @@ export class VegetationSystem implements System {
       return '';
     }
 
+    // 🔥 CRITICAL: 防止实例数过载
+    let actualDensity = density;
+    if (density > 1000) {
+      const terrainEntity = this.entityManager.getEntity(terrainEntityId);
+      if (terrainEntity) {
+        const terrain = terrainEntity.getComponent('Terrain') as TerrainComponent;
+        if (terrain) {
+          const area = terrain.config.width * terrain.config.depth;
+          actualDensity = density / area;
+          console.log(`[VegetationSystem] Converting total count ${density} to density ${actualDensity.toFixed(4)} (area: ${area})`);
+        }
+      }
+    }
+    
+    // 🔥 CRITICAL: 强制上限保护
+    const MAX_INSTANCES = 100000;
+    const terrainEntity = this.entityManager.getEntity(terrainEntityId);
+    if (terrainEntity) {
+      const terrain = terrainEntity.getComponent('Terrain') as TerrainComponent;
+      if (terrain) {
+        const area = terrain.config.width * terrain.config.depth;
+        const estimatedCount = Math.floor(area * actualDensity);
+        
+        if (estimatedCount > MAX_INSTANCES) {
+          console.warn(`[VegetationSystem] ⚠️ Instance count ${estimatedCount} exceeds limit ${MAX_INSTANCES}, capping density`);
+          actualDensity = MAX_INSTANCES / area;
+        }
+      }
+    }
+
     const entity = this.entityManager.createEntity(`Flowers_${Date.now()}`);
     
     const vegetation = new VegetationComponent({
-      density,
+      density: actualDensity,
       type: VegetationType.FLOWER,
       seed: Math.random() * 10000,
       minHeight: 0.2,
@@ -283,9 +387,9 @@ export class VegetationSystem implements System {
       terrainEntityId,
     });
 
-    entity.addComponent(vegetation);
+    this.entityManager.addComponent(entity.id, vegetation);
     
-    console.log(`[VegetationSystem] Spawned flowers with density ${density}`);
+    console.log(`[VegetationSystem] Spawned flowers with density ${actualDensity.toFixed(4)}`);
     
     return entity.id;
   }

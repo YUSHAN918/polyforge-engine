@@ -45,8 +45,14 @@ export class InputSystem implements System {
   private presets: Map<string, InputPreset> = new Map();
   private contextStack: string[] = ['global'];  // 上下文栈
   private pressedKeys: Set<string> = new Set();
-  private pressedButtons: Set<number> = new Set();
+  public pressedButtons: Set<number> = new Set(); // 🔥 改为 public，让 CameraSystem 可以直接访问
   private commandManager: CommandManager | null = null;
+  
+  // 🎮 鼠标状态（公共访问用于物理层控制）
+  public mousePosition: { x: number; y: number } = { x: 0, y: 0 };
+  public mouseDelta: { x: number; y: number } = { x: 0, y: 0 };
+  public wheelDelta: number = 0;
+  private isDragging: boolean = false;
 
   constructor() {
     this.currentPreset = this.createDefaultPreset();
@@ -77,10 +83,16 @@ export class InputSystem implements System {
     // 鼠标事件
     window.addEventListener('mousedown', this.handleMouseDown.bind(this));
     window.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    window.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
 
-    // 防止右键菜单（可选）
+    // 🎯 右键菜单拦截：只在 Canvas 上拦截
     window.addEventListener('contextmenu', (e) => {
-      if (this.isActionPressed('DISABLE_CONTEXT_MENU')) {
+      const target = e.target as HTMLElement;
+      const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+      
+      // 只在 Canvas 上拦截右键菜单
+      if (isCanvas) {
         e.preventDefault();
       }
     });
@@ -127,6 +139,11 @@ export class InputSystem implements System {
    */
   private handleMouseDown(event: MouseEvent): void {
     this.pressedButtons.add(event.button);
+    
+    // 右键或中键按下时开始拖拽
+    if (event.button === 1 || event.button === 2) {
+      this.isDragging = true;
+    }
 
     // 检查是否有匹配的动作
     for (const [, action] of this.currentPreset.actions) {
@@ -145,6 +162,65 @@ export class InputSystem implements System {
    */
   private handleMouseUp(event: MouseEvent): void {
     this.pressedButtons.delete(event.button);
+    this.isDragging = false;
+  }
+
+  /**
+   * 处理鼠标移动事件
+   */
+  private handleMouseMove(event: MouseEvent): void {
+    const newX = event.clientX;
+    const newY = event.clientY;
+    
+    // 🔥 修正状态机：如果有按钮按下，自动进入拖拽状态
+    if (event.buttons > 0 && (this.pressedButtons.has(1) || this.pressedButtons.has(2))) {
+      this.isDragging = true;
+    }
+    
+    // 计算 delta（只在拖拽时有效）
+    if (this.isDragging) {
+      this.mouseDelta.x = newX - this.mousePosition.x;
+      this.mouseDelta.y = newY - this.mousePosition.y;
+    } else {
+      this.mouseDelta.x = 0;
+      this.mouseDelta.y = 0;
+    }
+    
+    this.mousePosition.x = newX;
+    this.mousePosition.y = newY;
+  }
+
+  /**
+   * 处理滚轮事件
+   * 🎯 输入隔离逻辑：只在 Canvas 上拦截，UI 面板保持原生滚动
+   */
+  private handleWheel(event: WheelEvent): void {
+    // 🚫 检查事件目标：如果是 UI 面板内部，立即放行
+    const target = event.target as HTMLElement;
+    
+    // 检查是否在右侧面板内（通过 class 或 data 属性识别）
+    if (target.closest('.architecture-validation-panel') || 
+        target.closest('[data-panel="true"]') ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT') {
+      // ✅ UI 元素，允许默认滚动
+      return;
+    }
+    
+    // 检查是否在 Canvas 上
+    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+    
+    // 🎮 Canvas 上的滚轮事件由 EngineBridge 的物理层拦截处理
+    // 这里不再处理，避免冲突
+    // 注释掉原有逻辑，让 EngineBridge 完全接管
+    /*
+    const context = this.getCurrentContext();
+    if (context === 'orbit' && isCanvas) {
+      event.preventDefault();
+      this.wheelDelta = event.deltaY;
+    }
+    */
   }
 
   /**
@@ -340,6 +416,36 @@ export class InputSystem implements System {
   }
 
   /**
+   * 检查鼠标按钮是否被按下
+   */
+  public isButtonPressed(button: number): boolean {
+    return this.pressedButtons.has(button);
+  }
+
+  /**
+   * 获取鼠标 Delta（用于相机旋转）
+   */
+  public getMouseDelta(): { x: number; y: number } {
+    return { ...this.mouseDelta };
+  }
+
+  /**
+   * 获取滚轮 Delta（用于相机缩放）
+   */
+  public getWheelDelta(): number {
+    return this.wheelDelta;
+  }
+
+  /**
+   * 重置帧数据（每帧调用）
+   */
+  public resetFrameData(): void {
+    this.mouseDelta.x = 0;
+    this.mouseDelta.y = 0;
+    this.wheelDelta = 0;
+  }
+
+  /**
    * System 接口：更新
    */
   public update(_deltaTime: number): void {
@@ -371,6 +477,8 @@ export class InputSystem implements System {
     window.removeEventListener('keyup', this.handleKeyUp.bind(this));
     window.removeEventListener('mousedown', this.handleMouseDown.bind(this));
     window.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+    window.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+    window.removeEventListener('wheel', this.handleWheel.bind(this));
   }
 
   /**

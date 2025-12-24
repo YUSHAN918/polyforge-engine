@@ -33,6 +33,7 @@ export interface VegetationConfig {
   maxHeight: number;            // 最大高度
   minWidth: number;             // 最小宽度
   maxWidth: number;             // 最大宽度
+  scale?: number;               // 全局缩放倍数（可选，默认 1.0）
   
   // 颜色参数
   baseColor: string;            // 基础颜色
@@ -122,6 +123,13 @@ export class VegetationComponent implements Component {
    */
   setTerrainEntity(terrainEntityId: string): void {
     this.config.terrainEntityId = terrainEntityId;
+    this.isDirty = true;
+  }
+
+  /**
+   * 标记为脏（触发重新生成）
+   */
+  markDirty(): void {
     this.isDirty = true;
   }
 

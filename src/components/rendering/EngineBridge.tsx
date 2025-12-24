@@ -13,19 +13,20 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { PerspectiveCamera } from '@react-three/drei'; // 🔥 导入独立相机组件
 import * as THREE from 'three';
-import { EntityManager } from '../core/EntityManager';
-import { Entity } from '../core/Entity';
-import { TransformComponent } from '../core/components/TransformComponent';
-import { VisualComponent } from '../core/components/VisualComponent';
-import { TerrainComponent } from '../core/components/TerrainComponent';
-import { VegetationComponent } from '../core/components/VegetationComponent';
-import { WorldStateManager } from '../core/WorldStateManager';
-import { getAssetRegistry } from '../core/assets/AssetRegistry';
-import { AssetType } from '../core/assets/types';
+import { EntityManager } from '../../core/EntityManager';
+import { Entity } from '../../core/Entity';
+import { TransformComponent } from '../../core/components/TransformComponent';
+import { VisualComponent } from '../../core/components/VisualComponent';
+import { TerrainComponent } from '../../core/components/TerrainComponent';
+import { VegetationComponent } from '../../core/components/VegetationComponent';
+import { WorldStateManager } from '../../core/WorldStateManager';
+import { getAssetRegistry } from '../../core/assets/AssetRegistry';
+import { AssetType } from '../../core/assets/types';
 import { PostProcessing } from './PostProcessing';
-import { TerrainVisual } from './rendering/TerrainVisual';
-import { VegetationVisual } from './rendering/VegetationVisual';
+import { TerrainVisual } from './TerrainVisual';
+import { VegetationVisual } from './VegetationVisual';
 
 /**
  * EngineBridge Props
@@ -35,6 +36,7 @@ interface EngineBridgeProps {
   worldStateManager?: WorldStateManager;
   terrainSystem?: any; // TerrainSystem 实例（用于鼠标交互）
   vegetationSystem?: any; // VegetationSystem 实例
+  archValidationManager?: any; // ArchitectureValidationManager 实例（用于输入系统）
   postProcessingEnabled?: boolean;
   bloomEnabled?: boolean;
   bloomStrength?: number;
@@ -275,6 +277,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   worldStateManager,
   terrainSystem,
   vegetationSystem,
+  archValidationManager,
   postProcessingEnabled = true,
   bloomEnabled = true,
   bloomStrength = 1.5,
@@ -286,8 +289,114 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   const [worldState, setWorldState] = useState<any>(null);
   const [hdrEnvMap, setHdrEnvMap] = useState<THREE.Texture | null>(null);
   
-  const { scene, gl } = useThree();
+  const { scene, gl, camera } = useThree();
   const sunLightRef = useRef<THREE.DirectionalLight>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const shadowCameraRef = useRef<THREE.PerspectiveCamera | null>(null); // 🔥 影子引擎专属相机引用
+
+  // 🎮 设置输入系统的 DOM 元素（用于相机控制）
+  useEffect(() => {
+    if (archValidationManager && gl?.domElement) {
+      archValidationManager.setInputElement(gl.domElement);
+      canvasRef.current = gl.domElement as HTMLCanvasElement;
+      console.log('🎮 Input element wired to ArchitectureValidationManager');
+    }
+  }, [archValidationManager, gl]);
+
+  // 🎥 设置 R3F 相机引用（让 CameraSystem 直接控制）
+  useEffect(() => {
+    // 🔥 使用影子引擎专属相机，而不是 useThree() 的默认相机
+    if (archValidationManager && shadowCameraRef.current) {
+      archValidationManager.setR3FCamera(shadowCameraRef.current);
+      console.log('🎥 R3F shadow camera wired to CameraSystem');
+    }
+  }, [archValidationManager, shadowCameraRef.current]);
+
+  // 🎮 物理层相机控制：直接在 Canvas 上拦截鼠标和滚轮
+  useEffect(() => {
+    if (!gl?.domElement || !archValidationManager) return;
+
+    const canvas = gl.domElement as HTMLCanvasElement;
+    const inputSystem = archValidationManager.getInputSystem();
+    
+    if (!inputSystem) {
+      console.error('❌ InputSystem not found');
+      return;
+    }
+    
+    // 🎯 滚轮缩放（物理拦截）
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // 直接设置 wheelDelta（InputSystem 会在 update 中读取）
+      inputSystem.wheelDelta = e.deltaY;
+      
+      console.log('🎮 Canvas wheel:', e.deltaY, 'wheelDelta set to:', inputSystem.wheelDelta);
+    };
+
+    // 🎯 鼠标按下（追踪拖拽状态）
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.button === 1 || e.button === 2) {
+        // 🔥 关键：同步更新 InputSystem 的 pressedButtons
+        inputSystem.pressedButtons.add(e.button);
+        
+        // 中键或右键按下
+        canvas.setPointerCapture(e.pointerId);
+        console.log('🎮 Pointer captured, button:', e.button, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
+      }
+    };
+
+    // 🎯 鼠标移动（物理拦截）
+    const handlePointerMove = (e: PointerEvent) => {
+      // 只在按下右键或中键时处理
+      if (e.buttons === 2 || e.buttons === 4) {
+        e.preventDefault();
+        
+        // 直接设置 mouseDelta
+        inputSystem.mouseDelta = {
+          x: e.movementX,
+          y: e.movementY,
+        };
+        
+        console.log('🎮 Canvas pointer move:', e.movementX, e.movementY, 'buttons:', e.buttons, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
+      }
+    };
+
+    // 🎯 鼠标释放
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.button === 1 || e.button === 2) {
+        // 🔥 关键：同步更新 InputSystem 的 pressedButtons
+        inputSystem.pressedButtons.delete(e.button);
+        
+        canvas.releasePointerCapture(e.pointerId);
+        console.log('🎮 Pointer released, button:', e.button, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
+      }
+    };
+
+    // 🎯 右键菜单拦截（只在 Canvas 上）
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      console.log('🎮 Context menu blocked on canvas');
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('contextmenu', handleContextMenu);
+
+    console.log('✅ Canvas event listeners attached');
+
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('contextmenu', handleContextMenu);
+      console.log('🧹 Canvas event listeners removed');
+    };
+  }, [gl, archValidationManager]);
 
   // 监听 EntityManager 变化
   useEffect(() => {
@@ -322,7 +431,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     };
   }, [worldStateManager]);
 
-  // 加载 HDR 环境贴图
+  // 加载 HDR 环境贴图（或使用程序化天空）
   useEffect(() => {
     const loadHDR = async () => {
       const assetRegistry = getAssetRegistry();
@@ -337,7 +446,10 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       const hdrAssets = await assetRegistry.queryAssets({ type: AssetType.HDR });
       
       if (hdrAssets.length === 0) {
-        console.log('[EngineBridge] No HDR assets found');
+        console.log('[EngineBridge] No HDR assets found - using procedural sky');
+        // 🌅 没有 HDR，使用程序化天空（通过 R3F 的 Sky 组件）
+        // 注意：Sky 组件需要在 JSX 中渲染，这里只是标记
+        setHdrEnvMap(null);
         return;
       }
 
@@ -348,7 +460,8 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       const blob = await assetRegistry.getAsset(hdrAsset.id);
       
       if (!blob) {
-        console.warn('[EngineBridge] HDR asset not found');
+        console.warn('[EngineBridge] HDR asset not found - using procedural sky');
+        setHdrEnvMap(null);
         return;
       }
 
@@ -383,8 +496,23 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     loadHDR();
   }, [scene, gl]);
 
-  // 更新太阳光照（塞尔达式光影联动）
-  useFrame(() => {
+  // 🔥 主渲染循环：神经合龙（ECS → R3F 相机强制同步）
+  useFrame((state, delta) => {
+    // 🎮 调用 ECS 更新循环（关键！）
+    if (archValidationManager) {
+      archValidationManager.update();
+      
+      // 🔥 神经合龙：强制同步 ECS 相机到 R3F 相机
+      const cameraSystem = archValidationManager.getCameraSystem();
+      if (cameraSystem) {
+        // CameraSystem 已经在 update() 中计算了新的相机位置
+        // 但我们需要确保 R3F 的 state.camera 也被更新
+        // 注意：CameraSystem.smoothUpdate() 已经调用了 this.r3fCamera.position.set()
+        // 所以这里不需要额外操作，只需要确保 update() 被调用即可
+      }
+    }
+
+    // 更新太阳光照（塞尔达式光影联动）
     if (!worldState || !sunLightRef.current) return;
 
     const time = worldState.timeOfDay || 12;
@@ -395,11 +523,25 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     const sunY = Math.sin(sunAngle) * 20;
     
     sunLightRef.current.position.set(sunX, Math.max(sunY, 1), 10);
-    sunLightRef.current.intensity = worldState.lightIntensity || 1.0;
+    
+    // 🌅 强度映射：提升 8 倍，确保明显的光照变化
+    const baseIntensity = worldState.lightIntensity || 1.0;
+    const finalIntensity = baseIntensity * 8.0; // 提升到 8 倍
+    sunLightRef.current.intensity = finalIntensity;
     
     // 更新光照颜色
     if (worldState.directionalColor) {
       sunLightRef.current.color.set(worldState.directionalColor);
+    }
+    
+    // 🔥 调试日志（每 60 帧输出一次）
+    if (Math.random() < 0.016) {
+      console.log('☀️ Sun update:', {
+        time: time.toFixed(1),
+        baseIntensity: baseIntensity.toFixed(2),
+        finalIntensity: finalIntensity.toFixed(2),
+        color: worldState.directionalColor,
+      });
     }
   });
 
@@ -415,6 +557,16 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
   return (
     <>
+      {/* 🔥 核物理隔离：独立相机（强制接管 R3F 上下文） */}
+      <PerspectiveCamera 
+        ref={shadowCameraRef} // 🔥 绑定 ref，让 CameraSystem 能直接操控
+        makeDefault 
+        position={[0, 100, 100]} 
+        fov={60}
+        near={0.1}
+        far={1000}
+      />
+
       {/* 后处理管线 */}
       {postProcessingEnabled && (
         <PostProcessing
@@ -427,23 +579,31 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         />
       )}
 
-      {/* 环境光 */}
-      <ambientLight intensity={worldState?.lightIntensity * 0.3 || 0.3} color={worldState?.ambientColor || '#ffffff'} />
+      {/* 🌅 程序化天空（如果没有 HDR） */}
+      {!hdrEnvMap && (
+        <>
+          <color attach="background" args={['#87CEEB']} />
+          <fog attach="fog" args={['#87CEEB', 10, 100]} />
+        </>
+      )}
+
+      {/* 🌙 环境光基底（确保深夜时地形依然可见） */}
+      <ambientLight intensity={0.3} color="#ffffff" />
       
       {/* 方向光（太阳） */}
       <directionalLight
         ref={sunLightRef}
         position={[20, 20, 10]}
-        intensity={worldState?.lightIntensity || 1.0}
+        intensity={worldState?.lightIntensity * 8.0 || 8.0}
         color={worldState?.directionalColor || '#ffffff'}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-far={50}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
+        shadow-camera-far={100}
+        shadow-camera-left={-50}
+        shadow-camera-right={50}
+        shadow-camera-top={50}
+        shadow-camera-bottom={-50}
       />
 
       {/* 渲染所有根实体 */}

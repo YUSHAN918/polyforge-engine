@@ -51,6 +51,27 @@ export class CameraSystem implements System {
   private isTransitioning = false;
   private transitionProgress = 0;
   private transitionDuration = 0.5;  // 秒
+  
+  // 🎮 输入系统引用
+  private inputSystem: any = null;  // InputSystem 实例
+  
+  // 🎥 R3F 相机引用（直接控制）
+  private r3fCamera: any = null;
+
+  /**
+   * 设置输入系统引用
+   */
+  public setInputSystem(inputSystem: any): void {
+    this.inputSystem = inputSystem;
+  }
+
+  /**
+   * 设置 R3F 相机引用（直接控制）
+   */
+  public setR3FCamera(camera: any): void {
+    this.r3fCamera = camera;
+    console.log('🎥 CameraSystem: R3F camera reference set');
+  }
 
   /**
    * System 接口：实体添加回调
@@ -82,7 +103,10 @@ export class CameraSystem implements System {
    * System 接口：更新
    */
   public update(deltaTime: number, entities?: Entity[]): void {
-    if (!entities) return;
+    if (!entities || entities.length === 0) {
+      // 静默处理，不输出日志
+      return;
+    }
 
     for (const entity of entities) {
       const camera = entity.getComponent<CameraComponent>('Camera');
@@ -135,6 +159,33 @@ export class CameraSystem implements System {
     const targetPos = target 
       ? target.getComponent<TransformComponent>('Transform')?.position || [0, 0, 0]
       : [0, 0, 0];
+
+    // 🎮 处理输入（鼠标拖拽旋转 + 滚轮缩放）
+    if (this.inputSystem) {
+      const mouseDelta = this.inputSystem.mouseDelta;
+      const wheelDelta = this.inputSystem.wheelDelta;
+      const pressedButtons = this.inputSystem.pressedButtons || new Set();
+      
+      // 🔥 硬判断：中键(1)或右键(2)按下时旋转
+      if (pressedButtons.has(1) || pressedButtons.has(2)) {
+        if (mouseDelta && (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0)) {
+          camera.yaw -= mouseDelta.x * 0.3;    // 🔥 增加灵敏度：0.01 → 0.3
+          camera.pitch += mouseDelta.y * 0.3;  // 🔥 增加灵敏度：0.01 → 0.3
+          
+          // 限制俯仰角
+          camera.pitch = Math.max(-89, Math.min(89, camera.pitch));
+        }
+      }
+      
+      // 🔥 滚轮缩放
+      if (wheelDelta !== 0) {
+        camera.distance += wheelDelta * 0.1;  // 🔥 改回 + 号（滚轮向上推远，向下拉近）
+        camera.distance = Math.max(camera.minDistance, Math.min(camera.maxDistance, camera.distance));
+      }
+      
+      // 🔥 重置帧数据（避免累积）
+      this.inputSystem.resetFrameData();
+    }
 
     // 计算相机位置（球坐标）
     const pitch = camera.pitch * Math.PI / 180;
@@ -292,6 +343,23 @@ export class CameraSystem implements System {
     transform.position = [...this.currentState.position];
     transform.rotation = [...this.currentState.rotation];
     transform.markLocalDirty();
+    
+    // 🔥 核物理隔离：强制矩阵覆盖（直接操控 R3F 相机）
+    if (this.r3fCamera) {
+      // 🔥 强制设置位置
+      this.r3fCamera.position.set(
+        this.currentState.position[0],
+        this.currentState.position[1],
+        this.currentState.position[2]
+      );
+      
+      // 🔥 强制 lookAt 原点（Orbit 模式）
+      this.r3fCamera.lookAt(0, 0, 0);
+      
+      // 🔥 强制更新 FOV
+      this.r3fCamera.fov = this.currentState.fov;
+      this.r3fCamera.updateProjectionMatrix();
+    }
   }
 
   /**

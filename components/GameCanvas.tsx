@@ -5,8 +5,8 @@ import { OrbitControls, Grid, Environment, Html, TransformControls, PerspectiveC
 import { CharacterConfig, AppMode, CharacterAction, Enemy, MapConfig, MapElement, MapItemType, GearTransformMap, AssetTransformMap, AnimationConfig, ModelPrimitive, CustomModel, CustomAction, BoneName, SavedCharacter, CameraMode, WorkshopRefType, CameraSettings, ShadowSettings, VfxAsset, VfxTestParams, VfxEmitterConfig } from '../types';
 import { Character3D, CustomModelRenderer } from './Character3D';
 import { VfxRenderer } from './VfxRenderer';
-import { ArchitectureValidationManager } from '../core/ArchitectureValidationManager'; // NEW
-import { EngineBridge } from './EngineBridge'; // NEW
+import { ArchitectureValidationManager } from '../src/core/ArchitectureValidationManager'; // NEW
+import { EngineBridge } from '../src/components/rendering/EngineBridge'; // NEW
 import * as THREE from 'three';
 
 interface GameCanvasProps {
@@ -65,6 +65,11 @@ interface GameCanvasProps {
   onVfxEmitterUpdate?: (emitterId: string, updates: Partial<VfxEmitterConfig>) => void; // NEW
   // Architecture Validation Props
   archValidationManager?: ArchitectureValidationManager; // NEW
+  archBloomStrength?: number; // NEW: Bloom control from panel
+  archBloomThreshold?: number; // NEW: Bloom control from panel
+  archGrassScale?: number; // NEW: Grass scale control
+  archWindStrength?: number; // NEW: Wind strength control
+  archGrassColor?: string; // NEW: Grass color control
 }
 
 // --- HELPER COMPONENT FOR ORBIT CONTROLS LOGIC ---
@@ -1042,7 +1047,12 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
     onBoneChange, gizmoMode, currentVfxAsset, vfxTestParams, vfxAssets,
     // NEW Props
     selectedVfxEmitterId, onVfxEmitterUpdate,
-    archValidationManager // NEW
+    archValidationManager, // NEW
+    archBloomStrength, // NEW: Bloom control
+    archBloomThreshold, // NEW: Bloom control
+    archGrassScale, // NEW: Grass scale control
+    archWindStrength, // NEW: Wind strength control
+    archGrassColor // NEW: Grass color control
 }) => {
   const [bonesVersion, setBonesVersion] = useState(0);
   const boneMap = useRef<Record<string, THREE.Object3D> | null>(null);
@@ -1057,38 +1067,45 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
     <div className="relative w-full h-full bg-gray-900">
         <Canvas shadows className="bg-gray-900" onPointerMissed={onBackgroundClick}>
             <Suspense fallback={null}>
-                {/* 基础环境光 - 提供整体亮度 */}
-                <ambientLight intensity={0.7} />
-                
-                {/* 半球光 - 模拟天空和地面的反射光 */}
-                <hemisphereLight args={["#ffffff", "#444444", 2.0]} />
-                
-                {/* 主平行光 - 提供方向性光照和阴影 */}
-                <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-                
-                {/* 本地 HDR 环境光 - 提供金属质感和环境反射（不依赖 CDN） */}
-                <Suspense fallback={null}>
-                    <Environment files="/assets/env/potsdamer_platz_1k.hdr" background={false} />
-                </Suspense>
-                
-                {/* 接触阴影 - 角色脚底的假投影 */}
-                <ContactShadows 
-                    resolution={1024} 
-                    scale={50} 
-                    blur={shadowSettings?.blur ?? 0.4} 
-                    opacity={shadowSettings?.opacity ?? 0.75} 
-                    color={shadowSettings?.color ?? "#000000"} 
-                    position={[shadowSettings?.offsetX ?? 0, shadowSettings?.offsetY ?? 0, shadowSettings?.offsetZ ?? 0]} 
-                    far={10} 
-                />
+                {/* 🔥 场景隔离：架构验证模式下屏蔽老版本灯光 */}
+                {mode !== AppMode.ARCHITECTURE_VALIDATOR && (
+                  <>
+                    {/* 基础环境光 - 提供整体亮度 */}
+                    <ambientLight intensity={0.7} />
+                    
+                    {/* 半球光 - 模拟天空和地面的反射光 */}
+                    <hemisphereLight args={["#ffffff", "#444444", 2.0]} />
+                    
+                    {/* 主平行光 - 提供方向性光照和阴影 */}
+                    <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
+                    
+                    {/* 本地 HDR 环境光 - 提供金属质感和环境反射（不依赖 CDN） */}
+                    <Suspense fallback={null}>
+                        <Environment files="/assets/env/potsdamer_platz_1k.hdr" background={false} />
+                    </Suspense>
+                    
+                    {/* 接触阴影 - 角色脚底的假投影 */}
+                    <ContactShadows 
+                        resolution={1024} 
+                        scale={50} 
+                        blur={shadowSettings?.blur ?? 0.4} 
+                        opacity={shadowSettings?.opacity ?? 0.75} 
+                        color={shadowSettings?.color ?? "#000000"} 
+                        position={[shadowSettings?.offsetX ?? 0, shadowSettings?.offsetY ?? 0, shadowSettings?.offsetZ ?? 0]} 
+                        far={10} 
+                    />
+                  </>
+                )}
 
-                {(mode === AppMode.MAP_EDITOR || mode === AppMode.ACTION_STUDIO || mode === AppMode.ASSET_LIBRARY || mode === AppMode.CHARACTER_EDITOR || mode === AppMode.MODEL_WORKSHOP || mode === AppMode.VFX_STUDIO) && (
+                {/* 🔥 场景隔离：架构验证模式下屏蔽网格 */}
+                {mode !== AppMode.ARCHITECTURE_VALIDATOR && (mode === AppMode.MAP_EDITOR || mode === AppMode.ACTION_STUDIO || mode === AppMode.ASSET_LIBRARY || mode === AppMode.CHARACTER_EDITOR || mode === AppMode.MODEL_WORKSHOP || mode === AppMode.VFX_STUDIO) && (
                     <Grid infiniteGrid fadeDistance={40} cellColor="#374151" sectionColor="#1f2937" sectionSize={4} cellSize={1} position={[0, 0.01, 0]} />
                 )}
                 
-                {mode !== AppMode.GAMEPLAY && <CameraController />}
+                {mode !== AppMode.GAMEPLAY && mode !== AppMode.ARCHITECTURE_VALIDATOR && <CameraController />}
 
-                {mode !== AppMode.MAP_EDITOR && mode !== AppMode.MODEL_WORKSHOP && (
+                {/* 🔥 场景隔离：架构验证模式下屏蔽地面 */}
+                {mode !== AppMode.ARCHITECTURE_VALIDATOR && mode !== AppMode.MAP_EDITOR && mode !== AppMode.MODEL_WORKSHOP && (
                      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
                         <planeGeometry args={[200, 200]} />
                         <meshStandardMaterial color={mode === AppMode.GAMEPLAY ? mapConfig.groundColor : "#2a2a2a"} roughness={0.8} />
@@ -1114,18 +1131,21 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
                         onUpdateEmitter={onVfxEmitterUpdate} // Propagate update logic
                     />
                 ) : mode === AppMode.ARCHITECTURE_VALIDATOR && archValidationManager ? (
-                    <EngineBridge
-                        entityManager={archValidationManager.getEntityManager()}
-                        worldStateManager={archValidationManager.getWorldStateManager()}
-                        terrainSystem={archValidationManager.getTerrainSystem()}
-                        vegetationSystem={archValidationManager.getVegetationSystem()}
-                        postProcessingEnabled={true}
-                        bloomEnabled={true}
-                        bloomStrength={1.5}
-                        bloomRadius={0.4}
-                        bloomThreshold={0.85}
-                        smaaEnabled={true}
-                    />
+                    <group onPointerDown={(e) => e.stopPropagation()}>
+                        <EngineBridge
+                            entityManager={archValidationManager.getEntityManager()}
+                            worldStateManager={archValidationManager.getWorldStateManager()}
+                            terrainSystem={archValidationManager.getTerrainSystem()}
+                            vegetationSystem={archValidationManager.getVegetationSystem()}
+                            archValidationManager={archValidationManager}
+                            postProcessingEnabled={true}
+                            bloomEnabled={true}
+                            bloomStrength={archBloomStrength ?? 1.5}
+                            bloomRadius={0.4}
+                            bloomThreshold={archBloomThreshold ?? 0.5}
+                            smaaEnabled={true}
+                        />
+                    </group>
                 ) : mode === AppMode.GAMEPLAY ? (
                      <GameplayScene 
                         config={config} mapConfig={mapConfig} cameraMode={cameraMode} cameraSettings={cameraSettings} gearTransforms={gearTransforms} customModels={customModels} assetTransforms={assetTransforms} savedCharacters={savedCharacters} onTriggerAttack={onTriggerAttack} lastAttackTrigger={lastAttackTrigger} animConfig={animConfig} customActions={customActions} vfxAssets={vfxAssets} 

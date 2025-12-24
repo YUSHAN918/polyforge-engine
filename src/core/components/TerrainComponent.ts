@@ -46,11 +46,17 @@ export class TerrainComponent implements Component {
     maxZ: number;
   } | null = null;
 
-  constructor(config: TerrainConfig) {
-    this.config = config;
+  constructor(config?: TerrainConfig) {
+    // 🔥 提供默认配置，支持无参数构造（用于组件注册）
+    this.config = config || {
+      width: 50,
+      depth: 50,
+      widthSegments: 100,
+      depthSegments: 100,
+    };
 
     // 初始化高度数据
-    const vertexCount = (config.widthSegments + 1) * (config.depthSegments + 1);
+    const vertexCount = (this.config.widthSegments + 1) * (this.config.depthSegments + 1);
     this.heightData = new Float32Array(vertexCount);
 
     // 初始化为平坦地形（高度为 0）

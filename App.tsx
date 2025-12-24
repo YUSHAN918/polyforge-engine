@@ -10,8 +10,8 @@ import { ActionStudioPanel } from './components/ActionStudioPanel';
 import { AIAssistant } from './components/AIAssistant'; 
 import { VfxEditorPanel } from './components/VfxEditorPanel'; // NEW
 import { ArchitectureEditor } from './components/ArchitectureEditor/ArchitectureEditor'; // NEW
-import { ArchitectureValidationPanel } from './components/ArchitectureValidationPanel'; // NEW: 架构验证观测窗口
-import { ArchitectureValidationManager } from './core/ArchitectureValidationManager'; // NEW: 核心管理器
+import { ArchitectureValidationPanel } from './src/components/rendering/ArchitectureValidationPanel'; // NEW: 架构验证观测窗口 (影子引擎)
+import { ArchitectureValidationManager } from './src/core/ArchitectureValidationManager'; // NEW: 核心管理器 (影子引擎)
 import { SettingsModal } from './components/SettingsModal'; // NEW
 import './i18n'; // 初始化国际化
 import i18n from 'i18next'; // 导入 i18n 实例
@@ -49,6 +49,15 @@ export const App: React.FC = () => {
   
   // 架构验证观测窗口状态
   const [archValidationManager, setArchValidationManager] = useState<ArchitectureValidationManager | null>(null);
+  
+  // 🎬 后处理控制状态（用于架构验证视口）
+  const [archBloomStrength, setArchBloomStrength] = useState(1.5);
+  const [archBloomThreshold, setArchBloomThreshold] = useState(0.5);
+  
+  // 🌿 植被控制状态（用于架构验证视口）
+  const [archGrassScale, setArchGrassScale] = useState(1.0);
+  const [archWindStrength, setArchWindStrength] = useState(0.1);
+  const [archGrassColor, setArchGrassColor] = useState('#7cba3d');
 
   const [mapConfig, setMapConfig] = useState<MapConfig>(DEFAULT_MAP_CONFIG);
   const [mapHistory, setMapHistory] = useState<MapConfig[]>([]);
@@ -1328,6 +1337,11 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
                 onVfxEmitterUpdate={currentVfxAssetId ? (emitterId, updates) => handleVfxEmitterUpdate(currentVfxAssetId, emitterId, updates) : undefined}
                 // NEW: Architecture Validation Manager
                 archValidationManager={archValidationManager}
+                archBloomStrength={archBloomStrength}
+                archBloomThreshold={archBloomThreshold}
+                archGrassScale={archGrassScale}
+                archWindStrength={archWindStrength}
+                archGrassColor={archGrassColor}
             />
             {mode === AppMode.GAMEPLAY && (
                 <div className="absolute top-4 left-4 z-40 bg-gray-900/80 backdrop-blur border border-gray-700 p-3 rounded-xl shadow-xl flex flex-col gap-2 min-w-[200px]">
@@ -1513,7 +1527,14 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
         )}
         
         {mode === AppMode.ARCHITECTURE_VALIDATOR && (
-            <ArchitectureValidationPanel manager={archValidationManager} />
+            <ArchitectureValidationPanel 
+                manager={archValidationManager}
+                onBloomStrengthChange={setArchBloomStrength}
+                onBloomThresholdChange={setArchBloomThreshold}
+                onGrassScaleChange={setArchGrassScale}
+                onWindStrengthChange={setArchWindStrength}
+                onGrassColorChange={setArchGrassColor}
+            />
         )}
         
         {/* AI Assistant at the end for z-index layering */}

@@ -12,7 +12,17 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Entity } from '../../core/Entity';
-import { VegetationComponent, VegetationType } from '../../core/components/VegetationComponent';
+import { VegetationComponent, VegetationType, VegetationConfig } from '../../core/components/VegetationComponent';
+
+/**
+ * 植被实例数据（从 VegetationSystem 导入的类型）
+ */
+interface VegetationInstance {
+  position: THREE.Vector3;
+  rotation: number;
+  scale: THREE.Vector3;
+  colorOffset: THREE.Color;
+}
 
 /**
  * VegetationVisual Props
@@ -20,6 +30,9 @@ import { VegetationComponent, VegetationType } from '../../core/components/Veget
 interface VegetationVisualProps {
   entity: Entity;
   vegetationSystem: any; // VegetationSystem 实例
+  grassScale?: number; // 🌿 动态草地缩放
+  windStrength?: number; // 🌿 动态风场强度
+  grassColor?: string; // 🌿 动态草地颜色
 }
 
 /**
@@ -41,7 +54,6 @@ const createWindShader = (baseColor: string, windStrength: number, windSpeed: nu
       
       varying vec3 vPosition;
       varying vec3 vNormal;
-      varying vec2 vUv;
       
       // 简单的噪声函数
       float noise(vec2 p) {
@@ -50,8 +62,7 @@ const createWindShader = (baseColor: string, windStrength: number, windSpeed: nu
       
       void main() {
         vPosition = position;
-        vNormal = normal;
-        vUv = uv;
+        vNormal = normalize(normalMatrix * normal);
         
         // 计算风场偏移（只影响顶部顶点）
         float heightFactor = position.y; // 越高摆动越大
@@ -68,9 +79,8 @@ const createWindShader = (baseColor: string, windStrength: number, windSpeed: nu
         displaced.x += windOffsetX;
         displaced.z += windOffsetZ;
         
-        // 变换到世界空间
-        vec4 worldPosition = modelMatrix * vec4(displaced, 1.0);
-        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        // 变换到裁剪空间
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
       }
     `,
     fragmentShader: `
@@ -78,18 +88,17 @@ const createWindShader = (baseColor: string, windStrength: number, windSpeed: nu
       
       varying vec3 vPosition;
       varying vec3 vNormal;
-      varying vec2 vUv;
       
       void main() {
         // 简单的光照计算
         vec3 lightDir = normalize(vec3(1.0, 1.0, 0.5));
-        float diffuse = max(dot(vNormal, lightDir), 0.0);
+        float diffuse = max(dot(normalize(vNormal), lightDir), 0.0);
         
         // 添加环境光
         float ambient = 0.3;
         
         // 根据高度添加渐变（底部更暗）
-        float heightGradient = vPosition.y * 0.5 + 0.5;
+        float heightGradient = clamp(vPosition.y * 0.5 + 0.5, 0.0, 1.0);
         
         // 最终颜色
         vec3 color = baseColor * (ambient + diffuse * 0.7) * heightGradient;
@@ -107,96 +116,198 @@ export const VegetationVisual: React.FC<VegetationVisualProps> = ({ entity, vege
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   
+  // 🔥 调试：组件挂载时打印
+  useEffect(() => {
+    console.log(`[VegetationVisual] Component mounted for entity: ${entity.name} (${entity.id})`);
+    return () => {
+      console.log(`[VegetationVisual] Component unmounted for entity: ${entity.name} (${entity.id})`);
+    };
+  }, [entity.id, entity.name]);
+  
   // 获取植被组件
   const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
   
-  if (!vegetation || !vegetation.enabled) {
-    return null;
-  }
+  // ✅ 始终获取配置和实例（即使为空）
+  const config: VegetationConfig = vegetation?.config || {
+    type: VegetationType.GRASS,
+    baseColor: '#7cba3d',
+    windStrength: 0.1,
+    windSpeed: 1.0,
+    scale: 1.0,
+    density: 10,
+    seed: 0,
+    minHeight: 0.5,
+    maxHeight: 1.0,
+    minWidth: 0.1,
+    maxWidth: 0.2,
+    colorVariation: 0.2,
+    alignToTerrain: true,
+  };
 
-  const config = vegetation.config;
-
-  // 获取实例数据
-  const instances = vegetationSystem.getInstances(entity.id);
+  // 获取实例数据（如果没有则返回空数组）
+  const instances = vegetationSystem?.getInstances(entity.id) || [];
   
-  if (!instances || instances.length === 0) {
-    return null;
-  }
+  // 🔥 调试：打印实例数量
+  useEffect(() => {
+    console.log(`[VegetationVisual] Entity ${entity.name} (${entity.id}):`, {
+      hasVegetationSystem: !!vegetationSystem,
+      instancesLength: instances.length,
+      vegetationEnabled: vegetation?.enabled,
+      shouldRender: vegetation && vegetation.enabled && instances.length > 0,
+    });
+  }, [instances.length, entity.id, entity.name, vegetation?.enabled, vegetationSystem]);
+  
+  // ✅ 计算是否应该显示（但不影响 Hook 调用）
+  const shouldRender = vegetation && vegetation.enabled && instances.length > 0;
 
-  // 创建几何体（根据植被类型）
+  // ✅ 始终创建几何体（无条件）
   const geometry = useMemo(() => {
+    let geom: THREE.BufferGeometry;
+    
     switch (config.type) {
       case VegetationType.GRASS:
-        // 草：简单的平面（两个交叉的平面）
-        return new THREE.PlaneGeometry(0.1, 1, 1, 4);
+        // 草：简单的平面（两个交叉的平面）- 🔥 增大尺寸
+        geom = new THREE.PlaneGeometry(1.0, 2.0, 1, 4);
+        break;
       
       case VegetationType.FLOWER:
         // 花：圆柱体 + 球体
-        return new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8);
+        geom = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8);
+        break;
       
       case VegetationType.TREE:
         // 树：圆锥体
-        return new THREE.ConeGeometry(0.5, 2, 8);
+        geom = new THREE.ConeGeometry(0.5, 2, 8);
+        break;
       
       case VegetationType.BUSH:
         // 灌木：球体
-        return new THREE.SphereGeometry(0.3, 8, 8);
+        geom = new THREE.SphereGeometry(0.3, 8, 8);
+        break;
       
       default:
-        return new THREE.PlaneGeometry(0.1, 1, 1, 4);
+        geom = new THREE.PlaneGeometry(1.0, 2.0, 1, 4);
     }
+    
+    // 🔥 关键：确保几何体居中，否则实例会偏移
+    geom.computeBoundingBox();
+    geom.computeBoundingSphere();
+    
+    return geom;
   }, [config.type]);
 
-  // 创建风场 Shader 材质
+  // ✅ 始终创建风场 Shader 材质（无条件）
   const shader = useMemo(() => {
     return createWindShader(config.baseColor, config.windStrength, config.windSpeed);
   }, [config.baseColor, config.windStrength, config.windSpeed]);
 
-  // 更新实例矩阵
+  // 🔥 强制注入方式：预分配 5000 个实例空间，使用 useLayoutEffect 显式遍历数据
   useEffect(() => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || !shouldRender || instances.length === 0) {
+      console.log('[VegetationVisual] ⚠️ Skipping injection:', {
+        hasMesh: !!meshRef.current,
+        shouldRender,
+        instancesLength: instances.length,
+      });
+      return;
+    }
 
     const mesh = meshRef.current;
     const dummy = new THREE.Object3D();
+    
+    // 获取全局缩放倍数
+    const globalScale = config.scale ?? 1.0;
 
-    instances.forEach((instance, i) => {
-      // 设置位置、旋转、缩放
-      dummy.position.copy(instance.position);
+    console.log(`[VegetationVisual] 🔥 Force-injecting ${instances.length} instances for ${entity.name}`);
+    console.log(`[VegetationVisual] 🔥 Mesh current count BEFORE: ${mesh.count}`);
+
+    // 🔥 显式遍历数据，强制注入矩阵
+    for (let i = 0; i < instances.length; i++) {
+      const instance = instances[i];
+      
+      // 设置位置（使用地形高度，不需要额外补偿）
+      dummy.position.set(
+        instance.position.x,
+        instance.position.y,
+        instance.position.z
+      );
+      
       dummy.rotation.y = instance.rotation;
-      dummy.scale.copy(instance.scale);
+      
+      // 应用全局缩放 + 实例缩放（移除最小缩放限制）
+      dummy.scale.set(
+        instance.scale.x * globalScale,
+        instance.scale.y * globalScale,
+        instance.scale.z * globalScale
+      );
       
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
       
-      // 设置颜色（如果支持）
+      // 设置颜色
       if (mesh.instanceColor) {
         mesh.setColorAt(i, instance.colorOffset);
       }
-    });
-
+    }
+    
+    // 🔥 手动设置当前显示数量
+    mesh.count = instances.length;
+    
+    console.log(`[VegetationVisual] 🔥 Mesh current count AFTER: ${mesh.count}`);
+    
+    // 🔥 强制更新实例矩阵
     mesh.instanceMatrix.needsUpdate = true;
+    
+    // 🔥 强制刷新包围球
+    mesh.computeBoundingSphere();
     
     if (mesh.instanceColor) {
       mesh.instanceColor.needsUpdate = true;
     }
 
-    console.log(`[VegetationVisual] Updated ${instances.length} instances for ${entity.name}`);
-  }, [instances, entity.name]);
+    // 调试日志 - 打印前5个实例的详细信息
+    console.log('[VegetationVisual] ✅ Force-injection complete:', {
+      count: mesh.count,
+      maxInstances: 5000,
+      geometryType: config.type,
+      samples: instances.slice(0, 5).map((inst, i) => ({
+        index: i,
+        position: inst.position.toArray(),
+        scale: inst.scale.toArray(),
+        rotation: inst.rotation,
+      })),
+    });
+  }, [instances, entity.name, shouldRender, config.scale, config.type, entity.id]);
 
-  // 更新 Shader 时间
+  // ✅ 始终执行 useFrame（Shader 时间更新）
   useFrame((state) => {
-    if (materialRef.current) {
+    if (materialRef.current && materialRef.current.uniforms && shouldRender) {
+      // 🌿 更新 Shader 时间（风场动画）
       materialRef.current.uniforms.time.value = state.clock.elapsedTime;
+    }
+    
+    // 🔥 调试：每帧检查 mesh.count 是否被重置
+    if (meshRef.current && instances.length > 0) {
+      if (meshRef.current.count !== instances.length) {
+        console.warn(`[VegetationVisual] ⚠️ mesh.count was reset! Expected: ${instances.length}, Got: ${meshRef.current.count}`);
+        // 🔥 强制恢复正确的 count
+        meshRef.current.count = instances.length;
+      }
     }
   });
 
+  // 🔥 预分配 5000 个实例空间，废除 key 属性（避免闪烁和性能浪费）
   return (
     <instancedMesh
       ref={meshRef}
-      args={[geometry, undefined, instances.length]}
+      args={[geometry, undefined, 5000]} // 🔥 硬编码预分配 5000 个实例空间
+      // 🔥 移除 count 属性，让 useEffect 手动设置
       castShadow
       receiveShadow
+      visible={shouldRender}
+      frustumCulled={false}
     >
+      {/* 🌿 风场 Shader 材质 */}
       <shaderMaterial
         ref={materialRef}
         attach="material"
