@@ -64,7 +64,7 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
   return (
     <instancedMesh
       ref={meshRef}
-      args={[new THREE.PlaneGeometry(0.5, 1, 1, 4), customMaterial, 5000]}
+      args={[new THREE.PlaneGeometry(0.5, 1, 1, 4), customMaterial, 100000]}
       frustumCulled={false}
       castShadow
       receiveShadow
