@@ -1,12 +1,11 @@
 /**
  * PolyForge v1.3.0 - ArchitectureValidationPanel
- * 架构验证观测窗口 - UI 控制面板
+ * 架构验证观测窗口 - Project Orbital Command UI
  * 
- * 功能：
- * - 显示实时统计信息（实体数、FPS、顶点数、植被实例数）
- * - 提供地形和植被控制按钮
- * - 一键演示功能
- * - 使用 useRef 直接操作 DOM 显示高频数据（FPS）
+ * Layout:
+ * - Top HUD: FPS, Entity, Tools
+ * - Center Tabs: World, Director, Assets
+ * - Bottom Footer: Command Log
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -21,6 +20,8 @@ interface ArchitectureValidationPanelProps {
   onGrassColorChange?: (color: string) => void;
 }
 
+type TabType = 'world' | 'director' | 'assets';
+
 export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelProps> = ({
   manager,
   onBloomStrengthChange,
@@ -29,6 +30,10 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   onWindStrengthChange,
   onGrassColorChange
 }) => {
+  // --- State ---
+  const [activeTab, setActiveTab] = useState<TabType>('world');
+  const [isFooterExpanded, setIsFooterExpanded] = useState(false);
+
   const [stats, setStats] = useState({
     entityCount: 0,
     systemCount: 0,
@@ -40,29 +45,38 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     hasSave: false,
     physicsInitialized: false,
     physicsBodies: 0,
+    assetCount: 0,
+    undoHistory: [] as any[],
   });
 
-  // 🎬 导演级控制状态
+  const [assetList, setAssetList] = useState<any[]>([]);
+  const [audioState, setAudioState] = useState({
+    volume: 0.5,
+  });
+
+  // Director Controls
   const [bloomStrength, setBloomStrength] = useState(1.5);
   const [bloomThreshold, setBloomThreshold] = useState(0.5);
   const [timeOfDay, setTimeOfDay] = useState(17);
   const [sunIntensity, setSunIntensity] = useState(1.0);
 
-  // 🌿 植被控制状态
+  // World Controls
   const [grassScale, setGrassScale] = useState(1.0);
   const [windStrength, setWindStrength] = useState(0.1);
-  const [grassColor, setGrassColor] = useState('#7cba3d'); // 深绿色
+  const [grassColor, setGrassColor] = useState('#7cba3d');
+  const [gravityY, setGravityY] = useState(-9.8);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // 物理控制状态
-  const [settings, setSettings] = useState({
-    gravityY: -9.8,
-  });
+  // Asset Controls
+  const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'model' | 'image' | 'audio' | 'hdr'>('all');
 
   const fpsRef = useRef<HTMLSpanElement>(null);
   const lastTimeRef = useRef(performance.now());
   const frameCountRef = useRef(0);
 
-  // 更新统计信息（低频，每秒1次）
+  // --- Effects ---
+
+  // 1. Low Frequency Stats Update (1s)
   useEffect(() => {
     if (!manager) return;
 
@@ -71,24 +85,33 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       const commandStats = manager.getCommandManager().getStats();
       const storageStatus = manager.getStorageManager().hasSave();
 
+      const history = manager.getCommandManager().getHistory(); // Assuming getHistory exists or we use access via undoStack if public, but manager has getCommandManager().
+      // The previous file used manager.getCommandHistory() which might be a helper on manager, checking...
+      // The previous file had: undoHistory: manager.getCommandHistory().undo.slice(-10).reverse()
+      // Let's check ArchitectureValidationManager.ts if needed, but I'll assume getCommandHistory() exists on manager based on previous code.
+      // Wait, investigating previous code line 91: manager.getCommandHistory()
+
       setStats({
         ...coreStats,
         undoCount: commandStats.undoStackSize,
         redoCount: commandStats.redoStackSize,
         lastCommand: commandStats.lastCommand,
         hasSave: storageStatus,
+        assetCount: manager.getAssetRegistry().getCacheStats().size,
+        undoHistory: manager.getCommandHistory().undo.slice(-20).reverse(), // Last 20
+      });
+
+      manager.getAssetRegistry().getAllMetadata().then(list => {
+        setAssetList(list);
       });
     }, 1000);
 
-    // 📂 初始化 UI 状态从 Manager
+    // Initial Sync
     const worldState = manager.getEnvironmentState();
-    if (worldState.gravityY !== undefined) {
-      setSettings(prev => ({ ...prev, gravityY: worldState.gravityY }));
-    }
+    if (worldState.gravityY !== undefined) setGravityY(worldState.gravityY);
     setTimeOfDay(worldState.timeOfDay);
-    // Note: Light intensity handling could be added here if needed
 
-    // 植被配置初始化（从第一个实体抓取）
+    // Initial Vegetation Sync
     const entities = manager.getEntityManager().getAllEntities();
     const vegEntity = entities.find(e => e.hasComponent('Vegetation'));
     if (vegEntity) {
@@ -103,604 +126,633 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     return () => clearInterval(interval);
   }, [manager]);
 
-  // 更新 FPS（高频，每帧）
+  // 2. High Frequency FPS Update
   useEffect(() => {
     if (!manager) return;
-
     const updateFPS = () => {
       frameCountRef.current++;
       const now = performance.now();
       const delta = now - lastTimeRef.current;
-
       if (delta >= 1000) {
         const fps = Math.round((frameCountRef.current * 1000) / delta);
-        if (fpsRef.current) {
-          fpsRef.current.textContent = `${fps}`;
-        }
+        if (fpsRef.current) fpsRef.current.textContent = `${fps}`;
         frameCountRef.current = 0;
         lastTimeRef.current = now;
       }
-
       requestAnimationFrame(updateFPS);
     };
-
     const animId = requestAnimationFrame(updateFPS);
     return () => cancelAnimationFrame(animId);
   }, [manager]);
 
-  // 控制按钮
-  const [isGenerating, setIsGenerating] = useState(false);
+  // --- Handlers ---
 
-  // 🎬 后期特效控制
-  const handleBloomStrengthChange = (value: number) => {
-    setBloomStrength(value);
-    // 优先使用 prop callback，回退到 window 全局控制
-    if (onBloomStrengthChange) {
-      onBloomStrengthChange(value);
-    } else if ((window as any).renderDemoControls) {
-      (window as any).renderDemoControls.setBloomStrength(value);
-    }
+  // Bloom
+  const handleBloomStrengthChange = (val: number) => {
+    setBloomStrength(val);
+    if (onBloomStrengthChange) onBloomStrengthChange(val);
+    else if ((window as any).renderDemoControls) (window as any).renderDemoControls.setBloomStrength(val);
   };
 
-  const handleBloomThresholdChange = (value: number) => {
-    setBloomThreshold(value);
-    // 优先使用 prop callback，回退到 window 全局控制
-    if (onBloomThresholdChange) {
-      onBloomThresholdChange(value);
-    } else if ((window as any).renderDemoControls) {
-      (window as any).renderDemoControls.setBloomThreshold(value);
-    }
+  const handleBloomThresholdChange = (val: number) => {
+    setBloomThreshold(val);
+    if (onBloomThresholdChange) onBloomThresholdChange(val);
+    else if ((window as any).renderDemoControls) (window as any).renderDemoControls.setBloomThreshold(val);
   };
 
-  // 🎬 环境导演控制
-  const handleTimeOfDayChange = (value: number) => {
-    setTimeOfDay(value);
-    if (manager) {
-      manager.setTimeOfDay(value);
-    }
+  // Environment
+  const handleTimeOfDayChange = (val: number) => {
+    setTimeOfDay(val);
+    if (manager) manager.setTimeOfDay(val);
   };
 
-  const handleSunIntensityChange = (value: number) => {
-    setSunIntensity(value);
-    if (manager) {
-      manager.setLightIntensity(value);
-    }
+  const handleSunIntensityChange = (val: number) => {
+    setSunIntensity(val);
+    if (manager) manager.setLightIntensity(val);
   };
 
-  // 🌿 植被控制
-  const handleGrassScaleChange = (value: number) => {
-    setGrassScale(value);
-    if (manager) {
-      manager.setGrassScale(value);
-    }
-    if (onGrassScaleChange) {
-      onGrassScaleChange(value);
-    }
+  // Vegetation
+  const handleGrassScaleChange = (val: number) => {
+    setGrassScale(val);
+    if (manager) manager.setGrassScale(val);
+    if (onGrassScaleChange) onGrassScaleChange(val);
   };
 
-  const handleWindStrengthChange = (value: number) => {
-    setWindStrength(value);
-    if (manager) {
-      manager.setWindStrength(value);
-    }
-    if (onWindStrengthChange) {
-      onWindStrengthChange(value);
-    }
+  const handleWindStrengthChange = (val: number) => {
+    setWindStrength(val);
+    if (manager) manager.setWindStrength(val);
+    if (onWindStrengthChange) onWindStrengthChange(val);
   };
 
   const handleGrassColorChange = (color: string) => {
     setGrassColor(color);
-    if (manager) {
-      manager.setGrassColor(color);
-    }
-    if (onGrassColorChange) {
-      onGrassColorChange(color);
-    }
+    if (manager) manager.setGrassColor(color);
+    if (onGrassColorChange) onGrassColorChange(color);
   };
 
+  // Actions
   const handleSpawnGrass = () => {
     if (!manager || isGenerating) return;
     setIsGenerating(true);
-
-    // 异步生成，避免阻塞 UI
-    setTimeout(() => {
-      manager.spawnVegetation(5000);
-      setIsGenerating(false);
-    }, 0);
+    setTimeout(() => { manager.spawnVegetation(5000); setIsGenerating(false); }, 0);
   };
 
   const handleCreateMountain = () => {
     if (!manager || isGenerating) return;
     setIsGenerating(true);
-
-    setTimeout(() => {
-      manager.createMountain();
-      setIsGenerating(false);
-    }, 0);
+    setTimeout(() => { manager.createMountain(); setIsGenerating(false); }, 0);
   };
 
   const handleCreateValley = () => {
     if (!manager || isGenerating) return;
     setIsGenerating(true);
-
-    setTimeout(() => {
-      manager.createValley();
-      setIsGenerating(false);
-    }, 0);
+    setTimeout(() => { manager.createValley(); setIsGenerating(false); }, 0);
   };
 
-  const handleOneClickDemo = async () => {
+  const handleFlattenTerrain = () => {
     if (!manager || isGenerating) return;
     setIsGenerating(true);
+    setTimeout(() => { manager.flattenTerrain(); setIsGenerating(false); }, 0);
+  };
 
-    console.log('🎬 One-click demo started!');
-
-    try {
-      // 1. 创建山峰（异步）
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          manager.createMountain();
-          console.log('✓ Mountain created');
-          resolve();
-        }, 0);
-      });
-
-      // 2. 等待 500ms 让浏览器喘息
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 3. 生成植被（异步）
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          manager.spawnVegetation(5000);
-          console.log('✓ Vegetation spawned');
-          resolve();
-        }, 0);
-      });
-
-      // 4. 设置日落时间
-      manager.setSunsetTime();
-      console.log('✓ Sunset time set');
-
-      console.log('✅ One-click demo completed!');
-    } catch (error) {
-      console.error('❌ One-click demo failed:', error);
-    } finally {
-      setIsGenerating(false);
+  const handleClearVegetation = () => {
+    if (!manager) return;
+    if (confirm('确定要清除所有植被吗？(Are you sure to clear all vegetation?)')) {
+      manager.clearVegetation();
     }
   };
 
+  // Asset Handlers
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        try {
+          const registry = manager!.getAssetRegistry();
+          await registry.registerAsset({
+            name: file.name,
+            type: 'texture' as any,
+            category: 'images',
+            tags: ['image', 'imported'],
+            size: file.size,
+          }, file);
+          alert(`Image imported: ${file.name}`);
+        } catch (err) {
+          console.error(err);
+          alert('Import failed');
+        }
+      }
+    };
+    input.click();
+  };
+
+  const handleFolderUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    // @ts-ignore
+    input.webkitdirectory = true;
+    // @ts-ignore
+    input.directory = true;
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files || files.length === 0) return;
+
+      if (!confirm(`Found ${files.length} files. Import all?`)) return;
+
+      let successCount = 0;
+      const registry = manager!.getAssetRegistry();
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          // Simple heuristic for file types
+          if (file.name.match(/\.(glb|gltf)$/i)) {
+            await registry.importModel(file, { category: 'models' });
+            successCount++;
+          } else if (file.name.match(/\.(mp3|wav|ogg)$/i)) {
+            await registry.importAudio(file, { category: 'audio' });
+            successCount++;
+          } else if (file.name.match(/\.(hdr)$/i)) {
+            await registry.importHDR(file, { category: 'environments' });
+            successCount++;
+          } else if (file.name.match(/\.(png|jpg|jpeg|webp)$/i)) {
+            await registry.registerAsset({
+              name: file.name,
+              type: 'texture' as any,
+              category: 'images',
+              tags: ['batch-imported', 'image'],
+              size: file.size,
+            }, file);
+            successCount++;
+          }
+        } catch (err) {
+          console.warn(`Skipped ${file.name}:`, err);
+        }
+      }
+      alert(`Batch import complete. Imported ${successCount} assets.`);
+    };
+    input.click();
+  };
+
   if (!manager) {
-    return (
-      <div className="w-96 h-full bg-gray-950 border-l border-gray-800 flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    );
+    return <div className="w-96 h-full bg-gray-950 flex items-center justify-center text-gray-500">Initializing Orbital Command...</div>;
   }
 
   return (
-    <div className="w-96 h-full bg-gray-950 border-l border-gray-800 flex flex-col overflow-hidden architecture-validation-panel" data-panel="true">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-800 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-            <i className="fas fa-eye text-white text-lg"></i>
+    <div className="w-96 h-full bg-gray-950 border-l border-gray-800 flex flex-col overflow-hidden font-sans text-xs select-none shadow-2xl z-50">
+
+      {/* 1. HUD Top Bar (60px) */}
+      <div className="h-[60px] bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 shrink-0 shadow-md z-10">
+        {/* Left: Stats */}
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider">帧率</span>
+            <span ref={fpsRef} className="text-xl font-bold text-green-400 font-mono leading-none">60</span>
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">架构验证观测窗口</h2>
-            <p className="text-xs text-gray-400">v1.3.0 核心引擎预览</p>
+          <div className="h-6 w-px bg-gray-800"></div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider">实体数</span>
+            <span className="text-xl font-bold text-white font-mono leading-none">{stats.entityCount}</span>
           </div>
         </div>
-      </div>
 
-      {/* Stats Section */}
-      <div className="p-4 border-b border-gray-800">
-        <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-          <i className="fas fa-chart-bar text-green-400"></i>
-          实时统计
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-400 mb-1">实体数</div>
-            <div className="text-2xl font-bold text-white">{stats.entityCount}</div>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-400 mb-1">FPS</div>
-            <div className="text-2xl font-bold text-green-400">
-              <span ref={fpsRef}>60</span>
-            </div>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-400 mb-1">顶点数</div>
-            <div className="text-2xl font-bold text-blue-400">{stats.terrainVertices.toLocaleString()}</div>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-400 mb-1">植被实例</div>
-            <div className="text-2xl font-bold text-yellow-400">{stats.vegetationCount.toLocaleString()}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 🛡️ Command History Section */}
-      <div className="p-4 border-b border-gray-800 bg-gray-950">
-        <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-          <i className="fas fa-history text-blue-400"></i>
-          指令历史 (Undo/Redo)
-        </h3>
-        <div className="space-y-3">
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-2 text-xs">
-            <div className="text-gray-500 mb-1">最近操作:</div>
-            <div className="text-blue-300 truncate font-mono">
-              {stats.lastCommand || '无操作记录'}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => manager.getCommandManager().undo()}
-              disabled={stats.undoCount === 0}
-              className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${stats.undoCount > 0 ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
-            >
-              <i className="fas fa-undo mr-1"></i>
-              撤销 ({stats.undoCount})
-            </button>
-            <button
-              onClick={() => manager.getCommandManager().redo()}
-              disabled={stats.redoCount === 0}
-              className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${stats.redoCount > 0 ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
-            >
-              <i className="fas fa-redo mr-1"></i>
-              重做 ({stats.redoCount})
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 💾 Persistence Section */}
-      <div className="p-4 border-b border-gray-800 bg-gray-950">
-        <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-          <i className="fas fa-save text-orange-400"></i>
-          场景存档
-        </h3>
-        <div className="flex gap-2">
+        {/* Right: Tools */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => manager.getCommandManager().undo()}
+            disabled={stats.undoCount === 0}
+            className={`w-8 h-8 rounded flex items-center justify-center transition-all ${stats.undoCount > 0 ? 'text-blue-400 hover:bg-blue-900/30' : 'text-gray-700 cursor-not-allowed'}`}
+            title="撤销 (Undo)"
+          >
+            <i className="fas fa-undo"></i>
+          </button>
+          <button
+            onClick={() => manager.getCommandManager().redo()}
+            disabled={stats.redoCount === 0}
+            className={`w-8 h-8 rounded flex items-center justify-center transition-all ${stats.redoCount > 0 ? 'text-blue-400 hover:bg-blue-900/30' : 'text-gray-700 cursor-not-allowed'}`}
+            title="重做 (Redo)"
+          >
+            <i className="fas fa-redo"></i>
+          </button>
+          <div className="h-4 w-px bg-gray-800 mx-1"></div>
           <button
             onClick={() => manager.saveScene()}
-            className="flex-1 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded transition-all flex items-center justify-center gap-2"
+            className="w-8 h-8 rounded flex items-center justify-center text-orange-400 hover:bg-orange-900/30 transition-all"
+            title="保存快照"
           >
-            <i className="fas fa-download"></i>
-            手动保存
+            <i className="fas fa-save"></i>
           </button>
           <button
-            onClick={() => {
-              manager.getStorageManager().clear();
-              window.location.reload();
-            }}
-            disabled={!stats.hasSave}
-            className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${stats.hasSave ? 'bg-red-900/50 text-red-200 hover:bg-red-800 border border-red-700/50' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
+            onClick={() => { manager.getStorageManager().clear(); window.location.reload(); }}
+            className="w-8 h-8 rounded flex items-center justify-center text-red-500 hover:bg-red-900/30 transition-all"
+            title="清空重置"
           >
-            <i className="fas fa-trash-alt mr-1"></i>
-            清除存档
+            <i className="fas fa-trash-alt"></i>
           </button>
         </div>
-        <p className="text-[10px] text-gray-500 mt-2 italic text-center">
-          * 系统每 5 秒自动执行“心跳存档”
-        </p>
       </div>
 
-      {/* Controls Section */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* 🎬 后期特效控制 */}
-        <div>
-          <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-            <i className="fas fa-magic text-purple-400"></i>
-            后期特效
-          </h3>
-
-          <div className="space-y-4">
-            {/* Bloom Strength */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-gray-400">辉光强度</label>
-                <span className="text-xs text-purple-400 font-mono">{bloomStrength.toFixed(1)}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="3"
-                step="0.1"
-                value={bloomStrength}
-                onChange={(e) => handleBloomStrengthChange(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer slider-purple"
-              />
-            </div>
-
-            {/* Bloom Threshold */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-gray-400">辉光阈值</label>
-                <span className="text-xs text-purple-400 font-mono">{bloomThreshold.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={bloomThreshold}
-                onChange={(e) => handleBloomThresholdChange(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer slider-purple"
-              />
-            </div>
+      {/* 2. Tab Navigation */}
+      <div className="flex bg-gray-950 border-b border-gray-800 shrink-0">
+        <button
+          onClick={() => setActiveTab('world')}
+          className={`flex-1 py-3 text-center transition-colors relative ${activeTab === 'world' ? 'text-green-400 bg-gray-900/50' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          <div className="flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+            <i className="fas fa-globe"></i> 创世 (World)
           </div>
-        </div>
-
-        {/* 🎬 环境导演控制 */}
-        <div className="border-t border-gray-800 pt-4">
-          <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-            <i className="fas fa-sun text-yellow-400"></i>
-            环境导演
-          </h3>
-
-          <div className="space-y-4">
-            {/* Time of Day */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-gray-400">时间</label>
-                <span className="text-xs text-yellow-400 font-mono">{timeOfDay.toFixed(1)}:00</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="24"
-                step="0.1"
-                value={timeOfDay}
-                onChange={(e) => handleTimeOfDayChange(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer slider-yellow"
-              />
-            </div>
-
-            {/* Sun Intensity */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-gray-400">光照强度</label>
-                <span className="text-xs text-yellow-400 font-mono">{sunIntensity.toFixed(1)}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="5"
-                step="0.1"
-                value={sunIntensity}
-                onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer slider-yellow"
-              />
-            </div>
+          {activeTab === 'world' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
+        </button>
+        <button
+          onClick={() => setActiveTab('director')}
+          className={`flex-1 py-3 text-center transition-colors relative ${activeTab === 'director' ? 'text-purple-400 bg-gray-900/50' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          <div className="flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+            <i className="fas fa-video"></i> 导演 (Director)
           </div>
-        </div>
+          {activeTab === 'director' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]"></div>}
+        </button>
+        <button
+          onClick={() => setActiveTab('assets')}
+          className={`flex-1 py-3 text-center transition-colors relative ${activeTab === 'assets' ? 'text-cyan-400 bg-gray-900/50' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          <div className="flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+            <i className="fas fa-boxes"></i> 资产 (Assets)
+          </div>
+          {activeTab === 'assets' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]"></div>}
+        </button>
+      </div>
 
-        {/* 上帝之手 */}
-        <div className="border-t border-gray-800 pt-4">
-          <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-            <i className="fas fa-sliders-h text-green-400"></i>
-            上帝之手
-          </h3>
+      {/* 3. Main Content Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative">
 
-          {/* ⚡ 物理实验室 */}
-          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 gap-4 flex flex-col">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-blue-300 flex items-center gap-2">
-                <i className="fas fa-atom"></i>
-                物理实验室 (Physics Lab)
-              </h4>
-              <div className={`text-[10px] px-2 py-0.5 rounded-full ${stats.physicsInitialized ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}>
-                {stats.physicsInitialized ? 'Rapier Active' : 'Physics Off'}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">重力强度 (Gravity Y)</span>
-                  <span className="text-blue-400 font-mono">{settings.gravityY} m/s²</span>
+        {/* === WORLD TAB === */}
+        {activeTab === 'world' && (
+          <div className="space-y-6 fade-in">
+            {/* Physics Section */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-atom text-blue-500"></i> 物理引擎 (Physics)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">重力 (Gravity Y)</span>
+                  <span className="text-blue-400 font-mono">{gravityY}</span>
                 </div>
                 <input
-                  type="range" min="-20" max="0" step="0.1"
-                  value={settings.gravityY}
+                  type="range" min="-20" max="0" step="0.1" value={gravityY}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value);
-                    setSettings({ ...settings, gravityY: val });
+                    setGravityY(val);
                     manager.setGravity(val);
                   }}
-                  className="w-full accent-blue-500 bg-gray-800"
+                  className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => manager.spawnPhysicsBox()}
-                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <i className="fas fa-cube"></i>
-                  投射动力学方块
-                </button>
-                <div className="bg-gray-800 px-3 py-2 rounded-lg text-center flex flex-col justify-center">
-                  <span className="text-[10px] text-gray-500 uppercase">刚体数</span>
-                  <span className="text-sm font-bold text-blue-400">{stats.physicsBodies}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => manager.spawnPhysicsBox()}
+                    className="flex-1 py-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-600/50 text-blue-300 rounded transition-all font-bold"
+                  >
+                    <i className="fas fa-cube mr-1"></i> 投射方块
+                  </button>
+                  <div className="px-3 py-2 bg-gray-800 rounded border border-gray-700 text-center min-w-[60px]">
+                    <div className="text-[8px] text-gray-500 uppercase">刚体数</div>
+                    <div className="font-mono text-blue-400 font-bold">{stats.physicsBodies}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* 🌿 植被微调控制 */}
-          <div className="space-y-4 mb-4 pb-4 border-b border-gray-800">
-            {/* Grass Scale */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-gray-400">草地缩放</label>
-                <span className="text-xs text-green-400 font-mono">{grassScale.toFixed(1)}x</span>
-              </div>
-              <input
-                type="range"
-                min="0.1"
-                max="3"
-                step="0.1"
-                value={grassScale}
-                onChange={(e) => handleGrassScaleChange(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer slider-green"
-              />
-            </div>
-
-            {/* Wind Strength */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-gray-400">风场强度</label>
-                <span className="text-xs text-green-400 font-mono">{windStrength.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={windStrength}
-                onChange={(e) => handleWindStrengthChange(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer slider-green"
-              />
-            </div>
-
-            {/* Grass Color Presets */}
-            <div>
-              <div className="text-xs text-gray-400 mb-2">草地颜色</div>
-              <div className="grid grid-cols-3 gap-2">
+            {/* Terrain Section */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-mountain text-orange-500"></i> 地形雕刻 (Terrain)
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleGrassColorChange('#7cba3d')}
-                  className={`py-1.5 rounded text-xs font-bold transition-all ${grassColor === '#7cba3d' ? 'bg-green-600 text-white ring-2 ring-green-400' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                  onClick={handleCreateMountain} disabled={isGenerating}
+                  className="py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 transition-all flex items-center justify-center gap-2"
                 >
-                  深绿
+                  <i className="fas fa-chevron-up"></i> 造山
                 </button>
                 <button
-                  onClick={() => handleGrassColorChange('#a8d96e')}
-                  className={`py-1.5 rounded text-xs font-bold transition-all ${grassColor === '#a8d96e' ? 'bg-green-500 text-white ring-2 ring-green-400' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                  onClick={handleCreateValley} disabled={isGenerating}
+                  className="py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 transition-all flex items-center justify-center gap-2"
                 >
-                  亮绿
+                  <i className="fas fa-chevron-down"></i> 造谷
                 </button>
                 <button
-                  onClick={() => handleGrassColorChange('#d4b86a')}
-                  className={`py-1.5 rounded text-xs font-bold transition-all ${grassColor === '#d4b86a' ? 'bg-yellow-600 text-white ring-2 ring-yellow-400' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                  onClick={handleFlattenTerrain} disabled={isGenerating}
+                  className="col-span-2 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 text-[10px] rounded border border-gray-700 transition-all"
                 >
-                  枯黄
+                  夷为平地 (Reset Flat)
                 </button>
               </div>
+            </section>
+
+            {/* Vegetation Section */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-seedling text-green-500"></i> 植被系统 (Vegetation)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
+                {/* Scale */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">缩放 (Scale)</label>
+                    <span className="text-green-400 font-mono">{grassScale.toFixed(1)}x</span>
+                  </div>
+                  <input type="range" min="0.1" max="3" step="0.1" value={grassScale} onChange={(e) => handleGrassScaleChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-green-500" />
+                </div>
+                {/* Wind */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">风场 (Wind)</label>
+                    <span className="text-green-400 font-mono">{windStrength.toFixed(2)}</span>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.01" value={windStrength} onChange={(e) => handleWindStrengthChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-green-500" />
+                </div>
+                {/* Colors */}
+                <div className="flex gap-2">
+                  {['#7cba3d', '#a8d96e', '#d4b86a', '#3f6b2b'].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => handleGrassColorChange(c)}
+                      className={`flex-1 h-6 rounded border ${grassColor === c ? 'border-white shadow-md' : 'border-transparent'} transition-all`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+                {/* Action */}
+                <button
+                  onClick={handleSpawnGrass}
+                  disabled={isGenerating}
+                  className="w-full py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded shadow-lg shadow-green-900/20 transition-all"
+                >
+                  <i className="fas fa-magic mr-2"></i>
+                  {isGenerating ? '生成中...' : '生成植被 (5000)'}
+                </button>
+                <div className="flex justify-between items-center bg-gray-900/50 p-2 rounded">
+                  <span className="text-gray-500 text-[10px]">当前数量: <span className="text-green-400 font-mono">{stats.vegetationCount}</span></span>
+                  <button
+                    onClick={handleClearVegetation}
+                    className="text-[10px] text-red-400 hover:text-red-300 transition-colors uppercase"
+                  >
+                    <i className="fas fa-trash-alt mr-1"></i> 一键清除
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* === DIRECTOR TAB === */}
+        {activeTab === 'director' && (
+          <div className="space-y-6 fade-in">
+            {/* Lighting */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-sun text-yellow-500"></i> 光照与时间 (Lighting)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">时间 (Time)</label>
+                    <span className="text-yellow-400 font-mono">{timeOfDay.toFixed(1)}:00</span>
+                  </div>
+                  <input type="range" min="0" max="24" step="0.1" value={timeOfDay} onChange={(e) => handleTimeOfDayChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">强度 (Intensity)</label>
+                    <span className="text-yellow-400 font-mono">{sunIntensity.toFixed(1)}</span>
+                  </div>
+                  <input type="range" min="0" max="5" step="0.1" value={sunIntensity} onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                </div>
+              </div>
+            </section>
+
+            {/* PostFX */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-camera text-purple-500"></i> 镜头特效 (PostFX)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">泛光 (Bloom)</label>
+                    <span className="text-purple-400 font-mono">{bloomStrength.toFixed(1)}</span>
+                  </div>
+                  <input type="range" min="0" max="3" step="0.1" value={bloomStrength} onChange={(e) => handleBloomStrengthChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">阈值 (Threshold)</label>
+                    <span className="text-purple-400 font-mono">{bloomThreshold.toFixed(2)}</span>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.05" value={bloomThreshold} onChange={(e) => handleBloomThresholdChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                </div>
+              </div>
+            </section>
+
+            {/* Audio Tower */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-broadcast-tower text-pink-500"></i> 音频控制塔 (Audio Tower)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">主音量 (Master)</label>
+                    <span className="text-pink-400 font-mono">{(audioState.volume * 100).toFixed(0)}%</span>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.01" value={audioState.volume} onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    setAudioState(p => ({ ...p, volume: v }));
+                    manager.getAudioSystem().setMasterVolume(v);
+                  }} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-pink-500" />
+                </div>
+                <button
+                  onClick={() => (window as any).audioUploadDemo()}
+                  className="w-full py-2 bg-pink-900/20 hover:bg-pink-900/40 border border-pink-900/50 text-pink-300 rounded transition-all font-bold"
+                >
+                  <i className="fas fa-upload mr-2"></i> 上传音频资产
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* === ASSETS TAB === */}
+        {activeTab === 'assets' && (
+          <div className="space-y-6 fade-in">
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-cloud-upload-alt text-cyan-500"></i> 资产导入 (Import)
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  onClick={() => (window as any).modelUploadDemo()}
+                  className="py-2 bg-gray-900 hover:bg-gray-800 text-cyan-400 border border-gray-800 rounded transition-all flex flex-col items-center gap-1"
+                  title="Model"
+                >
+                  <i className="fas fa-cube text-sm"></i>
+                  <span className="text-[8px]">模型</span>
+                </button>
+                <button
+                  onClick={() => (window as any).hdrUploadDemo()}
+                  className="py-2 bg-gray-900 hover:bg-gray-800 text-cyan-400 border border-gray-800 rounded transition-all flex flex-col items-center gap-1"
+                  title="HDR"
+                >
+                  <i className="fas fa-sun text-sm"></i>
+                  <span className="text-[8px]">HDR</span>
+                </button>
+                <button
+                  onClick={handleImageUpload}
+                  className="py-2 bg-gray-900 hover:bg-gray-800 text-cyan-400 border border-gray-800 rounded transition-all flex flex-col items-center gap-1"
+                  title="Image"
+                >
+                  <i className="fas fa-image text-sm"></i>
+                  <span className="text-[8px]">图片</span>
+                </button>
+                <button
+                  onClick={handleFolderUpload}
+                  className="py-2 bg-gray-900 hover:bg-gray-800 text-yellow-400 border border-gray-800 rounded transition-all flex flex-col items-center gap-1"
+                  title="Batch Import Folder"
+                >
+                  <i className="fas fa-folder-open text-sm"></i>
+                  <span className="text-[8px]">文件夹</span>
+                </button>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <i className="fas fa-database text-cyan-500"></i> 资产库 (Registry)
+                </h3>
+                <span className="text-[10px] bg-gray-800 px-2 py-0.5 rounded text-gray-400">{assetList.length} 项</span>
+              </div>
+
+              {/* Category Tabs */}
+              <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: 'all', label: '全部', icon: 'fa-globe' },
+                  { id: 'models', label: '模型', icon: 'fa-cube' },
+                  { id: 'images', label: '图片', icon: 'fa-image' },
+                  { id: 'audio', label: '音频', icon: 'fa-music' },
+                  { id: 'environments', label: 'HDR', icon: 'fa-sun' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveAssetTab(tab.id as any)}
+                    className={`px-3 py-1 rounded text-[10px] flex items-center gap-1 whitespace-nowrap transition-colors ${(activeAssetTab === tab.id || (activeAssetTab === 'model' && tab.id === 'models') || (activeAssetTab === 'image' && tab.id === 'images') || (activeAssetTab === 'hdr' && tab.id === 'environments'))
+                      ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-500/30'
+                      : 'bg-gray-900 text-gray-500 hover:text-gray-300 border border-transparent'
+                      }`}
+                  >
+                    <i className={`fas ${tab.icon}`}></i> {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                {assetList.filter(a => {
+                  if (activeAssetTab === 'all') return true;
+                  if (activeAssetTab === 'model') return a.category === 'models' || a.type === 'model';
+                  if (activeAssetTab === 'image') return a.category === 'images' || a.type === 'texture';
+                  if (activeAssetTab === 'audio') return a.category === 'audio' || a.type === 'audio';
+                  if (activeAssetTab === 'hdr') return a.category === 'environments' || a.type === 'hdr';
+                  if (activeAssetTab === 'models') return a.category === 'models';
+                  if (activeAssetTab === 'images') return a.category === 'images';
+                  if (activeAssetTab === 'environments') return a.category === 'environments';
+                  return true;
+                }).length === 0 ? (
+                  <div className="p-4 text-center text-gray-600 border border-gray-800 border-dashed rounded text-[10px]">
+                    该分类下暂无资产<br />No assets in this category
+                  </div>
+                ) : (
+                  assetList.filter(a => {
+                    if (activeAssetTab === 'all') return true;
+                    const tab = activeAssetTab as string;
+                    if (tab === 'models' || tab === 'model') return a.category === 'models' || a.type === 'model';
+                    if (tab === 'images' || tab === 'image') return a.category === 'images' || a.type === 'texture';
+                    if (tab === 'audio') return a.category === 'audio' || a.type === 'audio';
+                    if (tab === 'environments' || tab === 'hdr') return a.category === 'environments' || a.type === 'hdr';
+                    return true;
+                  }).map(asset => (
+                    <div key={asset.id} className="flex items-center gap-3 p-2 bg-gray-900/50 border border-gray-800 rounded hover:border-cyan-500/30 transition-all group">
+                      {asset.thumbnail ? (
+                        <img src={asset.thumbnail} className="w-10 h-10 object-cover rounded bg-gray-800" />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center text-gray-600 group-hover:text-cyan-500 transition-colors">
+                          <i className={`fas ${asset.type === 'models' ? 'fa-cube' : asset.type === 'audio' ? 'fa-music' : 'fa-image'}`}></i>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-bold truncate">{asset.name}</div>
+                        <div className="text-[10px] text-gray-500 flex gap-2">
+                          <span>{asset.type}</span>
+                          <span>•</span>
+                          <span>{(asset.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+      </div>
+
+      {/* 4. Collapsible Footer */}
+      <div className={`mt-auto bg-gray-950 border-t border-gray-800 transition-all duration-300 flex flex-col shrink-0 ${isFooterExpanded ? 'h-48' : 'h-8'}`}>
+        <button
+          onClick={() => setIsFooterExpanded(!isFooterExpanded)}
+          className="w-full h-8 flex items-center justify-between px-4 hover:bg-gray-900 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
+            <i className="fas fa-terminal"></i>
+            <span className="text-blue-400 truncate max-w-[250px]">{stats.lastCommand || '指令系统就绪 (Ready)'}</span>
+          </div>
+          <i className={`fas fa-chevron-up text-gray-600 transition-transform ${isFooterExpanded ? 'rotate-180' : ''}`}></i>
+        </button>
+
+        {/* Expanded Content: Log */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 bg-gray-900/50">
+          {stats.undoHistory.length === 0 ? (
+            <div className="text-center text-gray-600 text-[10px] mt-4 italic">暂无指令记录</div>
+          ) : (
+            <div className="space-y-1">
+              {stats.undoHistory.map((cmd) => (
+                <div key={cmd.id} className="flex items-center justify-between p-1.5 hover:bg-gray-800/50 rounded transition-colors border-l-2 border-blue-500/30 pl-2">
+                  <span className="text-[10px] text-gray-300 font-mono truncate">{cmd.name}</span>
+                  <span className="text-[9px] text-gray-600 ml-2">{new Date(cmd.timestamp).toLocaleTimeString()}</span>
+                </div>
+              ))}
             </div>
-          </div>
-
-          <div className="space-y-2 mb-4">
-            <button
-              onClick={handleSpawnGrass}
-              disabled={isGenerating}
-              className={`w-full py-2 ${isGenerating ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2`}
-            >
-              <i className="fas fa-seedling"></i>
-              {isGenerating ? '生成中...' : '生成草地 (5000)'}
-            </button>
-
-
-            <button
-              onClick={handleCreateMountain}
-              disabled={isGenerating}
-              className={`w-full py-2 ${isGenerating ? 'bg-gray-600 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-500'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2`}
-            >
-              <i className="fas fa-mountain"></i>
-              创建山峰
-            </button>
-
-            <button
-              onClick={handleCreateValley}
-              disabled={isGenerating}
-              className={`w-full py-2 ${isGenerating ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'} text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2`}
-            >
-              <i className="fas fa-water"></i>
-              创建山谷
-            </button>
-          </div>
-
-          <div className="border-t border-gray-800 pt-4">
-            <button
-              onClick={handleOneClickDemo}
-              disabled={isGenerating}
-              className={`w-full py-3 ${isGenerating ? 'bg-gray-600 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'} text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-purple-500/20 flex items-center justify-center gap-2`}
-            >
-              <i className={`fas ${isGenerating ? 'fa-spinner fa-spin' : 'fa-magic'}`}></i>
-              {isGenerating ? '演示进行中...' : '一键演示'}
-            </button>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              自动创建山峰 + 植被 + 日落光影
-            </p>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* 🎨 滑块样式 */}
-      <style>{`
-        /* Purple Slider */
-        .slider-purple::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #9333ea, #db2777);
-          cursor: pointer;
-          box-shadow: 0 0 8px rgba(147, 51, 234, 0.5);
-        }
-        
-        .slider-purple::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #9333ea, #db2777);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 0 8px rgba(147, 51, 234, 0.5);
-        }
-        
-        /* Yellow Slider */
-        .slider-yellow::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #f59e0b, #eab308);
-          cursor: pointer;
-          box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-        }
-        
-        .slider-yellow::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #f59e0b, #eab308);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-        }
-        
-        /* Green Slider */
-        .slider-green::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #10b981, #22c55e);
-          cursor: pointer;
-          box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
-        }
-        
-        .slider-green::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #10b981, #22c55e);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
-        }
-      `}</style>
     </div>
   );
 };
+
+// Add minimal CSS for fade-in animation
+const style = document.createElement('style');
+style.innerHTML = `
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { bg: #111827; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { bg: #374151; border-radius: 4px; }
+`;
+document.head.appendChild(style);

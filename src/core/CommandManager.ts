@@ -14,16 +14,16 @@ import { Component, SerializedEntity } from './types';
 export interface ICommand {
   /** 命令唯一 ID */
   id: string;
-  
+
   /** 命令名称 */
   name: string;
-  
+
   /** 时间戳 */
   timestamp: number;
-  
+
   /** 执行命令 */
   execute(): void;
-  
+
   /** 撤销命令 */
   undo(): void;
 }
@@ -35,16 +35,16 @@ export interface ICommand {
 export class CommandManager {
   /** 撤销栈 */
   private undoStack: ICommand[] = [];
-  
+
   /** 重做栈 */
   private redoStack: ICommand[] = [];
-  
+
   /** 最大步数限制 */
   private maxStackSize: number;
-  
+
   /** EntityManager 引用 */
   private entityManager: EntityManager;
-  
+
   /** SerializationService 引用 */
   private serializationService: SerializationService;
 
@@ -68,18 +68,18 @@ export class CommandManager {
   execute(command: ICommand): void {
     // 执行命令
     command.execute();
-    
+
     // 添加到撤销栈
     this.undoStack.push(command);
-    
+
     // 清空重做栈（执行新命令后，之前的重做历史失效）
     this.redoStack = [];
-    
+
     // 限制栈大小
     if (this.undoStack.length > this.maxStackSize) {
       this.undoStack.shift(); // 移除最旧的命令
     }
-    
+
     console.log(`✓ Command executed: ${command.name}`);
   }
 
@@ -95,11 +95,11 @@ export class CommandManager {
       console.warn('⚠️  Nothing to undo');
       return false;
     }
-    
+
     const command = this.undoStack.pop()!;
     command.undo();
     this.redoStack.push(command);
-    
+
     console.log(`↶ Undo: ${command.name}`);
     return true;
   }
@@ -112,11 +112,11 @@ export class CommandManager {
       console.warn('⚠️  Nothing to redo');
       return false;
     }
-    
+
     const command = this.redoStack.pop()!;
     command.execute();
     this.undoStack.push(command);
-    
+
     console.log(`↷ Redo: ${command.name}`);
     return true;
   }
@@ -179,7 +179,7 @@ export class CommandManager {
    */
   setMaxStackSize(size: number): void {
     this.maxStackSize = Math.max(1, size);
-    
+
     // 如果当前栈超过新的限制，裁剪
     while (this.undoStack.length > this.maxStackSize) {
       this.undoStack.shift();
@@ -204,6 +204,16 @@ export class CommandManager {
   }
 
   /**
+   * 获取所有命令历史 (用于可视化列表)
+   */
+  getHistory(): { undo: ICommand[], redo: ICommand[] } {
+    return {
+      undo: [...this.undoStack],
+      redo: [...this.redoStack]
+    };
+  }
+
+  /**
    * 打印调试信息
    */
   debug(): void {
@@ -212,7 +222,7 @@ export class CommandManager {
     console.log(`Redo Stack: ${this.redoStack.length} commands`);
     console.log(`Max Stack Size: ${this.maxStackSize}`);
     console.log(`Last Command: ${this.getLastCommandName() || 'None'}`);
-    
+
     if (this.undoStack.length > 0) {
       console.log('\nUndo Stack:');
       this.undoStack.forEach((cmd, index) => {
@@ -233,7 +243,7 @@ export class CreateEntityCommand implements ICommand {
   public readonly id: string;
   public readonly name: string;
   public readonly timestamp: number;
-  
+
   private entityManager: EntityManager;
   private entityName: string;
   private createdEntityId: string | null = null;
@@ -266,7 +276,7 @@ export class DeleteEntityCommand implements ICommand {
   public readonly id: string;
   public readonly name: string;
   public readonly timestamp: number;
-  
+
   private entityManager: EntityManager;
   private serializationService: SerializationService;
   private entityId: string;
@@ -281,7 +291,7 @@ export class DeleteEntityCommand implements ICommand {
     this.entityManager = entityManager;
     this.serializationService = serializationService;
     this.entityId = entityId;
-    
+
     // 获取实体名称用于显示
     const entity = entityManager.getEntity(entityId);
     this.name = `Delete Entity: ${entity?.name || entityId}`;
@@ -294,7 +304,7 @@ export class DeleteEntityCommand implements ICommand {
     if (entity) {
       this.entitySnapshot = entity.serialize();
     }
-    
+
     // 删除实体
     this.entityManager.destroyEntity(this.entityId);
   }
@@ -302,10 +312,8 @@ export class DeleteEntityCommand implements ICommand {
   undo(): void {
     // 使用快照恢复实体
     if (this.entitySnapshot) {
-      const entities = this.serializationService.deserializeEntities([this.entitySnapshot]);
-      if (entities.length > 0) {
-        console.log(`✓ Entity restored: ${entities[0].name}`);
-      }
+      this.serializationService.deserializeEntities([this.entitySnapshot]);
+      console.log(`✓ Entity restored: ${this.entitySnapshot.name}`);
     }
   }
 }
@@ -317,7 +325,7 @@ export class ModifyComponentCommand implements ICommand {
   public readonly id: string;
   public readonly name: string;
   public readonly timestamp: number;
-  
+
   private entityManager: EntityManager;
   private entityId: string;
   private componentType: string;
@@ -376,7 +384,7 @@ export class ModifyComponentCommand implements ICommand {
     for (let i = 0; i < pathParts.length - 1; i++) {
       const part = pathParts[i];
       const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
-      
+
       if (arrayMatch) {
         const [, prop, index] = arrayMatch;
         target = target[prop][parseInt(index)];
@@ -388,7 +396,7 @@ export class ModifyComponentCommand implements ICommand {
     // 设置最终属性
     const finalPart = pathParts[pathParts.length - 1];
     const arrayMatch = finalPart.match(/^(\w+)\[(\d+)\]$/);
-    
+
     if (arrayMatch) {
       const [, prop, index] = arrayMatch;
       target[prop][parseInt(index)] = value;
@@ -403,15 +411,15 @@ export class ModifyComponentCommand implements ICommand {
   private deepClone(value: any): any {
     if (value === null || value === undefined) return value;
     if (typeof value !== 'object') return value;
-    
+
     if (Array.isArray(value)) {
       return value.map(item => this.deepClone(item));
     }
-    
+
     if (value instanceof Float32Array) {
       return new Float32Array(value);
     }
-    
+
     const cloned: any = {};
     for (const key in value) {
       if (value.hasOwnProperty(key)) {
@@ -429,7 +437,7 @@ export class AttachToSocketCommand implements ICommand {
   public readonly id: string;
   public readonly name: string;
   public readonly timestamp: number;
-  
+
   private entityManager: EntityManager;
   private childId: string;
   private parentId: string;
@@ -459,7 +467,7 @@ export class AttachToSocketCommand implements ICommand {
       this.previousParentId = child.parent?.id || null;
       this.previousSocketName = child.parentSocket || null;
     }
-    
+
     // 附加到新的 Socket
     this.entityManager.setParent(this.childId, this.parentId, this.socketName);
   }

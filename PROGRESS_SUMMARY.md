@@ -50,7 +50,8 @@
 | Phase 11.2 | TerrainSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-112-terrainsystem-动态地形引擎-) | [PHASE11.2_TERRAIN_DELIVERY.md](./PHASE11.2_TERRAIN_DELIVERY.md) |
 | Phase 11.3 | VegetationSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-113-vegetationsystem-植被引擎-) | [PHASE11.3_VEGETATION_DELIVERY.md](./PHASE11.3_VEGETATION_DELIVERY.md) |
 | Phase 12 | RenderSystem | ✅ 完成 | 2025-12-22 | [📋 任务](./docs/tasks/tasks_features.md#phase-12-rendersystem-渲染系统-) | [PHASE12_FINAL_AUDIT.md](./PHASE12_FINAL_AUDIT.md) |
-| Phase 13 | Standalone Bundle | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-13-standalone-bundle-分发系统-) | - |
+| Phase 13.0 | 架构全量可视化 (Visibility) | [/] 进行中 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md) | 正在集成音频与资产系统 |
+| Phase 13.1 | Standalone Bundle | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md) | - |
 | Phase 14 | Architecture Validation View | ✅ 完成 | 2025-12-23 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-14-architecture-validation-view-架构验证观测窗口-) | [ARCHITECTURE_VALIDATION_VIEW_DELIVERY.md](./ARCHITECTURE_VALIDATION_VIEW_DELIVERY.md) |
 | Phase 15 | MOD 扩展系统 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-15-mod-扩展系统-) | - |
 | Phase 16 | React 19 + R3F | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-16-react-19--r3f-优化-) | - |

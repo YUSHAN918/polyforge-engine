@@ -12,19 +12,19 @@ import { SerializedEntity } from './types';
 export interface SerializedWorld {
   /** 版本号 */
   version: string;
-  
+
   /** 时间戳 */
   timestamp: number;
-  
+
   /** 所有实体数据 */
   entities: SerializedEntity[];
-  
+
   /** 使用的资产 ID 列表（预留） */
   assetReferences: string[];
-  
+
   /** 全局环境状态（Phase 11 新增） */
   worldState?: any;
-  
+
   /** 元数据 */
   metadata?: {
     name?: string;
@@ -142,6 +142,14 @@ export class SerializationService {
       console.error('Failed to deserialize from JSON:', error);
       throw new Error('Invalid JSON data');
     }
+  }
+
+  /**
+   * 从序列化列表恢复实体（不清空现有实体）
+   */
+  deserializeEntities(entities: SerializedEntity[]): any[] {
+    this.entityManager.deserializeAll(entities);
+    return entities; // 返回数据以符合 CommandManager 预期
   }
 
   /**
@@ -270,7 +278,7 @@ export class SerializationService {
       const entityIds = new Set<string>();
       for (let i = 0; i < data.entities.length; i++) {
         const entity = data.entities[i];
-        
+
         if (!entity.id) {
           errors.push(`Entity at index ${i} missing id`);
         } else if (entityIds.has(entity.id)) {

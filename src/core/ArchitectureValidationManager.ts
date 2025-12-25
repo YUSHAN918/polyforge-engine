@@ -25,7 +25,9 @@ import { TerrainSystem } from './systems/TerrainSystem';
 import { VegetationSystem } from './systems/VegetationSystem';
 import { CameraSystem } from './systems/CameraSystem';
 import { InputSystem } from './systems/InputSystem';
-import { PhysicsSystem } from './systems/PhysicsSystem'; // Added
+import { PhysicsSystem } from './systems/PhysicsSystem';
+import { AudioSystem } from './systems/AudioSystem'; // Added
+import { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry'; // Added
 import { SerializationService } from './SerializationService';
 import { CommandManager } from './CommandManager';
 import { ArchitectureStorageManager } from './ArchitectureStorageManager';
@@ -51,6 +53,8 @@ export class ArchitectureValidationManager {
   private cameraSystem: CameraSystem;
   private inputSystem: InputSystem;
   private physicsSystem: PhysicsSystem;
+  private audioSystem: AudioSystem; // Added
+  private assetRegistry: AssetRegistry; // Added
   private serializationService: SerializationService;
   private commandManager: CommandManager;
   private storageManager: ArchitectureStorageManager;
@@ -105,6 +109,8 @@ export class ArchitectureValidationManager {
     this.cameraSystem = new CameraSystem();
     this.physicsSystem = new PhysicsSystem();
     this.physicsSystem.setEntityManager(this.entityManager);
+    this.audioSystem = new AudioSystem(); // Added
+    this.assetRegistry = getAssetRegistry(); // Added
 
     // 🎮 连接 InputSystem 到 CameraSystem
     this.cameraSystem.setInputSystem(this.inputSystem);
@@ -115,6 +121,7 @@ export class ArchitectureValidationManager {
     this.systemManager.registerSystem('VegetationSystem', this.vegetationSystem);
     this.systemManager.registerSystem('CameraSystem', this.cameraSystem);
     this.systemManager.registerSystem('PhysicsSystem', this.physicsSystem);
+    this.systemManager.registerSystem('AudioSystem', this.audioSystem); // Added
 
     console.log('✓ Systems registered');
     console.log('✓ InputSystem connected to CameraSystem');
@@ -126,6 +133,13 @@ export class ArchitectureValidationManager {
     // ⚡ 始终异步初始化物理引擎
     this.physicsSystem.initialize().then(() => {
       console.log('⚡ Physics engine warmed up');
+    });
+
+    // 📦 初始化资产注册表（恢复持久化资产）
+    this.assetRegistry.initialize().then(() => {
+      console.log('📦 AssetRegistry initialized from IndexedDB');
+    }).catch(err => {
+      console.error('❌ AssetRegistry initialization failed:', err);
     });
 
     // 📂 尝试加载存档
@@ -299,6 +313,27 @@ export class ArchitectureValidationManager {
   }
 
   /**
+   * 获取音频系统
+   */
+  getAudioSystem(): AudioSystem {
+    return this.audioSystem;
+  }
+
+  /**
+   * 获取资产注册表
+   */
+  getAssetRegistry(): AssetRegistry {
+    return this.assetRegistry;
+  }
+
+  /**
+   * 获取指令执行历史
+   */
+  getCommandHistory() {
+    return this.commandManager.getHistory();
+  }
+
+  /**
    * 显式保存场景
    */
   saveScene(): void {
@@ -395,6 +430,25 @@ export class ArchitectureValidationManager {
   }
 
   /**
+   * 清除所有植被
+   */
+  clearVegetation(): void {
+    const entities = this.entityManager.getAllEntities();
+    const vegetationEntities = entities.filter(e => e.hasComponent('Vegetation'));
+
+    if (vegetationEntities.length === 0) {
+      console.log('🧹 No vegetation to clear');
+      return;
+    }
+
+    console.log(`🧹 Clearing ${vegetationEntities.length} vegetation entities...`);
+    vegetationEntities.forEach(e => {
+      this.entityManager.destroyEntity(e.id);
+    });
+    console.log('✓ All vegetation cleared');
+  }
+
+  /**
    * 创建山峰
    */
   createMountain(): void {
@@ -466,6 +520,27 @@ export class ArchitectureValidationManager {
     }
 
     console.log('✓ Valley created');
+  }
+
+  /**
+   * 平整地形
+   */
+  flattenTerrain(): void {
+    if (!this.terrainEntity) {
+      console.error('❌ Cannot flatten terrain: Terrain entity not found');
+      return;
+    }
+
+    const terrain = this.terrainEntity.getComponent<TerrainComponent>('Terrain');
+    if (!terrain) {
+      console.error('❌ Cannot flatten terrain: Terrain component not found');
+      return;
+    }
+
+    console.log('🧹 Flattening terrain...');
+    terrain.heightData.fill(0);
+    terrain.isDirty = true;
+    console.log('✓ Terrain flattened');
   }
 
   /**
@@ -651,7 +726,9 @@ export class ArchitectureValidationManager {
 
     // 包装成指令进行执行，以支持撤销
     this.commandManager.execute({
+      id: `spawn_physics_${Date.now()}`,
       name: 'Spawn Physics Box',
+      timestamp: Date.now(),
       execute: () => {
         // 🔥 关键修复：支持 Redo
         // 如果实体已被销毁（在撤销之后），则重新创建它
