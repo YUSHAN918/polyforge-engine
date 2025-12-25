@@ -7,11 +7,12 @@ import { useFrame } from '@react-three/fiber';
  * 避免每次渲染都创建新对象，防止 React 认为参数变化而重建 InstancedMesh
  */
 const GRASS_GEOMETRY = new THREE.PlaneGeometry(0.5, 1, 1, 4);
+GRASS_GEOMETRY.translate(0, 0.5, 0); // 🔥 关键修复：将几何体底座移至 Y=0，防止“半截入土”变成影子
 
 export const VegetationVisual = ({ entity, vegetationSystem }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
-  
+
   // 🔥 优化更新：使用 ref 跟踪注册状态，避免重复注册
   const isRegisteredRef = useRef(false);
 
@@ -19,6 +20,8 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
   const customMaterial = useMemo(() => {
     const mat = new THREE.MeshStandardMaterial({
       color: '#4ade80',
+      emissive: '#1a3c1a', // 🔥 添加微弱自发光，防止全黑
+      emissiveIntensity: 0.2,
       side: THREE.DoubleSide,
       alphaTest: 0.5,
     });
@@ -27,25 +30,50 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
       // 注入 Uniforms
       shader.uniforms.time = { value: 0 };
       shader.uniforms.windStrength = { value: 0.1 };
-      
+      shader.uniforms.uGlobalScale = { value: 1.0 }; // ✅ 新增：全局缩放 Uniform
+
       // 注入顶点着色器逻辑
       shader.vertexShader = `
         uniform float time;
         uniform float windStrength;
+        uniform float uGlobalScale; // ✅ 注入 Uniform
       ` + shader.vertexShader;
 
       shader.vertexShader = shader.vertexShader.replace(
         '#include <begin_vertex>',
         `
         #include <begin_vertex>
-        // 基于位置的随机风场
-        float h = position.y;
-        float wind = sin(time * 2.0 + transformed.x * 0.5) * windStrength * h;
-        transformed.x += wind;
-        transformed.z += wind * 0.5;
+        
+        // 1. 应用全局缩放 (GPU 瞬时计算)
+        transformed *= uGlobalScale;
+
+        // 2. 计算世界坐标用于风场
+        #ifdef USE_INSTANCING
+          vec4 worldInstancePos = instanceMatrix * vec4(transformed, 1.0);
+        #else
+          vec4 worldInstancePos = vec4(transformed, 1.0);
+        #endif
+        vec4 vLocalWorldPos = modelMatrix * worldInstancePos; // 🔥 避免使用 worldPosition 重名
+        
+        // 3. 基于世界坐标采样
+        float h = position.y; 
+        float windPhase = time * 2.0 + vLocalWorldPos.x * 0.5 + vLocalWorldPos.z * 0.3;
+        float windOffset = sin(windPhase) * windStrength * h;
+
+        // 4. 应用风场 (统一世界风向：X 轴)
+        // 使用转置矩阵技巧将世界风向量映射回局部空间
+        vec3 worldWindDir = vec3(1.0, 0.0, 0.0);
+        #ifdef USE_INSTANCING
+           // GLSL中 vec * mat 等同于 mat_transpose * vec，即逆旋转
+           vec3 localWindDir = worldWindDir * mat3(instanceMatrix); 
+        #else
+           vec3 localWindDir = worldWindDir;
+        #endif
+
+        transformed += localWindDir * windOffset; 
         `
       );
-      
+
       mat.userData.shader = shader;
     };
     return mat;
@@ -54,34 +82,29 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
   // 2. 句柄注册（ECS 智系统模式）
   // 🔥 优化更新：使用 ref 跟踪注册状态，避免重复注册
   useEffect(() => {
-    if (meshRef.current && vegetationSystem && !isRegisteredRef.current) {
-      console.log('[VegetationVisual] 注册标准实例化句柄');
-      vegetationSystem.registerMesh(meshRef.current);
+    if (meshRef.current && vegetationSystem && entity && !isRegisteredRef.current) {
+      console.log(`[VegetationVisual] 注册标注实体句柄: ${entity.id}`);
+      vegetationSystem.registerMesh(entity.id, meshRef.current);
       isRegisteredRef.current = true;
     }
-  }, [vegetationSystem]);
+  }, [vegetationSystem, entity?.id]);
 
-  // 3. 🔥 数据-渲染分离：监听 globalScale 变化，触发矩阵重新灌入
-  // 使用 useLayoutEffect 在 DOM 更新后立即执行，确保矩阵数据同步
-  useLayoutEffect(() => {
-    if (meshRef.current && vegetationSystem) {
-      const veg = entity?.getComponent('Vegetation');
-      if (veg) {
-        // 🔥 仅设置缩放脏标记，不触发实例重新生成
-        // VegetationSystem 的 update() 方法会在下一帧自动重新灌入矩阵
-        veg.isScaleDirty = true;
-        console.log('[VegetationVisual] 🔥 Scale changed, triggering matrix re-injection');
-      }
-    }
-  }, [entity, vegetationSystem, entity?.getComponent('Vegetation')?.config?.scale]);
-
-  // 4. 实时动画更新
+  // 4. 实时渲染循环：每帧从 ECS 获取最新状态同步至 GPU Uniform
   useFrame((state) => {
     if (customMaterial.userData.shader) {
-      customMaterial.userData.shader.uniforms.time.value = state.clock.elapsedTime;
+      const shader = customMaterial.userData.shader;
+      shader.uniforms.time.value = state.clock.elapsedTime;
+
       const veg = entity?.getComponent('Vegetation');
       if (veg) {
-        customMaterial.userData.shader.uniforms.windStrength.value = veg.config.windStrength || 0.1;
+        // 🔥 核心修复：直接从 ECS 组件每帧读取数值，无视 React 刷新机制
+        shader.uniforms.windStrength.value = veg.config.windStrength || 0.1;
+        shader.uniforms.uGlobalScale.value = veg.config.scale || 1.0;
+
+        // 🎨 额外惊喜：同步草地基础颜色
+        if (customMaterial.color.getHexString() !== new THREE.Color(veg.config.baseColor).getHexString()) {
+          customMaterial.color.set(veg.config.baseColor);
+        }
       }
     }
   });
@@ -91,7 +114,7 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
       ref={meshRef}
       // 🔥 稳定引用：使用模块级常量 GRASS_GEOMETRY，避免每次渲染创建新对象
       args={[GRASS_GEOMETRY, customMaterial, 100000]}
-      frustumCulled={false}
+      frustumCulled={true} // 🔥 性能关键：开启视锥剔除，配合 System 层的包围球计算
       castShadow
       receiveShadow
     />

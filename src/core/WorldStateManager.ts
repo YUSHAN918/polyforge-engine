@@ -17,22 +17,25 @@ export interface WorldState {
   // 时间参数
   timeOfDay: number;        // 一天中的时间 0-24（小时）
   dayDuration: number;      // 一天的持续时间（秒）
-  
+
   // 光照参数
   lightIntensity: number;   // 光照强度 0-1
   ambientColor: string;     // 环境光颜色（十六进制）
   directionalColor: string; // 方向光颜色（十六进制）
-  
+
   // 色温参数
   colorTemperature: number; // 色温 1000-20000K
-  
+
   // 天气参数（预留）
   weather: 'clear' | 'rain' | 'snow' | 'fog';
   weatherIntensity: number; // 天气强度 0-1
-  
-  // 节拍脉冲参数（预留）
+
+  // 昼夜参数
   beatPulseEnabled: boolean;
   beatPulseIntensity: number; // 节拍脉冲强度 0-1
+
+  // 物理环境参数
+  gravityY: number;          // 重力强度 (通常 -9.8)
 }
 
 /**
@@ -52,17 +55,17 @@ export type BeatPulseCallback = (beatTime: number, intensity: number) => void;
 export class WorldStateManager {
   // 当前环境状态
   private state: WorldState;
-  
+
   // 状态变化回调列表
   private changeCallbacks: WorldStateChangeCallback[] = [];
-  
+
   // 节拍脉冲回调列表（预留）
   private beatPulseCallbacks: BeatPulseCallback[] = [];
-  
+
   // 昼夜循环控制
   private dayNightCycleEnabled: boolean = false;
   private accumulatedTime: number = 0;
-  
+
   constructor() {
     // 初始化默认状态（正午）
     this.state = {
@@ -76,6 +79,7 @@ export class WorldStateManager {
       weatherIntensity: 0,
       beatPulseEnabled: false,
       beatPulseIntensity: 0.5,
+      gravityY: -9.81,
     };
   }
 
@@ -96,10 +100,10 @@ export class WorldStateManager {
   setState(newState: Partial<WorldState>): void {
     const oldState = { ...this.state };
     this.state = { ...this.state, ...newState };
-    
+
     // 触发回调
     this.notifyStateChanged();
-    
+
     console.log('🌍 World state updated:', newState);
   }
 
@@ -131,7 +135,7 @@ export class WorldStateManager {
     // 限制范围 0-24
     hours = ((hours % 24) + 24) % 24;
     this.setState({ timeOfDay: hours });
-    
+
     // 自动更新光照
     this.updateLightingFromTime();
   }
@@ -164,23 +168,23 @@ export class WorldStateManager {
    */
   update(deltaTime: number): void {
     if (!this.dayNightCycleEnabled) return;
-    
+
     // 累积时间
     this.accumulatedTime += deltaTime;
-    
+
     // 计算时间进度（0-1）
     const progress = this.accumulatedTime / this.state.dayDuration;
-    
+
     // 更新一天中的时间
     const newTimeOfDay = (progress * 24) % 24;
     this.state.timeOfDay = newTimeOfDay;
-    
+
     // 更新光照
     this.updateLightingFromTime();
-    
+
     // 触发回调
     this.notifyStateChanged();
-    
+
     // 重置累积时间（完成一天）
     if (progress >= 1.0) {
       this.accumulatedTime = 0;
@@ -197,12 +201,12 @@ export class WorldStateManager {
    */
   private updateLightingFromTime(): void {
     const time = this.state.timeOfDay;
-    
+
     // 计算光照强度（正弦曲线）
     // 6:00 = 日出，12:00 = 正午，18:00 = 日落，0:00 = 午夜
     const sunAngle = ((time - 6) / 12) * Math.PI; // 0 = 日出，π = 日落
     const intensity = Math.max(0, Math.sin(sunAngle));
-    
+
     // 计算色温（日出日落偏暖，正午偏冷）
     let colorTemp: number;
     if (time >= 5 && time <= 7) {
@@ -218,11 +222,11 @@ export class WorldStateManager {
       // 夜晚：月光 4000K
       colorTemp = 4000;
     }
-    
+
     // 计算光照颜色
     const ambientColor = this.colorTemperatureToHex(colorTemp, intensity * 0.3);
     const directionalColor = this.colorTemperatureToHex(colorTemp, intensity);
-    
+
     // 更新状态（不触发回调，避免递归）
     this.state.lightIntensity = intensity;
     this.state.colorTemperature = colorTemp;
@@ -239,7 +243,7 @@ export class WorldStateManager {
     // 简化的色温转换算法
     const temp = kelvin / 100;
     let r: number, g: number, b: number;
-    
+
     // 红色通道
     if (temp <= 66) {
       r = 255;
@@ -248,7 +252,7 @@ export class WorldStateManager {
       r = 329.698727446 * Math.pow(r, -0.1332047592);
       r = Math.max(0, Math.min(255, r));
     }
-    
+
     // 绿色通道
     if (temp <= 66) {
       g = temp;
@@ -259,7 +263,7 @@ export class WorldStateManager {
       g = 288.1221695283 * Math.pow(g, -0.0755148492);
       g = Math.max(0, Math.min(255, g));
     }
-    
+
     // 蓝色通道
     if (temp >= 66) {
       b = 255;
@@ -270,12 +274,12 @@ export class WorldStateManager {
       b = 138.5177312231 * Math.log(b) - 305.0447927307;
       b = Math.max(0, Math.min(255, b));
     }
-    
+
     // 应用强度
     r = Math.round(r * intensity);
     g = Math.round(g * intensity);
     b = Math.round(b * intensity);
-    
+
     // 转换为十六进制
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   }
@@ -340,7 +344,7 @@ export class WorldStateManager {
    */
   triggerBeatPulse(beatTime: number, intensity: number): void {
     if (!this.state.beatPulseEnabled) return;
-    
+
     // 触发所有节拍脉冲回调
     for (const callback of this.beatPulseCallbacks) {
       callback(beatTime, intensity * this.state.beatPulseIntensity);
@@ -425,7 +429,7 @@ export class WorldStateManager {
     const time = this.state.timeOfDay;
     const hours = Math.floor(time);
     const minutes = Math.floor((time - hours) * 60);
-    
+
     return `
 === World State Debug Info ===
 Time: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}

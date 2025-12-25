@@ -13,7 +13,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera } from '@react-three/drei'; // 🔥 导入独立相机组件
+import { PerspectiveCamera, Sky } from '@react-three/drei'; // 🔥 增加 Sky 支持
 import * as THREE from 'three';
 import { EntityManager } from '../../core/EntityManager';
 import { Entity } from '../../core/Entity';
@@ -80,7 +80,7 @@ const EntityRenderer = React.memo<{
     if (!visual || !visual.geometry.assetId) return;
 
     const assetRegistry = getAssetRegistry();
-    
+
     // 获取资产数据
     const loadModel = async () => {
       // ✅ 健壮性检查：确保 AssetRegistry 已初始化
@@ -90,7 +90,7 @@ const EntityRenderer = React.memo<{
       }
 
       const blob = await assetRegistry.getAsset(visual.geometry.assetId!);
-      
+
       if (!blob) {
         console.warn(`Model asset not found: ${visual.geometry.assetId}`);
         return;
@@ -102,7 +102,7 @@ const EntityRenderer = React.memo<{
 
       const dracoLoader = new DRACOLoader();
       dracoLoader.setDecoderPath('/draco/');
-      
+
       const gltfLoader = new GLTFLoader();
       gltfLoader.setDRACOLoader(dracoLoader);
 
@@ -110,7 +110,7 @@ const EntityRenderer = React.memo<{
 
       gltfLoader.load(url, (gltf) => {
         const loadedMeshes: THREE.Mesh[] = [];
-        
+
         gltf.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             loadedMeshes.push(child);
@@ -120,7 +120,7 @@ const EntityRenderer = React.memo<{
         setMeshes(loadedMeshes);
         setModelLoaded(true);
         URL.revokeObjectURL(url);
-        
+
         console.log(`[EntityRenderer] Model loaded: ${visual.geometry.assetId}`);
       });
     };
@@ -130,34 +130,34 @@ const EntityRenderer = React.memo<{
     });
   }, [visual?.geometry.assetId]);
 
-  // 更新变换
-  useEffect(() => {
+  // 🔥 核心修复：使用 useFrame 实时同步变换 (解决 React 不重绘物理结果的问题)
+  // 通过 useFrame 直接推送到 Three.js 对象，避开 React 脏检查和重渲染
+  useFrame(() => {
     if (!groupRef.current || !transform) return;
 
     const group = groupRef.current;
-    
-    // 位置
+
+    // 1. 位置同步
     group.position.set(
       transform.position[0],
       transform.position[1],
       transform.position[2]
     );
 
-    // 旋转（欧拉角转四元数）
-    const euler = new THREE.Euler(
+    // 2. 旋转同步 (度数转弧度)
+    group.rotation.set(
       THREE.MathUtils.degToRad(transform.rotation[0]),
       THREE.MathUtils.degToRad(transform.rotation[1]),
       THREE.MathUtils.degToRad(transform.rotation[2])
     );
-    group.quaternion.setFromEuler(euler);
 
-    // 缩放
+    // 3. 缩放同步
     group.scale.set(
       transform.scale[0],
       transform.scale[1],
       transform.scale[2]
     );
-  }, [transform?.position, transform?.rotation, transform?.scale]);
+  });
 
   // 更新材质（响应 WorldState 变化）
   useEffect(() => {
@@ -288,7 +288,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   const [rootEntities, setRootEntities] = useState<Entity[]>([]);
   const [worldState, setWorldState] = useState<any>(null);
   const [hdrEnvMap, setHdrEnvMap] = useState<THREE.Texture | null>(null);
-  
+
   const { scene, gl, camera } = useThree();
   const sunLightRef = useRef<THREE.DirectionalLight>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -318,20 +318,20 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
     const canvas = gl.domElement as HTMLCanvasElement;
     const inputSystem = archValidationManager.getInputSystem();
-    
+
     if (!inputSystem) {
       console.error('❌ InputSystem not found');
       return;
     }
-    
+
     // 🎯 滚轮缩放（物理拦截）
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       // 直接设置 wheelDelta（InputSystem 会在 update 中读取）
       inputSystem.wheelDelta = e.deltaY;
-      
+
       console.log('🎮 Canvas wheel:', e.deltaY, 'wheelDelta set to:', inputSystem.wheelDelta);
     };
 
@@ -340,7 +340,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       if (e.button === 1 || e.button === 2) {
         // 🔥 关键：同步更新 InputSystem 的 pressedButtons
         inputSystem.pressedButtons.add(e.button);
-        
+
         // 中键或右键按下
         canvas.setPointerCapture(e.pointerId);
         console.log('🎮 Pointer captured, button:', e.button, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
@@ -352,13 +352,13 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       // 只在按下右键或中键时处理
       if (e.buttons === 2 || e.buttons === 4) {
         e.preventDefault();
-        
+
         // 直接设置 mouseDelta
         inputSystem.mouseDelta = {
           x: e.movementX,
           y: e.movementY,
         };
-        
+
         console.log('🎮 Canvas pointer move:', e.movementX, e.movementY, 'buttons:', e.buttons, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
       }
     };
@@ -368,7 +368,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       if (e.button === 1 || e.button === 2) {
         // 🔥 关键：同步更新 InputSystem 的 pressedButtons
         inputSystem.pressedButtons.delete(e.button);
-        
+
         canvas.releasePointerCapture(e.pointerId);
         console.log('🎮 Pointer released, button:', e.button, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
       }
@@ -435,30 +435,56 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   useEffect(() => {
     const loadHDR = async () => {
       const assetRegistry = getAssetRegistry();
-      
+
       // ✅ 健壮性检查：确保 AssetRegistry 已初始化
       if (!assetRegistry['initialized']) {
         console.log('[EngineBridge] Initializing AssetRegistry...');
         await assetRegistry.initialize();
       }
-      
+
       // 查询第一个 HDR 资产
       const hdrAssets = await assetRegistry.queryAssets({ type: AssetType.HDR });
-      
+
       if (hdrAssets.length === 0) {
-        console.log('[EngineBridge] No HDR assets found - using procedural sky');
-        // 🌅 没有 HDR，使用程序化天空（通过 R3F 的 Sky 组件）
-        // 注意：Sky 组件需要在 JSX 中渲染，这里只是标记
-        setHdrEnvMap(null);
-        return;
+        console.log('[EngineBridge] No HDR assets in registry - attempting local fallback...');
+
+        // 🔥 Local First: 强制尝试加载本地资源 (Potsdamer Platz)
+        // 这一步是为了确保在没有任何用户上传资源时，依然能提供高质量的真实天空
+        try {
+          const { HDRLoader } = await import('three/addons/loaders/HDRLoader.js');
+          const hdrLoader = new HDRLoader();
+          const localHdrPath = '/assets/env/kloofendal_48d_partly_cloudy_puresky_1k.hdr';
+
+          hdrLoader.load(localHdrPath, (texture) => {
+            const pmremGenerator = new THREE.PMREMGenerator(gl);
+            pmremGenerator.compileEquirectangularShader();
+            const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+            scene.environment = envMap;
+            scene.background = envMap;
+            setHdrEnvMap(envMap);
+            console.log('✓ [LocalFirst] Fallback HDR loaded successfully');
+
+            texture.dispose();
+            pmremGenerator.dispose();
+          }, undefined, (err) => {
+            console.warn('❌ [LocalFirst] Failed to load local HDR fallback:', err);
+            setHdrEnvMap(null);
+          });
+          return;
+        } catch (e) {
+          console.error('❌ [LocalFirst] Critical failure in HDR fallback logic:', e);
+          setHdrEnvMap(null);
+          return;
+        }
       }
 
       console.log(`[EngineBridge] Loading HDR: ${hdrAssets[0].name}`);
       const hdrAsset = hdrAssets[0];
-      
+
       // 获取 HDR 资产的 Blob 数据
       const blob = await assetRegistry.getAsset(hdrAsset.id);
-      
+
       if (!blob) {
         console.warn('[EngineBridge] HDR asset not found - using procedural sky');
         setHdrEnvMap(null);
@@ -468,16 +494,16 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       // 使用 HDRLoader 加载 HDR
       const { HDRLoader } = await import('three/addons/loaders/HDRLoader.js');
       const hdrLoader = new HDRLoader();
-      
+
       const url = URL.createObjectURL(blob);
-      
+
       hdrLoader.load(url, (texture) => {
         // 使用 PMREMGenerator 预处理纹理
         const pmremGenerator = new THREE.PMREMGenerator(gl);
         pmremGenerator.compileEquirectangularShader();
-        
+
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-        
+
         setHdrEnvMap(envMap);
 
         // 应用到场景
@@ -485,7 +511,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         scene.background = envMap;
 
         console.log('[EngineBridge] HDR environment applied');
-        
+
         // 清理
         texture.dispose();
         pmremGenerator.dispose();
@@ -496,12 +522,18 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     loadHDR();
   }, [scene, gl]);
 
+  // 计算太阳位置（用于同步光照和天空背景）
+  const time = worldState?.timeOfDay || 12;
+  const sunAngle = ((time - 6) / 12) * Math.PI;
+  const sunX = Math.cos(sunAngle) * 20;
+  const sunY = Math.sin(sunAngle) * 20;
+
   // 🔥 主渲染循环：神经合龙（ECS → R3F 相机强制同步）
   useFrame((state, delta) => {
     // 🎮 调用 ECS 更新循环（关键！）
     if (archValidationManager) {
       archValidationManager.update();
-      
+
       // 🔥 神经合龙：强制同步 ECS 相机到 R3F 相机
       const cameraSystem = archValidationManager.getCameraSystem();
       if (cameraSystem) {
@@ -515,32 +547,38 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     // 更新太阳光照（塞尔达式光影联动）
     if (!worldState || !sunLightRef.current) return;
 
-    const time = worldState.timeOfDay || 12;
-    
-    // 计算太阳位置（简化版）
-    const sunAngle = ((time - 6) / 12) * Math.PI;
-    const sunX = Math.cos(sunAngle) * 20;
-    const sunY = Math.sin(sunAngle) * 20;
-    
     sunLightRef.current.position.set(sunX, Math.max(sunY, 1), 10);
-    
-    // 🌅 强度映射：提升 8 倍，确保明显的光照变化
+
+    // 🔥 环境自适应联动：让 HDR 环境光随昼夜变化
+    // 三分律：中午(12:00)最亮，黄昏(18:00)变橘，深夜(0:00)漆黑
+    const normalizedHeight = Math.max(0, sunY / 20); // 0 (地平线) to 1 (正午)
+
+    // 🌙 夜色平滑公式：更深邃的夜晚，使用指数级衰减
+    const nightFactor = Math.pow(normalizedHeight, 2.0);
+
+    // 1. 设置环境光强度 (IBL 影响)
+    // 极低亮度 0.005 几乎看不见但保留微弱轮廓
+    scene.environmentIntensity = 0.005 + nightFactor * 0.995;
+
+    // 2. 设置天空盒亮度
+    scene.backgroundIntensity = 0.002 + nightFactor * 0.998;
+
+    // 🌅 更新太阳光强度 (塞尔达式光影联动)
     const baseIntensity = worldState.lightIntensity || 1.0;
-    const finalIntensity = baseIntensity * 8.0; // 提升到 8 倍
-    sunLightRef.current.intensity = finalIntensity;
-    
+    // 强度映射：提升 8 倍，并在夜晚迅速关闭
+    sunLightRef.current.intensity = baseIntensity * 8.0 * nightFactor;
+
     // 更新光照颜色
     if (worldState.directionalColor) {
       sunLightRef.current.color.set(worldState.directionalColor);
     }
-    
-    // 🔥 调试日志（每 60 帧输出一次）
-    if (Math.random() < 0.016) {
-      console.log('☀️ Sun update:', {
+
+    // 🔥 调试日志（每 100 帧输出一次）
+    if (Math.random() < 0.01) {
+      console.log('☀️ Environment Sync:', {
         time: time.toFixed(1),
-        baseIntensity: baseIntensity.toFixed(2),
-        finalIntensity: finalIntensity.toFixed(2),
-        color: worldState.directionalColor,
+        envIntensity: scene.environmentIntensity.toFixed(3),
+        sunIntensity: sunLightRef.current.intensity.toFixed(2),
       });
     }
   });
@@ -558,10 +596,10 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   return (
     <>
       {/* 🔥 核物理隔离：独立相机（强制接管 R3F 上下文） */}
-      <PerspectiveCamera 
+      <PerspectiveCamera
         ref={shadowCameraRef} // 🔥 绑定 ref，让 CameraSystem 能直接操控
-        makeDefault 
-        position={[0, 100, 100]} 
+        makeDefault
+        position={[0, 100, 100]}
         fov={60}
         near={0.1}
         far={1000}
@@ -579,17 +617,23 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         />
       )}
 
-      {/* 🌅 程序化天空（如果没有 HDR） */}
+      {/* 🌅 程序化天空（当没有 HDR 环境贴图时，提供一个深蓝色到浅蓝色的渐变，而非死白） */}
       {!hdrEnvMap && (
         <>
-          <color attach="background" args={['#87CEEB']} />
-          <fog attach="fog" args={['#87CEEB', 10, 100]} />
+          <color attach="background" args={['#1a2a44']} /> {/* 深蓝底色 */}
+          <Sky
+            distance={450000}
+            sunPosition={[sunX, sunY, 10]}
+            inclination={0}
+            azimuth={0.25}
+          />
+          <fog attach="fog" args={['#1a2a44', 10, 200]} />
         </>
       )}
 
       {/* 🌙 环境光基底（确保深夜时地形依然可见） */}
       <ambientLight intensity={0.3} color="#ffffff" />
-      
+
       {/* 方向光（太阳） */}
       <directionalLight
         ref={sunLightRef}

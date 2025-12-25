@@ -34,16 +34,28 @@ export class PhysicsSystem implements System {
 
   private RAPIER: RAPIER | null = null;
   private world: World | null = null;
+  private entityManager: any | null = null;
   private bodyMap: Map<string, RigidBody> = new Map();  // entityId -> RigidBody
   private colliderMap: Map<string, Collider> = new Map(); // entityId -> Collider
   private initialized = false;
   private gravity: [number, number, number] = [0, -9.81, 0];  // 默认重力
 
   /**
-   * 初始化物理引擎
+   * 设置实体管理器引用 (用于初始化时的 Catch-up)
    */
-  public async initialize(): Promise<void> {
+  public setEntityManager(em: any): void {
+    this.entityManager = em;
+  }
+
+  /**
+   * 初始化物理引擎
+   * @param entityManager 注入实体管理器（由 SystemManager 自动传入）
+   */
+  public async initialize(entityManager?: any): Promise<void> {
     if (this.initialized) return;
+
+    // 🔥 确保持有引用，用于捕捉既存实体
+    if (entityManager) this.entityManager = entityManager;
 
     try {
       // 动态导入 Rapier（WASM 模块）
@@ -55,6 +67,15 @@ export class PhysicsSystem implements System {
 
       this.initialized = true;
       console.log('✓ PhysicsSystem initialized with Rapier');
+
+      // 🔥 Catch-up: 发现所有在初始化完成前就被添加的实体
+      // 解决因异步加载 WASM 导致的初期实体被忽略的问题
+      if (this.entityManager) {
+        const entities = this.entityManager.getEntitiesWithComponents(this.requiredComponents);
+        console.log(`[PhysicsSystem] Catch-up: processing ${entities.length} entities`);
+        entities.forEach(entity => this.onEntityAdded(entity));
+      }
+
       console.log(`  Gravity: [${this.gravity.join(', ')}]`);
     } catch (error) {
       console.error('Failed to initialize PhysicsSystem:', error);
@@ -86,6 +107,10 @@ export class PhysicsSystem implements System {
 
     // 创建刚体
     this.createRigidBody(entity, physics, transform);
+
+    // 🔥 初始位置同步
+    this.syncTransformToPhysics(entity);
+    console.log(`✓ RigidBody created and synced for entity: ${entity.id}`);
   }
 
   /**
@@ -226,7 +251,7 @@ export class PhysicsSystem implements System {
    * System 接口：更新
    */
   public update(deltaTime: number, entities?: Entity[]): void {
-    if (!this.initialized || !this.world || !entities) return;
+    if (!this.initialized || !this.world || !entities || !this.enabled) return;
 
     // 步进物理模拟
     this.world.step();
@@ -289,9 +314,13 @@ export class PhysicsSystem implements System {
   }
 
   /**
-   * 欧拉角转四元数（简化版）
+   * 欧拉角转四元数 (度数 -> 弧度)
    */
-  private eulerToQuaternion(rx: number, ry: number, rz: number): { w: number; x: number; y: number; z: number } {
+  private eulerToQuaternion(rxDeg: number, ryDeg: number, rzDeg: number): { w: number; x: number; y: number; z: number } {
+    const rx = rxDeg * Math.PI / 180;
+    const ry = ryDeg * Math.PI / 180;
+    const rz = rzDeg * Math.PI / 180;
+
     const cx = Math.cos(rx / 2);
     const cy = Math.cos(ry / 2);
     const cz = Math.cos(rz / 2);
@@ -308,7 +337,7 @@ export class PhysicsSystem implements System {
   }
 
   /**
-   * 四元数转欧拉角（简化版）
+   * 四元数转欧拉角 (弧度 -> 度数)
    */
   private quaternionToEuler(quat: { w: number; x: number; y: number; z: number }): [number, number, number] {
     const { w, x, y, z } = quat;
@@ -327,7 +356,12 @@ export class PhysicsSystem implements System {
     const cosy_cosp = 1 - 2 * (y * y + z * z);
     const yaw = Math.atan2(siny_cosp, cosy_cosp);
 
-    return [roll, pitch, yaw];
+    // 返回度数
+    return [
+      roll * 180 / Math.PI,
+      pitch * 180 / Math.PI,
+      yaw * 180 / Math.PI
+    ];
   }
 
   /**

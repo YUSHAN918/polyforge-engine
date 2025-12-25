@@ -75,16 +75,16 @@ export class EntityManager {
   /**
    * 创建实体
    */
-  createEntity(name: string = 'Entity'): Entity {
-    const entity = new Entity(name);
+  createEntity(name: string = 'Entity', id?: string): Entity {
+    const entity = new Entity(name, id);
     this.entities.set(entity.id, entity);
     this.hierarchyRoot.push(entity);
-    
+
     // 通知 SystemManager
     if (this.systemManager) {
       this.systemManager.notifyEntityAdded(entity);
     }
-    
+
     return entity;
   }
 
@@ -187,12 +187,12 @@ export class EntityManager {
 
     entity.addComponent(component);
     this.addToComponentIndex(entityId, component.type);
-    
+
     // 通知 SystemManager
     if (this.systemManager) {
       this.systemManager.notifyComponentChanged(entity, component.type, true);
     }
-    
+
     return true;
   }
 
@@ -209,7 +209,7 @@ export class EntityManager {
     const removed = entity.removeComponent(componentType);
     if (removed) {
       this.removeFromComponentIndex(entityId, componentType);
-      
+
       // 通知 SystemManager
       if (this.systemManager) {
         this.systemManager.notifyComponentChanged(entity, componentType, false);

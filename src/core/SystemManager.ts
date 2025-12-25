@@ -239,19 +239,30 @@ export class SystemManager {
    */
   notifyComponentChanged(entity: Entity, componentType: string, added: boolean): void {
     for (const system of this.systems) {
-      const hadComponents = added
-        ? entity.hasAllComponents(system.requiredComponents.filter(c => c !== componentType))
-        : entity.hasAllComponents(system.requiredComponents);
-
-      const hasComponents = entity.hasAllComponents(system.requiredComponents);
-
-      // 如果之前不满足，现在满足了 -> 添加
-      if (!hadComponents && hasComponents) {
-        system.onEntityAdded(entity);
+      // 如果该系统不关心这个组件，则跳过
+      if (!system.requiredComponents.includes(componentType)) {
+        continue;
       }
-      // 如果之前满足，现在不满足了 -> 移除
-      else if (hadComponents && !hasComponents) {
-        system.onEntityRemoved(entity);
+
+      const hasAll = entity.hasAllComponents(system.requiredComponents);
+
+      if (added) {
+        // 🔥 核心修复：如果刚刚添加了组件，且现在到齐了，则通知添加
+        // 这里不需要 !hadComponents，因为 componentType 是刚加的，
+        // 只要现在齐了，就说明这是“补全”的瞬间。
+        if (hasAll) {
+          system.onEntityAdded(entity);
+        }
+      } else {
+        // 🔥 核心修复：如果刚刚移除了组件，说明原本可能是齐的
+        // 检查除了刚移除的这个，剩下的组件是否还是齐的
+        const remainingRequired = system.requiredComponents.filter(c => c !== componentType);
+        const hadOthers = entity.hasAllComponents(remainingRequired);
+
+        if (hadOthers) {
+          // 如果原本其他组件都齐，说明移除这个后，就不再满足系统要求
+          system.onEntityRemoved(entity);
+        }
       }
     }
   }
@@ -296,7 +307,7 @@ export class SystemManager {
     console.log(`Total Systems: ${this.systems.length}`);
     console.log(`Sorted: ${this.sorted}`);
     console.log('Systems:');
-    
+
     this.sortSystems();
     this.systems.forEach((system, index) => {
       const name = this.getSystemName(system);

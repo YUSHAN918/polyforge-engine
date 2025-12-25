@@ -819,6 +819,10 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
       setDeleteTargetId(null);
   };
   
+  const handleDeleteSavedCharacter = (id: string) => {
+      setSavedCharacters(prev => prev.filter(c => c.id !== id));
+  };
+
   const handleCreateCustomModel = (cat: AssetCategory, sub?: AssetSubCategory) => { 
       setWorkshopPrimitives([]); primitivesRef.current = []; historyStack.current = []; historyPtr.current = -1; 
       setEditingModelId(null); setWorkshopReturnMode(mode); 
@@ -1454,6 +1458,7 @@ const [isAiChatVisible, setIsAiChatVisible] = useState(isAiEnabled());
             <AssetLibraryPanel 
                 customModels={customModels} savedCharacters={savedCharacters} 
                 onDelete={handleDeleteCustomModel} onEdit={handleEditCustomModel} onCreate={handleCreateCustomModel} onLoadCharacter={handleLoadCharacter} 
+                onDeleteCharacter={handleDeleteSavedCharacter}
                 onImportData={handleBatchImportData} 
             />
         )}

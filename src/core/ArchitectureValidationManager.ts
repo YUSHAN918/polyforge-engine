@@ -20,10 +20,15 @@ import { VisualComponent } from './components/VisualComponent';
 import { TerrainComponent } from './components/TerrainComponent';
 import { VegetationComponent } from './components/VegetationComponent';
 import { CameraComponent } from './components/CameraComponent';
+import { PhysicsComponent } from './components/PhysicsComponent'; // Added
 import { TerrainSystem } from './systems/TerrainSystem';
 import { VegetationSystem } from './systems/VegetationSystem';
 import { CameraSystem } from './systems/CameraSystem';
 import { InputSystem } from './systems/InputSystem';
+import { PhysicsSystem } from './systems/PhysicsSystem'; // Added
+import { SerializationService } from './SerializationService';
+import { CommandManager } from './CommandManager';
+import { ArchitectureStorageManager } from './ArchitectureStorageManager';
 
 /**
  * ArchitectureValidationManager
@@ -39,82 +44,117 @@ export class ArchitectureValidationManager {
   private systemManager: SystemManager;
   private worldStateManager: WorldStateManager;
   private clock: Clock;
-  
+
   // 系统实例
   private terrainSystem: TerrainSystem;
   private vegetationSystem: VegetationSystem;
   private cameraSystem: CameraSystem;
   private inputSystem: InputSystem;
-  
+  private physicsSystem: PhysicsSystem;
+  private serializationService: SerializationService;
+  private commandManager: CommandManager;
+  private storageManager: ArchitectureStorageManager;
+
+  // 存档控制
+  private autoSaveInterval: number = 5000; // 5秒心跳
+  private lastSaveTime: number = 0;
+
   // 实体引用
   private terrainEntity: Entity | null = null;
   private cameraEntity: Entity | null = null;
-  
+
   // 🎬 后处理参数（可通过控制接口修改）
   public postProcessingSettings = {
     enabled: true,
     bloomEnabled: true,
-    bloomStrength: 1.5,
+    bloomStrength: 0.5, // 🔥 降低初始强度，防止“白茫茫”雪盲效应
     bloomRadius: 0.4,
     bloomThreshold: 0.85,
     smaaEnabled: true,
   };
-  
+
   constructor() {
     console.log('🏗️ [ArchitectureValidationManager] Initializing...');
-    
+
     // 初始化 ECS 核心
     this.entityManager = new EntityManager();
     this.clock = new Clock();
     this.systemManager = new SystemManager(this.entityManager, this.clock);
+    // 🔥 核心连接：让 EntityManager 能通知 SystemManager 实体变更
+    this.entityManager.setSystemManager(this.systemManager);
+
     this.worldStateManager = new WorldStateManager();
-    
+    this.serializationService = new SerializationService(this.entityManager);
+    this.commandManager = new CommandManager(this.entityManager, this.serializationService);
+    this.storageManager = new ArchitectureStorageManager(this.entityManager, this.worldStateManager);
+
     // 注册组件
     this.entityManager.registerComponent('Transform', TransformComponent);
     this.entityManager.registerComponent('Visual', VisualComponent);
     this.entityManager.registerComponent('Terrain', TerrainComponent);  // 🔥 恢复注册
     this.entityManager.registerComponent('Vegetation', VegetationComponent);  // 🔥 恢复注册
     this.entityManager.registerComponent('Camera', CameraComponent);
-    
+    this.entityManager.registerComponent('Physics', PhysicsComponent);
+
     console.log('✓ Components registered');
-    
+
     // 创建系统
     this.inputSystem = new InputSystem();
     this.terrainSystem = new TerrainSystem();
     this.vegetationSystem = new VegetationSystem(this.worldStateManager);
     this.cameraSystem = new CameraSystem();
-    
+    this.physicsSystem = new PhysicsSystem();
+    this.physicsSystem.setEntityManager(this.entityManager);
+
     // 🎮 连接 InputSystem 到 CameraSystem
     this.cameraSystem.setInputSystem(this.inputSystem);
-    
+
     // 注册系统
     this.systemManager.registerSystem('InputSystem', this.inputSystem);
     this.systemManager.registerSystem('TerrainSystem', this.terrainSystem);
     this.systemManager.registerSystem('VegetationSystem', this.vegetationSystem);
     this.systemManager.registerSystem('CameraSystem', this.cameraSystem);
-    
+    this.systemManager.registerSystem('PhysicsSystem', this.physicsSystem);
+
     console.log('✓ Systems registered');
     console.log('✓ InputSystem connected to CameraSystem');
-    
-    // 自动创建场景
-    this.initializeScene();
-    
+
+    // ⌨️ 连接指令系统到输入系统 (激活 Ctrl+Z/Y)
+    this.inputSystem.setCommandManager(this.commandManager);
+    console.log('✓ CommandManager linked to InputSystem');
+
+    // ⚡ 始终异步初始化物理引擎
+    this.physicsSystem.initialize().then(() => {
+      console.log('⚡ Physics engine warmed up');
+    });
+
+    // 📂 尝试加载存档
+    const savedState = this.storageManager.load();
+    if (savedState) {
+      this.restoreFromSnapshot(savedState);
+      console.log('✓ Architecture state restored from LocalStorage');
+    } else {
+      // 自动创建场景
+      this.initializeScene();
+      console.log('✓ Default validation scene initialized');
+    }
+
     console.log('✓ ArchitectureValidationManager initialized');
   }
-  
+
   /**
    * 初始化场景（自动创建地形和相机）
    */
   private initializeScene(): void {
     console.log('🌍 [ArchitectureValidationManager] Initializing scene...');
-    
-    // 创建地形实体
-    this.terrainEntity = this.entityManager.createEntity('ValidationTerrain');
-    
+
+    // 创建地形实体 (使用固定 ID 保持持久化稳定)
+    this.terrainEntity = this.entityManager.createEntity('ValidationTerrain', 'ValidationTerrain');
+
     const terrainTransform = new TransformComponent();
     terrainTransform.position = [0, 0, 0];
     this.entityManager.addComponent(this.terrainEntity.id, terrainTransform);
-    
+
     const terrain = new TerrainComponent({
       width: 50,
       depth: 50,
@@ -122,13 +162,13 @@ export class ArchitectureValidationManager {
       depthSegments: 100,
     });
     this.entityManager.addComponent(this.terrainEntity.id, terrain);
-    
+
     const terrainVisual = new VisualComponent();
     terrainVisual.geometry = { type: 'plane', parameters: { width: 50, height: 50 } };
-    terrainVisual.material = { 
-      type: 'standard', 
+    terrainVisual.material = {
+      type: 'standard',
       color: '#444444',      // 🔥 暗灰色，防止过亮
-      metalness: 0.0, 
+      metalness: 0.0,
       roughness: 0.8         // 🔥 防止亮度溢出
     };
     terrainVisual.emissive = {
@@ -138,16 +178,21 @@ export class ArchitectureValidationManager {
     terrainVisual.receiveShadow = true;
     terrainVisual.visible = true;
     this.entityManager.addComponent(this.terrainEntity.id, terrainVisual);
-    
-    console.log('✓ Terrain entity created');
-    
-    // 创建上帝视角相机
-    this.cameraEntity = this.entityManager.createEntity('GodCamera');
-    
+
+    // 🔥 为地形添加物理碰撞体 (Static)
+    const terrainPhysics = new PhysicsComponent('static');
+    terrainPhysics.setCollider('box', [50, 2, 50], [0, -1, 0]); // 2米厚的地面挡板
+    this.entityManager.addComponent(this.terrainEntity.id, terrainPhysics);
+
+    console.log('✓ Terrain entity created with Physics Collider');
+
+    // 创建上帝视角相机 (使用固定 ID 保持持久化稳定)
+    this.cameraEntity = this.entityManager.createEntity('GodCamera', 'GodCamera');
+
     const cameraTransform = new TransformComponent();
     cameraTransform.position = [0, 50, 50];  // 🔥 初始位置：斜上方 45 度角
     this.entityManager.addComponent(this.cameraEntity.id, cameraTransform);
-    
+
     const camera = new CameraComponent();
     camera.mode = 'orbit';
     camera.distance = 70;         // 🔥 初始距离 70（之前 100 太远）
@@ -159,10 +204,10 @@ export class ArchitectureValidationManager {
     camera.targetEntityId = null; // 不跟随任何实体，使用固定位置
     camera.enabled = true;
     this.entityManager.addComponent(this.cameraEntity.id, camera);
-    
+
     console.log('✓ God Camera created (Orbit mode, distance=100, pitch=-60°)');
     console.log('✓ Validation scene initialized');
-    
+
     // 🌿 自动生成植被（演示用）
     console.log('🌱 [DEBUG] Scheduling vegetation spawn in 100ms...');
     setTimeout(() => {
@@ -170,7 +215,7 @@ export class ArchitectureValidationManager {
       const vegetationId = this.spawnVegetation(5000);
       if (vegetationId) {
         console.log('✓ Auto-spawned vegetation for demo, ID:', vegetationId);
-        
+
         // 🔥 立即检查实例是否生成
         const instances = this.vegetationSystem.getInstances(vegetationId);
         console.log('🌱 [DEBUG] Instances after spawn:', instances ? instances.length : 'NULL');
@@ -179,27 +224,34 @@ export class ArchitectureValidationManager {
       }
     }, 100); // 延迟 100ms 确保系统初始化完成
   }
-  
+
   /**
    * 更新循环（每帧调用）
    */
   update(): void {
     this.systemManager.update();
+
+    // 💓 存储心跳
+    const now = Date.now();
+    if (now - this.lastSaveTime > this.autoSaveInterval) {
+      this.saveScene();
+      this.lastSaveTime = now;
+    }
   }
-  
+
   /**
    * 启动时钟
    */
   start(): void {
     this.clock.start();
-    
+
     // 🎮 推送输入上下文，让相机能监听鼠标输入
     this.inputSystem.pushContext('orbit');
-    
+
     console.log('⏰ Clock started');
     console.log('🎮 Input context pushed: orbit');
   }
-  
+
   /**
    * 设置输入系统的 DOM 元素
    * @param domElement Canvas DOM 元素
@@ -209,7 +261,7 @@ export class ArchitectureValidationManager {
     // For now, the system uses window-level event listeners
     console.log('🎮 Input element reference stored (window-level listeners active)');
   }
-  
+
   /**
    * 设置 R3F 相机引用（让 CameraSystem 直接控制）
    * @param camera R3F 相机实例
@@ -217,21 +269,87 @@ export class ArchitectureValidationManager {
   setR3FCamera(camera: any): void {
     this.cameraSystem.setR3FCamera(camera);
   }
-  
+
   /**
    * 获取 CameraSystem（用于外部访问）
    */
   getCameraSystem(): CameraSystem {
     return this.cameraSystem;
   }
-  
+
   /**
    * 获取 InputSystem（用于外部访问）
    */
   getInputSystem(): InputSystem {
     return this.inputSystem;
   }
-  
+
+  /**
+   * 获取 CommandManager（用于 UI 撤销重做）
+   */
+  getCommandManager(): CommandManager {
+    return this.commandManager;
+  }
+
+  /**
+   * 获取存储管理器
+   */
+  getStorageManager(): ArchitectureStorageManager {
+    return this.storageManager;
+  }
+
+  /**
+   * 显式保存场景
+   */
+  saveScene(): void {
+    this.storageManager.save();
+  }
+
+  /**
+   * 恢复场景到快照
+   */
+  restoreFromSnapshot(snapshot: any): void {
+    try {
+      // 1. 恢复环境
+      this.worldStateManager.deserialize(snapshot.worldState);
+
+      // 🔥 同步恢复的物理参数
+      if (snapshot.worldState.gravityY !== undefined) {
+        this.physicsSystem.setGravity(0, snapshot.worldState.gravityY, 0);
+      }
+
+      // 2. 恢复实体 (清空并重新反序列化)
+      this.entityManager.clear();
+      this.entityManager.deserializeAll(snapshot.entities);
+
+      // 🔥 强制触发物理系统的全量发现 (解决瞬移同步问题)
+      const physicsEntities = this.entityManager.getEntitiesWithComponents(['Physics', 'Transform']);
+      physicsEntities.forEach(e => this.physicsSystem.onEntityAdded(e));
+
+      // 3. 重新获取核心实体引用 (使用固定 ID + 智能回退)
+      this.terrainEntity = this.entityManager.getEntity('ValidationTerrain');
+      if (!this.terrainEntity) {
+        // 回退：通过组件查找
+        const terrains = this.entityManager.getEntitiesWithComponents(['Terrain']);
+        if (terrains.length > 0) this.terrainEntity = terrains[0];
+      }
+
+      this.cameraEntity = this.entityManager.getEntity('GodCamera');
+      if (!this.cameraEntity) {
+        // 回退：通过组件查找
+        const cameras = this.entityManager.getEntitiesWithComponents(['Camera']);
+        if (cameras.length > 0) this.cameraEntity = cameras[0];
+      }
+
+      console.log('✓ Scene restored successfully', {
+        hasTerrain: !!this.terrainEntity,
+        hasCamera: !!this.cameraEntity
+      });
+    } catch (error) {
+      console.error('❌ Failed to restore scene from snapshot:', error);
+    }
+  }
+
   /**
    * 生成植被
    * @param density 植被密度（实例数量）
@@ -242,13 +360,13 @@ export class ArchitectureValidationManager {
       console.error('❌ Cannot spawn vegetation: Terrain entity not found');
       return null;
     }
-    
+
     console.log(`🌱 Spawning vegetation (density: ${density})...`);
     const vegetationId = this.vegetationSystem.spawnGrass(density, this.terrainEntity.id);
-    
+
     if (vegetationId) {
       console.log(`✓ Vegetation spawned (ID: ${vegetationId})`);
-      
+
       // 🔥 调试：验证植被实体的组件
       const vegEntity = this.entityManager.getEntity(vegetationId);
       if (vegEntity) {
@@ -258,7 +376,7 @@ export class ArchitectureValidationManager {
           hasVegetation: vegEntity.hasComponent('Vegetation'),
           isActive: vegEntity.active,
         });
-        
+
         const vegComp = vegEntity.getComponent('Vegetation') as VegetationComponent;
         if (vegComp) {
           console.log('🔥 [DEBUG] Vegetation component:', {
@@ -272,10 +390,10 @@ export class ArchitectureValidationManager {
     } else {
       console.error('❌ Failed to spawn vegetation');
     }
-    
+
     return vegetationId;
   }
-  
+
   /**
    * 创建山峰
    */
@@ -284,35 +402,35 @@ export class ArchitectureValidationManager {
       console.error('❌ Cannot create mountain: Terrain entity not found');
       return;
     }
-    
+
     const terrain = this.terrainEntity.getComponent<TerrainComponent>('Terrain');
     if (!terrain) {
       console.error('❌ Cannot create mountain: Terrain component not found');
       return;
     }
-    
+
     console.log('⛰️ Creating mountain...');
-    
+
     const centerX = terrain.config.widthSegments / 2;
     const centerZ = terrain.config.depthSegments / 2;
-    
+
     for (let z = 0; z <= terrain.config.depthSegments; z++) {
       for (let x = 0; x <= terrain.config.widthSegments; x++) {
         const dx = x - centerX;
         const dz = z - centerZ;
         const distance = Math.sqrt(dx * dx + dz * dz);
         const maxDistance = Math.min(terrain.config.widthSegments, terrain.config.depthSegments) / 3;
-        
+
         if (distance < maxDistance) {
           const height = (1 - distance / maxDistance) * 8;
           terrain.setHeight(x, z, height);
         }
       }
     }
-    
+
     console.log('✓ Mountain created');
   }
-  
+
   /**
    * 创建山谷
    */
@@ -321,35 +439,35 @@ export class ArchitectureValidationManager {
       console.error('❌ Cannot create valley: Terrain entity not found');
       return;
     }
-    
+
     const terrain = this.terrainEntity.getComponent<TerrainComponent>('Terrain');
     if (!terrain) {
       console.error('❌ Cannot create valley: Terrain component not found');
       return;
     }
-    
+
     console.log('🏞️ Creating valley...');
-    
+
     const centerX = terrain.config.widthSegments / 2;
     const centerZ = terrain.config.depthSegments / 2;
-    
+
     for (let z = 0; z <= terrain.config.depthSegments; z++) {
       for (let x = 0; x <= terrain.config.widthSegments; x++) {
         const dx = x - centerX;
         const dz = z - centerZ;
         const distance = Math.sqrt(dx * dx + dz * dz);
         const maxDistance = Math.min(terrain.config.widthSegments, terrain.config.depthSegments) / 3;
-        
+
         if (distance < maxDistance) {
           const height = -(1 - distance / maxDistance) * 5;
           terrain.setHeight(x, z, height);
         }
       }
     }
-    
+
     console.log('✓ Valley created');
   }
-  
+
   /**
    * 获取统计信息
    */
@@ -358,63 +476,67 @@ export class ArchitectureValidationManager {
     systemCount: number;
     vegetationCount: number;
     terrainVertices: number;
+    physicsInitialized: boolean;
+    physicsBodies: number;
   } {
     const entities = this.entityManager.getAllEntities();
     const vegetationEntities = entities.filter(e => e.hasComponent('Vegetation'));
-    
+
     let totalVegetation = 0;
     vegetationEntities.forEach(e => {
       const veg = e.getComponent<VegetationComponent>('Vegetation');
       if (veg) totalVegetation += veg.instanceCount;
     });
-    
+
     const terrain = this.terrainEntity?.getComponent<TerrainComponent>('Terrain');
     const terrainVertices = terrain ? terrain.heightData.length : 0;
-    
+
     return {
       entityCount: entities.length,
-      systemCount: 3, // TerrainSystem, VegetationSystem, CameraSystem
+      systemCount: 5, // Input, Terrain, Vegetation, Camera, Physics
       vegetationCount: totalVegetation,
       terrainVertices,
+      physicsInitialized: this.physicsSystem.getStats().initialized,
+      physicsBodies: this.physicsSystem.getStats().totalBodies,
     };
   }
-  
+
   /**
    * 获取 EntityManager（用于 EngineBridge）
    */
   getEntityManager(): EntityManager {
     return this.entityManager;
   }
-  
+
   /**
    * 获取 WorldStateManager（用于 EngineBridge）
    */
   getWorldStateManager(): WorldStateManager {
     return this.worldStateManager;
   }
-  
+
   /**
    * 获取 TerrainSystem（用于 EngineBridge）
    */
   getTerrainSystem(): TerrainSystem {
     return this.terrainSystem;
   }
-  
+
   /**
    * 获取 VegetationSystem（用于 EngineBridge）
    */
   getVegetationSystem(): VegetationSystem {
     return this.vegetationSystem;
   }
-  
+
   /**
-   * 设置环境时间（日落前1小时）
+   * 设置环境时间（黄昏，光影最具质感的时候）
    */
   setSunsetTime(): void {
-    this.worldStateManager.setTimeOfDay(17); // 17:00 = 日落前1小时
-    console.log('🌅 Time set to sunset (17:00)');
+    this.worldStateManager.setTimeOfDay(16.5); // 16:30 = 金色时刻
+    console.log('🌅 Time set to Golden Hour (16:30)');
   }
-  
+
   /**
    * 设置一天中的时间
    * @param hour 小时 (0-24)
@@ -423,7 +545,7 @@ export class ArchitectureValidationManager {
     this.worldStateManager.setTimeOfDay(hour);
     console.log(`🕐 Time set to ${hour}:00`);
   }
-  
+
   /**
    * 设置光照强度
    * @param intensity 强度 (0.0-5.0)
@@ -432,7 +554,7 @@ export class ArchitectureValidationManager {
     this.worldStateManager.setLightIntensity(intensity);
     console.log(`💡 Light intensity set to ${intensity}`);
   }
-  
+
   /**
    * 🌿 设置草地缩放
    * @param scale 缩放倍数 (0.1-3.0)
@@ -450,7 +572,7 @@ export class ArchitectureValidationManager {
     });
     console.log(`🌿 Grass scale set to ${scale}x`);
   }
-  
+
   /**
    * 🌿 设置风场强度
    * @param strength 风力强度 (0.0-1.0)
@@ -466,7 +588,7 @@ export class ArchitectureValidationManager {
     });
     console.log(`💨 Wind strength set to ${strength}`);
   }
-  
+
   /**
    * 🌿 设置草地颜色
    * @param color 颜色 (hex string)
@@ -482,30 +604,97 @@ export class ArchitectureValidationManager {
     });
     console.log(`🎨 Grass color set to ${color}`);
   }
-  
+
+  /**
+   * ⚡ 物理：切换仿真开关
+   */
+  setPhysicsEnabled(enabled: boolean): void {
+    this.physicsSystem.enabled = enabled;
+    console.log(`⚡ Physics simulation: ${enabled ? 'ENABLED' : 'DISABLED'}`);
+  }
+
+  /**
+   * ⚡ 物理：设置重力
+   */
+  setGravity(y: number): void {
+    this.physicsSystem.setGravity(0, y, 0);
+  }
+
+  /**
+   * ⚡ 物理：生成实验方块
+   */
+  spawnPhysicsBox(): string {
+    const id = `physics_box_${Date.now()}`;
+    const entity = this.entityManager.createEntity(id);
+
+    const transform = new TransformComponent();
+    // 随机位置在天空
+    transform.position = [
+      (Math.random() - 0.5) * 20,
+      30 + Math.random() * 10,
+      (Math.random() - 0.5) * 20
+    ];
+    // 随机旋转
+    transform.rotation = [Math.random() * Math.PI, Math.random() * Math.PI, 0];
+
+    const visual = new VisualComponent();
+    visual.geometry = { type: 'box', parameters: { width: 2, height: 2, depth: 2 } };
+    visual.material = { type: 'standard', color: '#3b82f6' };
+    visual.castShadow = true;
+
+    const physics = new PhysicsComponent('dynamic', {
+      shape: 'box',
+      size: [2, 2, 2],
+      offset: [0, 0, 0]
+    });
+    physics.restitution = 0.6;
+
+    // 包装成指令进行执行，以支持撤销
+    this.commandManager.execute({
+      name: 'Spawn Physics Box',
+      execute: () => {
+        // 🔥 关键修复：支持 Redo
+        // 如果实体已被销毁（在撤销之后），则重新创建它
+        if (!this.entityManager.getEntity(entity.id)) {
+          this.entityManager.createEntity(entity.name, entity.id);
+        }
+
+        this.entityManager.addComponent(entity.id, transform);
+        this.entityManager.addComponent(entity.id, visual);
+        this.entityManager.addComponent(entity.id, physics);
+      },
+      undo: () => {
+        this.entityManager.destroyEntity(entity.id);
+      }
+    });
+
+    console.log('📦 Spawned physics experiment box (Undoable)');
+    return entity.id;
+  }
+
   /**
    * 获取当前环境状态
    */
   getEnvironmentState() {
     return this.worldStateManager.getState();
   }
-  
+
   /**
    * 🔍 调试方法：打印所有植被实例的详细信息
    */
   debugVegetation(): void {
     console.log('=== 🔍 VEGETATION DEBUG START ===');
-    
+
     const entities = this.entityManager.getAllEntities();
     const vegetationEntities = entities.filter(e => e.hasComponent('Vegetation'));
-    
+
     console.log(`Total entities: ${entities.length}`);
     console.log(`Vegetation entities: ${vegetationEntities.length}`);
-    
+
     vegetationEntities.forEach((entity, index) => {
       const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
       if (!vegetation) return;
-      
+
       console.log(`\n--- Vegetation Entity ${index + 1} ---`);
       console.log(`ID: ${entity.id}`);
       console.log(`Name: ${entity.name}`);
@@ -519,11 +708,11 @@ export class ArchitectureValidationManager {
       console.log(`Base Color: ${vegetation.config.baseColor}`);
       console.log(`Is Dirty: ${vegetation.isDirty}`);
       console.log(`Terrain Entity ID: ${vegetation.config.terrainEntityId}`);
-      
+
       // 从 VegetationSystem 获取实例数据
       const instances = this.vegetationSystem.getInstances(entity.id);
       console.log(`Cached Instances: ${instances ? instances.length : 'NULL'}`);
-      
+
       if (instances && instances.length > 0) {
         console.log(`First 5 instances:`, instances.slice(0, 5).map(inst => ({
           position: inst.position.toArray(),
@@ -531,7 +720,7 @@ export class ArchitectureValidationManager {
           rotation: inst.rotation,
           color: inst.colorOffset.getHexString(),
         })));
-        
+
         console.log(`Last 5 instances:`, instances.slice(-5).map(inst => ({
           position: inst.position.toArray(),
           scale: inst.scale.toArray(),
@@ -540,19 +729,19 @@ export class ArchitectureValidationManager {
         })));
       }
     });
-    
+
     console.log('\n=== 🔍 VEGETATION DEBUG END ===');
   }
-  
+
   /**
    * 🔍 调试方法：强制重新生成植被
    */
   forceRegenerateVegetation(): void {
     console.log('=== 🔄 FORCE REGENERATE VEGETATION ===');
-    
+
     const entities = this.entityManager.getAllEntities();
     const vegetationEntities = entities.filter(e => e.hasComponent('Vegetation'));
-    
+
     vegetationEntities.forEach((entity) => {
       const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
       if (vegetation) {
@@ -560,10 +749,10 @@ export class ArchitectureValidationManager {
         vegetation.markDirty();
       }
     });
-    
+
     // 手动触发一次 update
     this.vegetationSystem.update();
-    
+
     console.log('✓ Regeneration complete');
   }
 }
