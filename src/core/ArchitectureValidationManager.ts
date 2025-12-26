@@ -31,6 +31,7 @@ import { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry'; // Add
 import { SerializationService } from './SerializationService';
 import { CommandManager } from './CommandManager';
 import { ArchitectureStorageManager } from './ArchitectureStorageManager';
+import { BundleSystem } from './bundling/BundleSystem'; // Added
 
 /**
  * ArchitectureValidationManager
@@ -53,11 +54,12 @@ export class ArchitectureValidationManager {
   private cameraSystem: CameraSystem;
   private inputSystem: InputSystem;
   private physicsSystem: PhysicsSystem;
-  private audioSystem: AudioSystem; // Added
-  private assetRegistry: AssetRegistry; // Added
+  private audioSystem: AudioSystem;
+  private assetRegistry: AssetRegistry;
   private serializationService: SerializationService;
   private commandManager: CommandManager;
   private storageManager: ArchitectureStorageManager;
+  private bundleSystem: BundleSystem; // Added
 
   // 存档控制
   private autoSaveInterval: number = 5000; // 5秒心跳
@@ -91,6 +93,11 @@ export class ArchitectureValidationManager {
     this.serializationService = new SerializationService(this.entityManager);
     this.commandManager = new CommandManager(this.entityManager, this.serializationService);
     this.storageManager = new ArchitectureStorageManager(this.entityManager, this.worldStateManager);
+
+    // 初始化 BundleSystem
+    this.assetRegistry = getAssetRegistry(); // Needed early for BundleSystem
+    this.bundleSystem = new BundleSystem(this.entityManager, this.assetRegistry, this.serializationService);
+
 
     // 注册组件
     this.entityManager.registerComponent('Transform', TransformComponent);
@@ -430,6 +437,75 @@ export class ArchitectureValidationManager {
   }
 
   /**
+   * 📦 导出当前场景为 Bundle 包
+   */
+  async exportBundle(name: string = 'MyLevel'): Promise<void> {
+    try {
+      console.log('📦 Starting bundle export:', name);
+
+      // 1. 创建 Bundle
+      const bundle = await this.bundleSystem.createBundle({
+        name,
+        author: 'User',
+        description: 'Exported from PolyForge Orbital Command',
+      });
+
+      // 🔥 1.5. 注入 WorldState (SerializationService 不包含此数据)
+      bundle.manifest.sceneData.worldState = this.worldStateManager.getState();
+
+      // 2. 打包为 JSON (Base64)
+      const jsonContent = await this.bundleSystem.packToJSON(bundle);
+
+      // 3. 触发下载
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}_${Date.now()}.pfb`; // PolyForge Bundle
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log('✅ Bundle exported successfully');
+    } catch (error) {
+      console.error('❌ Bundle export failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📦 导入 Bundle 包 (逆向解包)
+   * @param file 用户上传的 .pfb 文件
+   */
+  async importBundle(file: File): Promise<void> {
+    try {
+      console.log('📦 Starting bundle import:', file.name);
+
+      // 1. 读取文件
+      const jsonString = await file.text();
+
+      // 2. 调用 BundleSystem 解析并还原资产
+      const manifest = await this.bundleSystem.loadBundle(jsonString);
+
+      // 3. 恢复场景数据
+      console.log('📦 Restoring scene from manifest...');
+      this.restoreFromSnapshot({
+        worldState: manifest.sceneData.worldState,
+        entities: manifest.sceneData.entities
+      });
+
+      // 🔥 4. 立即持久化保存 (防止 reload 后回退到旧存档)
+      this.storageManager.save();
+
+      console.log(`✅ Bundle "${manifest.description}" imported successfully!`);
+    } catch (error) {
+      console.error('❌ Bundle import failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 清除所有植被
    */
   clearVegetation(): void {
@@ -628,6 +704,24 @@ export class ArchitectureValidationManager {
   setLightIntensity(intensity: number): void {
     this.worldStateManager.setLightIntensity(intensity);
     console.log(`💡 Light intensity set to ${intensity}`);
+  }
+
+  /**
+   * 设置泛光强度
+   * @param strength 强度 (0.0-5.0)
+   */
+  setBloomStrength(strength: number): void {
+    this.worldStateManager.setBloomStrength(strength);
+    console.log(`✨ Bloom strength set to ${strength}`);
+  }
+
+  /**
+   * 设置泛光阈值
+   * @param threshold 阈值 (0.0-1.0)
+   */
+  setBloomThreshold(threshold: number): void {
+    this.worldStateManager.setBloomThreshold(threshold);
+    console.log(`✨ Bloom threshold set to ${threshold}`);
   }
 
   /**

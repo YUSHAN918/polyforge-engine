@@ -110,6 +110,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     const worldState = manager.getEnvironmentState();
     if (worldState.gravityY !== undefined) setGravityY(worldState.gravityY);
     setTimeOfDay(worldState.timeOfDay);
+    // 🔥 同步后处理参数
+    if (worldState.bloomStrength !== undefined) setBloomStrength(worldState.bloomStrength);
+    if (worldState.bloomThreshold !== undefined) setBloomThreshold(worldState.bloomThreshold);
 
     // Initial Vegetation Sync
     const entities = manager.getEntityManager().getAllEntities();
@@ -125,6 +128,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
     return () => clearInterval(interval);
   }, [manager]);
+
+  const refreshAssets = () => {
+    if (!manager) return;
+    manager.getAssetRegistry().getAllMetadata().then(list => {
+      setAssetList(list);
+    });
+  };
 
   // 2. High Frequency FPS Update
   useEffect(() => {
@@ -264,8 +274,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
       if (!confirm(`Found ${files.length} files. Import all?`)) return;
 
-      let successCount = 0;
       const registry = manager!.getAssetRegistry();
+      let successCount = 0;
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -283,9 +293,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           } else if (file.name.match(/\.(png|jpg|jpeg|webp)$/i)) {
             await registry.registerAsset({
               name: file.name,
-              type: 'texture' as any,
+              type: 'image' as any,
               category: 'images',
-              tags: ['batch-imported', 'image'],
+              tags: ['imported', 'image'],
               size: file.size,
             }, file);
             successCount++;
@@ -294,9 +304,22 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           console.warn(`Skipped ${file.name}:`, err);
         }
       }
+
+      refreshAssets();
       alert(`Batch import complete. Imported ${successCount} assets.`);
     };
     input.click();
+  };
+
+  const handleExportBundle = async () => {
+    const name = prompt('请输入 Bundle 名称 (Enter Bundle Name):', 'MySceneLevel');
+    if (!name) return;
+    try {
+      await manager.exportBundle(name);
+    } catch (e) {
+      alert('导出失败 (Export Failed)');
+      console.error(e);
+    }
   };
 
   if (!manager) {
@@ -523,16 +546,16 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-gray-500">时间 (Time)</label>
-                    <span className="text-yellow-400 font-mono">{timeOfDay.toFixed(1)}:00</span>
+                    <span className="text-yellow-400 font-mono">{(timeOfDay ?? 12).toFixed(1)}:00</span>
                   </div>
-                  <input type="range" min="0" max="24" step="0.1" value={timeOfDay} onChange={(e) => handleTimeOfDayChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                  <input type="range" min="0" max="24" step="0.1" value={timeOfDay ?? 12} onChange={(e) => handleTimeOfDayChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-gray-500">强度 (Intensity)</label>
-                    <span className="text-yellow-400 font-mono">{sunIntensity.toFixed(1)}</span>
+                    <span className="text-yellow-400 font-mono">{(sunIntensity ?? 1.0).toFixed(1)}</span>
                   </div>
-                  <input type="range" min="0" max="5" step="0.1" value={sunIntensity} onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                  <input type="range" min="0" max="5" step="0.1" value={sunIntensity ?? 1.0} onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
                 </div>
               </div>
             </section>
@@ -632,6 +655,45 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             </section>
 
             <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-truck-loading text-blue-500"></i> 分发 (Distribution)
+              </h3>
+              <button
+                onClick={handleExportBundle}
+                className="w-full py-3 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 text-blue-400 rounded transition-all font-bold flex items-center justify-center gap-2 group"
+              >
+                <i className="fas fa-cubes group-hover:scale-110 transition-transform"></i>
+                <span>导出独立包 (.pfb)</span>
+                <span className="text-[9px] bg-blue-900/50 px-1 rounded text-blue-300/50 ml-1">Beta</span>
+              </button>
+              <button
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.pfb,.json';
+                  input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) {
+                      try {
+                        await manager.importBundle(file);
+                        alert('Bundle imported successfully! Scene restored.');
+                        window.location.reload(); // Simple reload to refresh all states
+                      } catch (err) {
+                        alert('Failed to import bundle');
+                        console.error(err);
+                      }
+                    }
+                  };
+                  input.click();
+                }}
+                className="w-full py-3 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-600/30 text-purple-400 rounded transition-all font-bold flex items-center justify-center gap-2 group mt-2"
+              >
+                <i className="fas fa-box-open group-hover:scale-110 transition-transform"></i>
+                <span>导入独立包 (Import)</span>
+              </button>
+            </section>
+
+            <section className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <i className="fas fa-database text-cyan-500"></i> 资产库 (Registry)
@@ -702,17 +764,29 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                           <span>{(asset.size / 1024).toFixed(1)} KB</span>
                         </div>
                       </div>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (confirm(`确定要彻底删除资产 "${asset.name}" 吗？此操作无法撤销。`)) {
+                            await manager.getAssetRegistry().deleteAsset(asset.id);
+                            refreshAssets();
+                          }
+                        }}
+                        className="w-6 h-6 rounded hover:bg-red-900/50 text-gray-600 hover:text-red-500 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete Asset"
+                      >
+                        <i className="fas fa-trash-alt text-[10px]"></i>
+                      </button>
                     </div>
                   ))
                 )}
               </div>
             </section>
           </div>
-        )}
-
+        )
+        }
       </div>
 
-      {/* 4. Collapsible Footer */}
       <div className={`mt-auto bg-gray-950 border-t border-gray-800 transition-all duration-300 flex flex-col shrink-0 ${isFooterExpanded ? 'h-48' : 'h-8'}`}>
         <button
           onClick={() => setIsFooterExpanded(!isFooterExpanded)}
@@ -741,18 +815,17 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           )}
         </div>
       </div>
-
-    </div>
+    </div >
   );
 };
 
 // Add minimal CSS for fade-in animation
 const style = document.createElement('style');
 style.innerHTML = `
-  .fade-in { animation: fadeIn 0.3s ease-out; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-  .custom-scrollbar::-webkit-scrollbar-track { bg: #111827; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { bg: #374151; border-radius: 4px; }
-`;
+      .fade-in {animation: fadeIn 0.3s ease-out; }
+      @keyframes fadeIn {from {opacity: 0; transform: translateY(5px); } to {opacity: 1; transform: translateY(0); } }
+      .custom-scrollbar::-webkit-scrollbar {width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track {bg: #111827; }
+      .custom-scrollbar::-webkit-scrollbar-thumb {bg: #374151; border-radius: 4px; }
+      `;
 document.head.appendChild(style);

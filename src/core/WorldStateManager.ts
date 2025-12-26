@@ -36,6 +36,10 @@ export interface WorldState {
 
   // 物理环境参数
   gravityY: number;          // 重力强度 (通常 -9.8)
+
+  // 后处理参数 (Post-Processing)
+  bloomStrength: number;     // 泛光强度 0-5
+  bloomThreshold: number;    // 泛光阈值 0-1
 }
 
 /**
@@ -80,6 +84,8 @@ export class WorldStateManager {
       beatPulseEnabled: false,
       beatPulseIntensity: 0.5,
       gravityY: -9.81,
+      bloomStrength: 0.5,      // 默认泛光强度
+      bloomThreshold: 0.85,    // 默认泛光阈值
     };
   }
 
@@ -335,6 +341,24 @@ export class WorldStateManager {
    */
   setBeatPulseIntensity(intensity: number): void {
     this.setState({ beatPulseIntensity: Math.max(0, Math.min(1, intensity)) });
+  }
+
+  // ============================================================================
+  // 后处理接口 (Post-Processing)
+  // ============================================================================
+
+  /**
+   * 设置泛光强度
+   */
+  setBloomStrength(strength: number): void {
+    this.setState({ bloomStrength: Math.max(0, Math.min(5, strength)) });
+  }
+
+  /**
+   * 设置泛光阈值
+   */
+  setBloomThreshold(threshold: number): void {
+    this.setState({ bloomThreshold: Math.max(0, Math.min(1, threshold)) });
   }
 
   /**
