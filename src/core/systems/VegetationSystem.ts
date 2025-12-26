@@ -72,7 +72,7 @@ export class VegetationSystem implements System {
    */
   registerMesh(entityId: string, mesh: THREE.InstancedMesh): void {
     this.meshMap.set(entityId, mesh);
-    console.log(`[VegetationSystem] 🔥 Mesh registered for Entity ${entityId}`);
+    // console.log(`[VegetationSystem] 🔥 Mesh registered for Entity ${entityId}`);
   }
 
   update(): void {
@@ -189,8 +189,8 @@ export class VegetationSystem implements System {
       if (vegetation) vegetation.clearDirty();
 
       // 🔥 调试：立即检查生成结果
-      const instances = this.instanceCache.get(entity.id);
-      console.log(`[VegetationSystem] 🌱 After generation, instances count:`, instances ? instances.length : 'NULL');
+      // const instances = this.instanceCache.get(entity.id);
+      // console.log(`[VegetationSystem] 🌱 After generation, instances count:`, instances ? instances.length : 'NULL');
     }
   }
 
@@ -294,13 +294,13 @@ export class VegetationSystem implements System {
     vegetation.version++;
 
     // 🔥 调试日志：检查前几个实例的位置
-    if (instances.length > 0) {
-      console.log(`[VegetationSystem] Sample positions:`, {
-        first: instances[0].position.toArray(),
-        middle: instances[Math.floor(instanceCount / 2)]?.position.toArray(),
-        last: instances[instanceCount - 1].position.toArray(),
-      });
-    }
+    // if (instances.length > 0) {
+    //   console.log(`[VegetationSystem] Sample positions:`, {
+    //     first: instances[0].position.toArray(),
+    //     middle: instances[Math.floor(instanceCount / 2)]?.position.toArray(),
+    //     last: instances[instanceCount - 1].position.toArray(),
+    //   });
+    // }
 
     console.log(`[VegetationSystem] Generated ${instanceCount} instances for ${entity.name}, version=${vegetation.version}`);
   }

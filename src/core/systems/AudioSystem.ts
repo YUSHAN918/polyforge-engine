@@ -89,7 +89,7 @@ export class AudioSystem implements System {
   /**
    * 解锁 AudioContext（浏览器交互策略）
    */
-  private async unlockAudioContext(): Promise<void> {
+  public async unlockAudioContext(): Promise<void> {
     if (this.isUnlocked || !this.audioContext) return;
 
     if (this.audioContext.state === 'suspended') {
@@ -134,7 +134,7 @@ export class AudioSystem implements System {
    */
   public onEntityAdded(entity: Entity): void {
     const audio = entity.getComponent<AudioSourceComponent>('AudioSource');
-    
+
     if (audio && audio.autoPlay) {
       // 延迟播放，等待 AudioContext 解锁
       setTimeout(() => {
@@ -277,7 +277,7 @@ export class AudioSystem implements System {
     // 更新空间音频
     if (audio.spatial && nodeEntry.pannerNode) {
       const pos = transform.getWorldPosition();
-      
+
       if (nodeEntry.pannerNode.positionX) {
         nodeEntry.pannerNode.positionX.value = pos[0];
         nodeEntry.pannerNode.positionY.value = pos[1];
@@ -398,7 +398,7 @@ export class AudioSystem implements System {
     sourceNode.onended = () => {
       nodeEntry.isPlaying = false;
       audio.isPlaying = false;
-      
+
       if (!audio.loop) {
         this.cleanupEntityNodes(entity.id);
       }
@@ -454,7 +454,7 @@ export class AudioSystem implements System {
     }
 
     try {
-      const blob = await this.assetRegistry.getAssetBlob(assetId);
+      const blob = await this.assetRegistry.getAsset(assetId);
       if (!blob) {
         console.error(`❌ Audio asset not found: ${assetId}`);
         return null;
@@ -551,5 +551,40 @@ export class AudioSystem implements System {
       isUnlocked: this.isUnlocked,
       masterVolume: this.masterVolume,
     };
+  }
+
+  /**
+   * 获取调试信息（供可视化使用）
+   */
+  public getDebugInfo(): Array<{
+    id: string;
+    position: [number, number, number];
+    maxDistance: number;
+    minDistance: number;
+    isPlaying: boolean;
+    volume: number;
+  }> {
+    const info: Array<any> = [];
+
+    for (const [entityId, nodeEntry] of this.activeNodes.entries()) {
+      if (!nodeEntry.pannerNode) continue;
+
+      const panner = nodeEntry.pannerNode;
+      // 注意：读取 AudioParam.value 可能不是最新值，但在 update 中我们刚设置过
+      const x = panner.positionX.value;
+      const y = panner.positionY.value;
+      const z = panner.positionZ.value;
+
+      info.push({
+        id: entityId,
+        position: [x, y, z],
+        maxDistance: panner.maxDistance,
+        minDistance: panner.refDistance,
+        isPlaying: nodeEntry.isPlaying,
+        volume: nodeEntry.gainNode ? nodeEntry.gainNode.gain.value : 0
+      });
+    }
+
+    return info;
   }
 }

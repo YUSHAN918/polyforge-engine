@@ -926,4 +926,94 @@ export class ArchitectureValidationManager {
 
     console.log('✓ Regeneration complete');
   }
+
+  /**
+   * 设置相机模式
+   */
+  public setCameraMode(mode: any): void {
+    if (this.cameraSystem) {
+      this.cameraSystem.setMode(mode);
+    }
+  }
+
+  /**
+   * 设置相机视野
+   */
+  public setCameraFOV(fov: number): void {
+    if (this.cameraSystem) {
+      this.cameraSystem.setFOV(fov);
+    }
+  }
+
+  /**
+   * 设置抗锯齿开关
+   */
+  public setSMAAEnabled(enabled: boolean): void {
+    this.worldStateManager.setSMAAEnabled(enabled);
+  }
+
+  /**
+   * 设置色调映射曝光度
+   */
+  public setToneMappingExposure(exposure: number): void {
+    this.worldStateManager.setToneMappingExposure(exposure);
+  }
+
+  /**
+   * 设置物理调试绘制
+   */
+  public setPhysicsDebugEnabled(enabled: boolean): void {
+    this.worldStateManager.setPhysicsDebugEnabled(enabled);
+  }
+
+  /**
+   * 获取物理调试数据
+   */
+  public getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
+    if (this.physicsSystem) {
+      return this.physicsSystem.getDebugBuffers();
+    }
+    return null;
+  }
+
+  /**
+   * 施加物理爆炸
+   */
+  public applyPhysicsExplosion(center: [number, number, number], force: number, radius: number): void {
+    if (this.physicsSystem) {
+      this.physicsSystem.applyExplosion(center, force, radius);
+    }
+  }
+
+  /**
+   * 获取音频调试信息
+   */
+  public getAudioDebugInfo(): any[] {
+    if (this.audioSystem) {
+      return this.audioSystem.getDebugInfo();
+    }
+    return [];
+  }
+
+  /**
+   * 设置音频调试绘制
+   */
+  public setAudioDebugEnabled(enabled: boolean): void {
+    this.worldStateManager.setAudioDebugEnabled(enabled);
+  }
+
+  /**
+   * 生成花朵
+   */
+  public spawnFlowers(density: number): void {
+    if (!this.vegetationSystem || !this.entityManager) return;
+
+    // 查找地形实体
+    const terrainEntity = this.entityManager.getAllEntities().find(e => e.hasComponent('Terrain'));
+    if (terrainEntity) {
+      this.vegetationSystem.spawnFlowers(density, terrainEntity.id);
+    } else {
+      console.warn('Cannot spawn flowers: No terrain found');
+    }
+  }
 }

@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ArchitectureValidationManager } from '../../core/ArchitectureValidationManager';
+import { CameraMode } from '../../core/components/CameraComponent';
 
 interface ArchitectureValidationPanelProps {
   manager: ArchitectureValidationManager | null;
@@ -57,8 +58,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   // Director Controls
   const [bloomStrength, setBloomStrength] = useState(1.5);
   const [bloomThreshold, setBloomThreshold] = useState(0.5);
+  const [physicsDebugEnabled, setPhysicsDebugEnabled] = useState(false);
+  const [audioDebugEnabled, setAudioDebugEnabled] = useState(false);
   const [timeOfDay, setTimeOfDay] = useState(17);
   const [sunIntensity, setSunIntensity] = useState(1.0);
+  const [cameraMode, setCameraMode] = useState<CameraMode>('orbit');
+  const [fov, setFov] = useState(60);
+  const [smaaEnabled, setSmaaEnabled] = useState(true);
+  const [exposure, setExposure] = useState(1.0);
 
   // World Controls
   const [grassScale, setGrassScale] = useState(1.0);
@@ -73,6 +80,16 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const fpsRef = useRef<HTMLSpanElement>(null);
   const lastTimeRef = useRef(performance.now());
   const frameCountRef = useRef(0);
+
+  // 🔥 状态锚点：用于避免闭包陷阱和冗余更新 (Move to Top Level)
+  const stateRef = useRef({
+    timeOfDay, bloomStrength, bloomThreshold, grassScale, windStrength, grassColor
+  });
+
+  // 每次渲染更新 Ref (保持最新)
+  useEffect(() => {
+    stateRef.current = { timeOfDay, bloomStrength, bloomThreshold, grassScale, windStrength, grassColor };
+  });
 
   // --- Effects ---
 
@@ -108,11 +125,47 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
     // Initial Sync
     const worldState = manager.getEnvironmentState();
-    if (worldState.gravityY !== undefined) setGravityY(worldState.gravityY);
     setTimeOfDay(worldState.timeOfDay);
+    if (worldState.smaaEnabled !== undefined) setSmaaEnabled(worldState.smaaEnabled);
+    if (worldState.toneMappingExposure !== undefined) setExposure(worldState.toneMappingExposure);
+    if (worldState.physicsDebugEnabled !== undefined) setPhysicsDebugEnabled(worldState.physicsDebugEnabled);
+    if (worldState.audioDebugEnabled !== undefined) setAudioDebugEnabled(worldState.audioDebugEnabled);
+
     // 🔥 同步后处理参数
-    if (worldState.bloomStrength !== undefined) setBloomStrength(worldState.bloomStrength);
-    if (worldState.bloomThreshold !== undefined) setBloomThreshold(worldState.bloomThreshold);
+    if (worldState.bloomStrength !== undefined) {
+      setBloomStrength(worldState.bloomStrength);
+      manager.getWorldStateManager().setBloomStrength(worldState.bloomStrength); // Force Sync
+      if (onBloomStrengthChange) onBloomStrengthChange(worldState.bloomStrength);
+      if ((window as any).renderDemoControls) (window as any).renderDemoControls.setBloomStrength(worldState.bloomStrength);
+    }
+    if (worldState.bloomThreshold !== undefined) {
+      setBloomThreshold(worldState.bloomThreshold);
+      manager.getWorldStateManager().setBloomThreshold(worldState.bloomThreshold); // Force Sync
+      if (onBloomThresholdChange) onBloomThresholdChange(worldState.bloomThreshold);
+      if ((window as any).renderDemoControls) (window as any).renderDemoControls.setBloomThreshold(worldState.bloomThreshold);
+    }
+
+    // 🔥 实时同步监听：确保 UI 随引擎状态（如时间流转）自动更新
+    const handleStateChange = (state: any) => {
+      // 1. 差分更新：只有数值真正变化时才触发 React重绘
+      // 使用 Ref.current 获取最新的本地状态进行对比，避开闭包
+
+      if (Math.abs(state.timeOfDay - stateRef.current.timeOfDay) > 0.05) {
+        setTimeOfDay(state.timeOfDay);
+      }
+
+      // 容差对比，避免浮点数抖动导致的死循环
+      if (Math.abs(state.bloomStrength - stateRef.current.bloomStrength) > 0.001) {
+        setBloomStrength(state.bloomStrength);
+      }
+      if (Math.abs(state.bloomThreshold - stateRef.current.bloomThreshold) > 0.001) {
+        setBloomThreshold(state.bloomThreshold);
+      }
+
+      // 注意：这里由于是展示面板，我们暂不反向通知父级 App.tsx，
+      // 除非是由用户拖动引起的变更（见 handleXXXChange 方法）
+    };
+    manager.getWorldStateManager().onStateChanged(handleStateChange);
 
     // Initial Vegetation Sync
     const entities = manager.getEntityManager().getAllEntities();
@@ -126,7 +179,10 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       }
     }
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      manager.getWorldStateManager().offStateChanged(handleStateChange);
+    };
   }, [manager]);
 
   const refreshAssets = () => {
@@ -160,12 +216,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   // Bloom
   const handleBloomStrengthChange = (val: number) => {
     setBloomStrength(val);
+    if (manager) manager.getWorldStateManager().setBloomStrength(val);
     if (onBloomStrengthChange) onBloomStrengthChange(val);
     else if ((window as any).renderDemoControls) (window as any).renderDemoControls.setBloomStrength(val);
   };
 
   const handleBloomThresholdChange = (val: number) => {
     setBloomThreshold(val);
+    if (manager) manager.getWorldStateManager().setBloomThreshold(val);
     if (onBloomThresholdChange) onBloomThresholdChange(val);
     else if ((window as any).renderDemoControls) (window as any).renderDemoControls.setBloomThreshold(val);
   };
@@ -181,6 +239,40 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     if (manager) manager.setLightIntensity(val);
   };
 
+  const handlePhysicsDebugChange = (val: boolean) => {
+    setPhysicsDebugEnabled(val);
+    if (manager) manager.setPhysicsDebugEnabled(val);
+  };
+
+  const handleExplosionTest = () => {
+    if (manager) {
+      // 在原点上方爆炸
+      manager.applyPhysicsExplosion([0, 5, 0], 50, 20);
+    }
+  };
+
+  // Camera & Render
+  const handleCameraModeChange = (mode: string) => {
+    const m = mode as CameraMode;
+    setCameraMode(m);
+    if (manager) manager.setCameraMode(m);
+  };
+
+  const handleFovChange = (val: number) => {
+    setFov(val);
+    if (manager) manager.setCameraFOV(val);
+  };
+
+  const handleSMAAChange = (val: boolean) => {
+    setSmaaEnabled(val);
+    if (manager) manager.setSMAAEnabled(val);
+  };
+
+  const handleExposureChange = (val: number) => {
+    setExposure(val);
+    if (manager) manager.setToneMappingExposure(val);
+  };
+
   // Vegetation
   const handleGrassScaleChange = (val: number) => {
     setGrassScale(val);
@@ -192,6 +284,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     setWindStrength(val);
     if (manager) manager.setWindStrength(val);
     if (onWindStrengthChange) onWindStrengthChange(val);
+  };
+
+  const handleSpawnFlowers = () => {
+    if (manager) manager.spawnFlowers(500); // 默认生成 500 朵花
+  };
+
+  const handleAudioDebugChange = (val: boolean) => {
+    setAudioDebugEnabled(val);
+    if (manager) manager.setAudioDebugEnabled(val);
   };
 
   const handleGrassColorChange = (color: string) => {
@@ -520,6 +621,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   <i className="fas fa-magic mr-2"></i>
                   {isGenerating ? '生成中...' : '生成植被 (5000)'}
                 </button>
+                <button
+                  onClick={handleSpawnFlowers}
+                  className="w-full py-2 bg-pink-600 hover:bg-pink-500 text-white font-bold rounded shadow-lg shadow-pink-900/20 transition-all"
+                >
+                  <i className="fas fa-seedling mr-2"></i>
+                  种植花朵 (500)
+                </button>
                 <div className="flex justify-between items-center bg-gray-900/50 p-2 rounded">
                   <span className="text-gray-500 text-[10px]">当前数量: <span className="text-green-400 font-mono">{stats.vegetationCount}</span></span>
                   <button
@@ -537,6 +645,68 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         {/* === DIRECTOR TAB === */}
         {activeTab === 'director' && (
           <div className="space-y-6 fade-in">
+            {/* Physics Control */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-cubes text-orange-500"></i> 物理控制 (Physics)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-gray-500 cursor-pointer flex items-center gap-2 select-none">
+                    <input
+                      type="checkbox"
+                      checked={physicsDebugEnabled}
+                      onChange={(e) => handlePhysicsDebugChange(e.target.checked)}
+                      className="w-3 h-3 rounded bg-gray-800 border-gray-700 text-orange-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    <span>显示碰撞体 (Debug)</span>
+                  </label>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${physicsDebugEnabled ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-800 text-gray-500'}`}>
+                    {physicsDebugEnabled ? 'ON' : 'OFF'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleExplosionTest}
+                  className="w-full py-1.5 px-3 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-800/50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <i className="fas fa-bomb"></i> 原点爆炸测试 (Boom!)
+                </button>
+              </div>
+            </section>
+
+            {/* Camera Control */}
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-video text-blue-500"></i> 相机控制 (Camera)
+              </h3>
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">模式 (Mode)</label>
+                    <span className="text-blue-400 font-mono text-xs">{cameraMode}</span>
+                  </div>
+                  <select
+                    value={cameraMode}
+                    onChange={(e) => handleCameraModeChange(e.target.value)}
+                    className="w-full bg-gray-800 text-gray-300 text-xs rounded px-2 py-1 border border-gray-700 focus:border-blue-500 outline-none"
+                  >
+                    <option value="orbit">Orbit (编辑器)</option>
+                    <option value="firstPerson">First Person (第一人称)</option>
+                    <option value="thirdPerson">Third Person (第三人称)</option>
+                    <option value="isometric">Isometric (等距)</option>
+                    <option value="sidescroll">Sidescroll (卷轴)</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">FOV (视野)</label>
+                    <span className="text-blue-400 font-mono">{fov}°</span>
+                  </div>
+                  <input type="range" min="30" max="120" step="1" value={fov} onChange={(e) => handleFovChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                </div>
+              </div>
+            </section>
+
             {/* Lighting */}
             <section className="space-y-3">
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -580,6 +750,29 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   </div>
                   <input type="range" min="0" max="1" step="0.05" value={bloomThreshold} onChange={(e) => handleBloomThresholdChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
                 </div>
+
+                {/* New Render Controls */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-500">曝光度 (Exposure)</label>
+                    <span className="text-purple-400 font-mono">{exposure.toFixed(1)}</span>
+                  </div>
+                  <input type="range" min="0" max="5" step="0.1" value={exposure} onChange={(e) => handleExposureChange(parseFloat(e.target.value))} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                </div>
+                <div className="flex justify-between items-center mt-2 px-1">
+                  <label className="text-gray-500 cursor-pointer flex items-center gap-2 select-none">
+                    <input
+                      type="checkbox"
+                      checked={smaaEnabled}
+                      onChange={(e) => handleSMAAChange(e.target.checked)}
+                      className="w-3 h-3 rounded bg-gray-800 border-gray-700 text-purple-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    <span>启用 SMAA 抗锯齿</span>
+                  </label>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${smaaEnabled ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-800 text-gray-500'}`}>
+                    {smaaEnabled ? 'ON' : 'OFF'}
+                  </span>
+                </div>
               </div>
             </section>
 
@@ -606,6 +799,25 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 >
                   <i className="fas fa-upload mr-2"></i> 上传音频资产
                 </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => manager.getAudioSystem().unlockAudioContext()}
+                    className="flex-1 py-1.5 px-3 bg-pink-900/30 hover:bg-pink-900/50 text-pink-400 text-xs rounded border border-pink-800/50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-lock-open"></i> Unlock
+                  </button>
+                  <div className="flex-1 flex justify-center items-center bg-gray-800 rounded px-2 border border-gray-700">
+                    <label className="text-gray-500 cursor-pointer flex items-center gap-2 select-none">
+                      <input
+                        type="checkbox"
+                        checked={audioDebugEnabled}
+                        onChange={(e) => handleAudioDebugChange(e.target.checked)}
+                        className="w-3 h-3 rounded bg-gray-800 border-gray-700 text-pink-500 focus:ring-0 focus:ring-offset-0"
+                      />
+                      <span className="text-xs text-pink-400">Visualizer</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </section>
           </div>

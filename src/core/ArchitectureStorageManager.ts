@@ -30,7 +30,7 @@ export class ArchitectureStorageManager {
     /**
      * 保存当前场景快照到 LocalStorage
      */
-    save(): void {
+    save(): boolean {
         try {
             const rootEntities = this.entityManager.getRootEntities();
             const serializedEntities = rootEntities.map(entity => entity.serialize());
@@ -44,10 +44,11 @@ export class ArchitectureStorageManager {
 
             const json = JSON.stringify(snapshot);
             localStorage.setItem(this.STORAGE_KEY, json);
-
-            console.log(`💾 Architecture state saved (${json.length} bytes)`);
+            // console.log(`💾 Architecture state saved (${json.length} bytes)`);
+            return true;
         } catch (error) {
             console.error('❌ Failed to save architecture state:', error);
+            return false;
         }
     }
 

@@ -51,3 +51,14 @@
 - **额外修复**：
     - 补全了 `ArchitectureValidationManager` 的 `flattenTerrain()` 接口，修复了“Reset Flat”按钮无效的问题。
 - **决策**：UI 交互已达标，视觉干扰大幅降低，批准进入下一阶段。
+
+## 📅 2025-12-26: 超级个体进化 - 山神 (Universal Generalist)
+- **决策人**：制作人 & AI 合伙人
+- **背景**：在单窗口协作环境下，多角色切换（Architect/Builder）存在明显的沟通损耗。
+- **决策内容**：
+    1. **身份合一**：撤销 Trinity 三位一体架构，所有 AI 专家身份整合为单一全能实体——**“山神 (Universal Generalist)”**。
+    2. **权限对齐**：山神拥有自主在“架构设计、工程代码、视觉审美、质量测试”之间自由切换视角的权力。
+    3. **档案固化**：重写 `.agent/TEAM.md` 和 `ACTIVE_PERSONA.md`，确立全职合伙人制。
+- **影响**：协作逻辑大幅简化，AI 决策权重增加，单窗口交付效率将显著提升。
+- **状态**：**灵魂合一完成**。后续任务将由全能态山神独立闭环。
+6 link_render: [TEAM.md](file:///f:/工作/LOW3D编辑文件储存点/polyforge-engine-v130-251221/.agent/TEAM.md), [ACTIVE_PERSONA.md](file:///f:/工作/LOW3D编辑文件储存点/polyforge-engine-v130-251221/.agent/ACTIVE_PERSONA.md)

@@ -395,4 +395,47 @@ export class PhysicsSystem implements System {
     this.colliderMap.clear();
     this.initialized = false;
   }
+
+  /**
+   * 获取调试渲染数据 (Vertices + Colors)
+   */
+  public getDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
+    if (!this.world) return null;
+    return this.world.debugRender();
+  }
+
+  /**
+   * 施加爆炸力 (用于测试)
+   */
+  public applyExplosion(center: [number, number, number], force: number, radius: number): void {
+    if (!this.world) return;
+
+    this.bodyMap.forEach((body) => {
+      if (!body.isDynamic()) return;
+
+      const translation = body.translation();
+      const dx = translation.x - center[0];
+      const dy = translation.y - center[1];
+      const dz = translation.z - center[2];
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (distance < radius) {
+        // 计算方向
+        const dirX = dx / distance;
+        const dirY = dy / distance;
+        const dirZ = dz / distance;
+
+        // 简单的线性衰减
+        const intensity = force * (1 - distance / radius);
+
+        body.applyImpulse({
+          x: dirX * intensity,
+          y: dirY * intensity,
+          z: dirZ * intensity
+        }, true);
+      }
+    });
+
+    console.log(`💥 Explosion applied! Center: [${center}], Radius: ${radius}, Force: ${force}`);
+  }
 }

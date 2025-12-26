@@ -51,10 +51,10 @@ export class CameraSystem implements System {
   private isTransitioning = false;
   private transitionProgress = 0;
   private transitionDuration = 0.5;  // 秒
-  
+
   // 🎮 输入系统引用
   private inputSystem: any = null;  // InputSystem 实例
-  
+
   // 🎥 R3F 相机引用（直接控制）
   private r3fCamera: any = null;
 
@@ -114,6 +114,9 @@ export class CameraSystem implements System {
 
       if (!camera || !transform || !camera.enabled) continue;
 
+      // 🔥 缓存当前活跃相机引用
+      this.currentCameraComponent = camera;
+
       // 更新目标状态
       this.updateTargetState(camera, entities);
 
@@ -127,7 +130,7 @@ export class CameraSystem implements System {
    */
   private updateTargetState(camera: CameraComponent, entities: Entity[]): void {
     // 查找跟随目标
-    const target = camera.targetEntityId 
+    const target = camera.targetEntityId
       ? entities.find(e => e.id === camera.targetEntityId)
       : null;
 
@@ -156,7 +159,7 @@ export class CameraSystem implements System {
    * Orbit 模式：编辑器风格旋转
    */
   private updateOrbitMode(camera: CameraComponent, target: Entity | null): void {
-    const targetPos = target 
+    const targetPos = target
       ? target.getComponent<TransformComponent>('Transform')?.position || [0, 0, 0]
       : [0, 0, 0];
 
@@ -165,24 +168,24 @@ export class CameraSystem implements System {
       const mouseDelta = this.inputSystem.mouseDelta;
       const wheelDelta = this.inputSystem.wheelDelta;
       const pressedButtons = this.inputSystem.pressedButtons || new Set();
-      
+
       // 🔥 硬判断：中键(1)或右键(2)按下时旋转
       if (pressedButtons.has(1) || pressedButtons.has(2)) {
         if (mouseDelta && (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0)) {
           camera.yaw -= mouseDelta.x * 0.3;    // 🔥 增加灵敏度：0.01 → 0.3
           camera.pitch += mouseDelta.y * 0.3;  // 🔥 增加灵敏度：0.01 → 0.3
-          
+
           // 限制俯仰角
           camera.pitch = Math.max(-89, Math.min(89, camera.pitch));
         }
       }
-      
+
       // 🔥 滚轮缩放
       if (wheelDelta !== 0) {
         camera.distance += wheelDelta * 0.1;  // 🔥 改回 + 号（滚轮向上推远，向下拉近）
         camera.distance = Math.max(camera.minDistance, Math.min(camera.maxDistance, camera.distance));
       }
-      
+
       // 🔥 重置帧数据（避免累积）
       this.inputSystem.resetFrameData();
     }
@@ -215,7 +218,7 @@ export class CameraSystem implements System {
 
     // 尝试获取头部 Socket
     const headSocket = target.getSocket(camera.firstPersonSocket);
-    
+
     if (headSocket) {
       // 使用 Socket 的世界位置
       const socketWorldPos = this.getSocketWorldPosition(target, headSocket.name);
@@ -270,7 +273,7 @@ export class CameraSystem implements System {
    * Isometric 模式：等距视角（类暗黑上帝视角）
    */
   private updateIsometricMode(camera: CameraComponent, target: Entity | null): void {
-    const targetPos = target 
+    const targetPos = target
       ? target.getComponent<TransformComponent>('Transform')?.getWorldPosition() || [0, 0, 0]
       : [0, 0, 0];
 
@@ -299,7 +302,7 @@ export class CameraSystem implements System {
    * Sidescroll 模式：横版卷轴（类 DNF 视角）
    */
   private updateSidescrollMode(camera: CameraComponent, target: Entity | null): void {
-    const targetPos = target 
+    const targetPos = target
       ? target.getComponent<TransformComponent>('Transform')?.getWorldPosition() || [0, 0, 0]
       : [0, 0, 0];
 
@@ -343,7 +346,7 @@ export class CameraSystem implements System {
     transform.position = [...this.currentState.position];
     transform.rotation = [...this.currentState.rotation];
     transform.markLocalDirty();
-    
+
     // 🔥 核物理隔离：强制矩阵覆盖（直接操控 R3F 相机）
     if (this.r3fCamera) {
       // 🔥 强制设置位置
@@ -352,10 +355,10 @@ export class CameraSystem implements System {
         this.currentState.position[1],
         this.currentState.position[2]
       );
-      
+
       // 🔥 强制 lookAt 原点（Orbit 模式）
       this.r3fCamera.lookAt(0, 0, 0);
-      
+
       // 🔥 强制更新 FOV
       this.r3fCamera.fov = this.currentState.fov;
       this.r3fCamera.updateProjectionMatrix();
@@ -374,11 +377,11 @@ export class CameraSystem implements System {
    */
   private lerpAngle(a: number, b: number, t: number): number {
     let delta = b - a;
-    
+
     // 处理角度循环
     while (delta > 180) delta -= 360;
     while (delta < -180) delta += 360;
-    
+
     return a + delta * t;
   }
 
@@ -426,8 +429,29 @@ export class CameraSystem implements System {
   /**
    * 应用相机快照
    */
-  public applyCameraSnapshot(camera: CameraComponent, snapshot: CameraSnapshot): void {
+  public applySnapshot(camera: CameraComponent, snapshot: CameraSnapshot): void {
     camera.applySnapshot(snapshot);
-    console.log(`📷 Camera snapshot applied: ${snapshot.mode}`);
+    console.log(`📷 Camera snapshot applied: ${snapshot.mode} `);
   }
+
+  /**
+   * 全局设置相机模式（用于架构验证）
+   */
+  public setMode(mode: CameraMode): void {
+    if (this.currentCameraComponent) {
+      this.switchMode(this.currentCameraComponent, mode);
+    }
+  }
+
+  /**
+   * 全局设置 FOV
+   */
+  public setFOV(fov: number): void {
+    if (this.currentCameraComponent) {
+      this.currentCameraComponent.fov = fov;
+    }
+  }
+
+  // 缓存当前激活的相机组件引用
+  private currentCameraComponent: CameraComponent | null = null;
 }

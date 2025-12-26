@@ -187,6 +187,14 @@
   - 修改 GameCanvas.tsx 添加条件渲染 EngineBridge
   - _完成日期: 2025-12-23_
 
+- [x] 14.6 架构验证面板功能强化 (Gap Filling)
+  - [x] **相机系统**：实现模式切换器（Orbit/FP/TP/Isometric）与 FOV 实时滑块。
+  - [x] **渲染系统**：实现 SMAA 抗锯齿开关与曝光度 (Exposure) 调节。
+  - [x] **物理系统**：实现 Debug Collider 连线显示与“物理大爆炸”冲力测试。
+  - [x] **音频系统**：实现音源空间位置可视化（Wireframe Sphere）与 Engine Unlock 交互。
+  - [x] **植被系统**：增加“生成鲜花”功能，完善生态多样性验证。
+  - _完成日期: 2025-12-26_
+
 ## Phase 15: MOD 扩展系统 ⏳
 
 - [ ] 15.1 实现动态组件注册

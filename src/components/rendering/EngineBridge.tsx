@@ -267,6 +267,88 @@ const EntityRenderer = React.memo<{
   );
 });
 
+/**
+ * 物理调试渲染器
+ */
+const PhysicsDebugRenderer = ({ manager, enabled }: { manager: any, enabled: boolean }) => {
+  const geometryRef = useRef<THREE.BufferGeometry>(null);
+
+  useFrame(() => {
+    if (!enabled || !manager || !geometryRef.current) return;
+
+    const buffers = manager.getPhysicsDebugBuffers();
+    if (!buffers) {
+      geometryRef.current.setDrawRange(0, 0);
+      return;
+    }
+
+    const { vertices, colors } = buffers;
+
+    // update geometry
+    geometryRef.current.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometryRef.current.setAttribute('color', new THREE.BufferAttribute(colors, 4));
+
+    // Force update
+    geometryRef.current.attributes.position.needsUpdate = true;
+    geometryRef.current.attributes.color.needsUpdate = true;
+
+    // Draw all lines
+    geometryRef.current.setDrawRange(0, vertices.length / 3);
+  });
+
+  if (!enabled) return null;
+
+  return (
+    <lineSegments frustumCulled={false}>
+      <bufferGeometry ref={geometryRef} />
+      <lineBasicMaterial vertexColors toneMapped={false} linewidth={1} />
+    </lineSegments>
+  );
+};
+
+/**
+ * 音频调试渲染器 (Wireframe Spheres)
+ */
+const AudioDebugRenderer = ({ manager, enabled }: { manager: any, enabled: boolean }) => {
+  const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
+
+  useFrame(() => {
+    if (!enabled || !manager) {
+      meshRefs.current.forEach(mesh => { if (mesh) mesh.visible = false; });
+      return;
+    }
+
+    const infos = manager.getAudioDebugInfo();
+    meshRefs.current.forEach((mesh, index) => {
+      if (!mesh) return;
+
+      const info = infos[index];
+      if (info) {
+        mesh.visible = true;
+        mesh.position.set(info.position[0], info.position[1], info.position[2]);
+        const scale = info.maxDistance > 0 ? info.maxDistance : 1.0;
+        mesh.scale.set(scale, scale, scale);
+        (mesh.material as THREE.MeshBasicMaterial).color.setHex(info.isPlaying ? 0x00ff00 : 0xffff00);
+      } else {
+        mesh.visible = false;
+      }
+    });
+  });
+
+  if (!enabled) return null;
+
+  return (
+    <group>
+      {Array.from({ length: 20 }).map((_, i) => (
+        <mesh key={i} ref={el => meshRefs.current[i] = el} visible={false}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshBasicMaterial wireframe color={0xffff00} toneMapped={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+};
+
 EntityRenderer.displayName = 'EntityRenderer';
 
 /**
@@ -573,14 +655,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       sunLightRef.current.color.set(worldState.directionalColor);
     }
 
-    // 🔥 调试日志（每 100 帧输出一次）
-    if (Math.random() < 0.01) {
-      console.log('☀️ Environment Sync:', {
-        time: time.toFixed(1),
-        envIntensity: scene.environmentIntensity.toFixed(3),
-        sunIntensity: sunLightRef.current.intensity.toFixed(2),
-      });
-    }
+    // Environment sync complete
   });
 
   // 更新场景背景颜色
@@ -610,10 +685,11 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         <PostProcessing
           enabled={postProcessingEnabled}
           bloomEnabled={bloomEnabled}
-          bloomStrength={bloomStrength}
+          bloomStrength={worldState?.bloomStrength ?? bloomStrength}
           bloomRadius={bloomRadius}
-          bloomThreshold={bloomThreshold}
-          smaaEnabled={smaaEnabled}
+          bloomThreshold={worldState?.bloomThreshold ?? bloomThreshold}
+          smaaEnabled={worldState?.smaaEnabled ?? smaaEnabled}
+          toneMappingExposure={worldState?.toneMappingExposure ?? 1.0}
         />
       )}
 
@@ -654,6 +730,12 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       {rootEntities.map((entity) => (
         <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} />
       ))}
+
+      {/* 物理调试渲染 */}
+      <PhysicsDebugRenderer manager={archValidationManager} enabled={worldState?.physicsDebugEnabled ?? false} />
+
+      {/* 音频调试渲染 */}
+      <AudioDebugRenderer manager={archValidationManager} enabled={worldState?.audioDebugEnabled ?? false} />
     </>
   );
 };

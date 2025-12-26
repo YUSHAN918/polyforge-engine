@@ -30,6 +30,7 @@ interface PostProcessingProps {
   bloomRadius?: number;
   bloomThreshold?: number;
   smaaEnabled?: boolean;
+  toneMappingExposure?: number;
 }
 
 /**
@@ -42,6 +43,7 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
   bloomRadius = 0.4,
   bloomThreshold = 0.85,
   smaaEnabled = true,
+  toneMappingExposure = 1.0,
 }) => {
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
@@ -105,6 +107,11 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
     bloomPassRef.current.radius = bloomRadius;
     bloomPassRef.current.threshold = bloomThreshold;
   }, [bloomStrength, bloomRadius, bloomThreshold]);
+
+  // 更新曝光度
+  useEffect(() => {
+    gl.toneMappingExposure = toneMappingExposure;
+  }, [toneMappingExposure, gl]);
 
   // 响应窗口大小变化
   useEffect(() => {

@@ -36,10 +36,14 @@ export interface WorldState {
 
   // 物理环境参数
   gravityY: number;          // 重力强度 (通常 -9.8)
+  physicsDebugEnabled: boolean; // 物理调试绘制开关
+  audioDebugEnabled: boolean;   // 音频调试绘制开关
 
   // 后处理参数 (Post-Processing)
   bloomStrength: number;     // 泛光强度 0-5
   bloomThreshold: number;    // 泛光阈值 0-1
+  smaaEnabled: boolean;      // 抗锯齿开关
+  toneMappingExposure: number; // 色调映射曝光度
 }
 
 /**
@@ -84,8 +88,12 @@ export class WorldStateManager {
       beatPulseEnabled: false,
       beatPulseIntensity: 0.5,
       gravityY: -9.81,
+      physicsDebugEnabled: false,
+      audioDebugEnabled: false,
       bloomStrength: 0.5,      // 默认泛光强度
       bloomThreshold: 0.85,    // 默认泛光阈值
+      smaaEnabled: true,       // 默认开启抗锯齿
+      toneMappingExposure: 1.0 // 默认曝光度
     };
   }
 
@@ -110,7 +118,7 @@ export class WorldStateManager {
     // 触发回调
     this.notifyStateChanged();
 
-    console.log('🌍 World state updated:', newState);
+    // console.log('🌍 World state updated:', newState);
   }
 
   /**
@@ -183,10 +191,9 @@ export class WorldStateManager {
 
     // 更新一天中的时间
     const newTimeOfDay = (progress * 24) % 24;
-    this.state.timeOfDay = newTimeOfDay;
 
-    // 更新光照
-    this.updateLightingFromTime();
+    // ✅ 核心修复：使用 setState 确保状态不可变性（触发 React 的引用检测）
+    this.setState({ timeOfDay: newTimeOfDay });
 
     // 触发回调
     this.notifyStateChanged();
@@ -233,11 +240,14 @@ export class WorldStateManager {
     const ambientColor = this.colorTemperatureToHex(colorTemp, intensity * 0.3);
     const directionalColor = this.colorTemperatureToHex(colorTemp, intensity);
 
-    // 更新状态（不触发回调，避免递归）
-    this.state.lightIntensity = intensity;
-    this.state.colorTemperature = colorTemp;
-    this.state.ambientColor = ambientColor;
-    this.state.directionalColor = directionalColor;
+    // 更新状态
+    this.state = {
+      ...this.state,
+      lightIntensity: intensity,
+      colorTemperature: colorTemp,
+      ambientColor: ambientColor,
+      directionalColor: directionalColor
+    };
   }
 
   /**
@@ -343,6 +353,20 @@ export class WorldStateManager {
     this.setState({ beatPulseIntensity: Math.max(0, Math.min(1, intensity)) });
   }
 
+  /**
+   * 设置物理调试绘制
+   */
+  setPhysicsDebugEnabled(enabled: boolean): void {
+    this.setState({ physicsDebugEnabled: enabled });
+  }
+
+  /**
+   * 设置音频调试绘制
+   */
+  setAudioDebugEnabled(enabled: boolean): void {
+    this.setState({ audioDebugEnabled: enabled });
+  }
+
   // ============================================================================
   // 后处理接口 (Post-Processing)
   // ============================================================================
@@ -359,6 +383,20 @@ export class WorldStateManager {
    */
   setBloomThreshold(threshold: number): void {
     this.setState({ bloomThreshold: Math.max(0, Math.min(1, threshold)) });
+  }
+
+  /**
+   * 设置抗锯齿开关
+   */
+  setSMAAEnabled(enabled: boolean): void {
+    this.setState({ smaaEnabled: enabled });
+  }
+
+  /**
+   * 设置色调映射曝光度
+   */
+  setToneMappingExposure(exposure: number): void {
+    this.setState({ toneMappingExposure: Math.max(0, Math.min(5, exposure)) });
   }
 
   /**
