@@ -400,6 +400,13 @@ export class WorldStateManager {
   }
 
   /**
+   * 设置物理重力 (Y轴)
+   */
+  setGravity(gravity: number): void {
+    this.setState({ gravityY: gravity });
+  }
+
+  /**
    * 触发节拍脉冲（由 AudioSystem 调用）
    * @param beatTime 节拍时间
    * @param intensity 脉冲强度
