@@ -10,66 +10,62 @@ import { EngineBridge } from '../src/components/rendering/EngineBridge'; // NEW
 import * as THREE from 'three';
 
 interface GameCanvasProps {
-  config: CharacterConfig;
-  mode: AppMode;
-  mapConfig: MapConfig;
-  setMapConfig: React.Dispatch<React.SetStateAction<MapConfig>>;
-  selectedTool: MapItemType | 'eraser' | 'select'; 
-  gearTransforms?: GearTransformMap;
-  assetTransforms?: AssetTransformMap;
-  onPartSelect?: (id: string, isDoubleClick?: boolean) => void;
-  onPartRightClick?: (id: string) => void;
-  onBackgroundClick?: () => void;
-  animConfig?: AnimationConfig;
-  previewAction?: CharacterAction;
-  lastAttackTrigger?: number;
-  onTriggerAttack?: () => void; // New prop for gameplay attack
-  focusedParentId?: string;
-  // Model Editor Props
-  primitives?: ModelPrimitive[];
-  setPrimitives?: React.Dispatch<React.SetStateAction<ModelPrimitive[]>>;
-  selectedPrimId?: string | null;
-  setSelectedPrimId?: (id: string | null) => void;
-  customModels?: CustomModel[];
-  transformMode?: 'translate' | 'rotate' | 'scale';
-  workshopRefType?: WorkshopRefType; 
-  isSnapping?: boolean;
-  onHistorySave?: () => void;
-  referenceOpacity?: number;
-  // Map Editor Props
-  onMapHistorySave?: () => void;
-  selectedEntityIds?: Set<string>;
-  setSelectedEntityIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
-  savedCharacters?: SavedCharacter[];
-  // Action Studio Props
-  selectedBone?: string | null;
-  overridePose?: Record<string, [number, number, number]>;
-  setOverridePose?: (pose: Record<string, [number, number, number]>) => void;
-  overridePosition?: Record<string, [number, number, number]>; // NEW
-  setOverridePosition?: (pos: Record<string, [number, number, number]>) => void; // NEW
-  activeCustomAction?: CustomAction | null;
-  customActions?: CustomAction[]; // NEW: Pass all actions for linking
-  animTime?: number;
-  onBoneChange?: (bone: string, value: [number, number, number], type: 'rotation' | 'position') => void; // NEW Signature
-  gizmoMode?: 'rotate' | 'translate'; // NEW Prop
-  // Gameplay Props
-  cameraMode?: CameraMode;
-  cameraSettings?: CameraSettings; // New prop
-  shadowSettings?: ShadowSettings; // New prop
-  isProceduralPaused?: boolean;
-  // VFX Studio Props
-  currentVfxAsset?: VfxAsset;
-  vfxTestParams?: VfxTestParams;
-  vfxAssets?: VfxAsset[]; // NEW: Pass available assets to scenes
-  selectedVfxEmitterId?: string | null; // NEW: Gizmo logic
-  onVfxEmitterUpdate?: (emitterId: string, updates: Partial<VfxEmitterConfig>) => void; // NEW
-  // Architecture Validation Props
-  archValidationManager?: ArchitectureValidationManager; // NEW
-  archBloomStrength?: number; // NEW: Bloom control from panel
-  archBloomThreshold?: number; // NEW: Bloom control from panel
-  archGrassScale?: number; // NEW: Grass scale control
-  archWindStrength?: number; // NEW: Wind strength control
-  archGrassColor?: string; // NEW: Grass color control
+    config: CharacterConfig;
+    mode: AppMode;
+    mapConfig: MapConfig;
+    setMapConfig: React.Dispatch<React.SetStateAction<MapConfig>>;
+    selectedTool: MapItemType | 'eraser' | 'select';
+    gearTransforms?: GearTransformMap;
+    assetTransforms?: AssetTransformMap;
+    onPartSelect?: (id: string, isDoubleClick?: boolean) => void;
+    onPartRightClick?: (id: string) => void;
+    onBackgroundClick?: () => void;
+    animConfig?: AnimationConfig;
+    previewAction?: CharacterAction;
+    lastAttackTrigger?: number;
+    onTriggerAttack?: () => void; // New prop for gameplay attack
+    focusedParentId?: string;
+    // Model Editor Props
+    primitives?: ModelPrimitive[];
+    setPrimitives?: React.Dispatch<React.SetStateAction<ModelPrimitive[]>>;
+    selectedPrimId?: string | null;
+    setSelectedPrimId?: (id: string | null) => void;
+    customModels?: CustomModel[];
+    transformMode?: 'translate' | 'rotate' | 'scale';
+    workshopRefType?: WorkshopRefType;
+    isSnapping?: boolean;
+    onHistorySave?: () => void;
+    referenceOpacity?: number;
+    // Map Editor Props
+    onMapHistorySave?: () => void;
+    selectedEntityIds?: Set<string>;
+    setSelectedEntityIds?: React.Dispatch<React.SetStateAction<Set<string>>>;
+    savedCharacters?: SavedCharacter[];
+    // Action Studio Props
+    selectedBone?: string | null;
+    overridePose?: Record<string, [number, number, number]>;
+    setOverridePose?: (pose: Record<string, [number, number, number]>) => void;
+    overridePosition?: Record<string, [number, number, number]>; // NEW
+    setOverridePosition?: (pos: Record<string, [number, number, number]>) => void; // NEW
+    activeCustomAction?: CustomAction | null;
+    customActions?: CustomAction[]; // NEW: Pass all actions for linking
+    animTime?: number;
+    onBoneChange?: (bone: string, value: [number, number, number], type: 'rotation' | 'position') => void; // NEW Signature
+    gizmoMode?: 'rotate' | 'translate'; // NEW Prop
+    // Gameplay Props
+    cameraMode?: CameraMode;
+    cameraSettings?: CameraSettings; // New prop
+    shadowSettings?: ShadowSettings; // New prop
+    isProceduralPaused?: boolean;
+    // VFX Studio Props
+    currentVfxAsset?: VfxAsset;
+    vfxTestParams?: VfxTestParams;
+    vfxAssets?: VfxAsset[]; // NEW: Pass available assets to scenes
+    selectedVfxEmitterId?: string | null; // NEW: Gizmo logic
+    onVfxEmitterUpdate?: (emitterId: string, updates: Partial<VfxEmitterConfig>) => void; // NEW
+    // Architecture Validation Props
+    archValidationManager?: ArchitectureValidationManager; // NEW
+
 }
 
 // --- HELPER COMPONENT FOR ORBIT CONTROLS LOGIC ---
@@ -102,7 +98,7 @@ const CameraController = () => {
             minDistance={2}
             maxDistance={50}
             mouseButtons={{
-                LEFT: isSpacePressed ? THREE.MOUSE.PAN : undefined, 
+                LEFT: isSpacePressed ? THREE.MOUSE.PAN : undefined,
                 MIDDLE: THREE.MOUSE.ROTATE,
                 RIGHT: THREE.MOUSE.ROTATE
             }}
@@ -125,7 +121,7 @@ const VfxStudioScene: React.FC<{
 }> = ({ vfxAsset, testParams, customModels, selectedEmitterId, onUpdateEmitter }) => {
     const parentRef = useRef<THREE.Group>(null);
     const projRef = useRef<THREE.Group>(null);
-    
+
     // Projectile Animation Logic
     const startTimeRef = useRef(0);
     const lastActiveRef = useRef(false);
@@ -141,7 +137,7 @@ const VfxStudioScene: React.FC<{
             if (projRef.current) {
                 const elapsed = state.clock.getElapsedTime() - startTimeRef.current;
                 const t = elapsed % 1.5; // 1.5s loop
-                
+
                 // Move along Z
                 const z = t * 15;
                 projRef.current.position.set(0, 1, z);
@@ -156,10 +152,10 @@ const VfxStudioScene: React.FC<{
 
     if (!vfxAsset) return null;
 
-    const referenceModel = testParams?.referenceModelId 
-        ? customModels?.find(m => m.id === testParams.referenceModelId) 
+    const referenceModel = testParams?.referenceModelId
+        ? customModels?.find(m => m.id === testParams.referenceModelId)
         : undefined;
-        
+
     const projectileModel = testParams?.projectileModelId
         ? customModels?.find(m => m.id === testParams.projectileModelId)
         : undefined;
@@ -168,7 +164,7 @@ const VfxStudioScene: React.FC<{
 
     const EmitterGizmo = () => {
         if (!selectedEmitter || !onUpdateEmitter) return null;
-        
+
         return (
             <TransformControls
                 position={[selectedEmitter.offset[0], selectedEmitter.offset[1], selectedEmitter.offset[2]]}
@@ -219,8 +215,8 @@ const VfxStudioScene: React.FC<{
                 // If no reference at all, just play at center. OR if testing projectile without a specific model
                 (!referenceModel || testParams?.isProjectileTesting) && (
                     <group ref={testParams?.isProjectileTesting ? projRef : undefined} position={[0, 1, 0]}>
-                        <mesh visible={false}><boxGeometry/></mesh>
-                        <VfxRenderer vfxAsset={vfxAsset} isPlaying={testParams?.isPlaying} parentRef={testParams?.isProjectileTesting ? projRef as any : undefined}/>
+                        <mesh visible={false}><boxGeometry /></mesh>
+                        <VfxRenderer vfxAsset={vfxAsset} isPlaying={testParams?.isPlaying} parentRef={testParams?.isProjectileTesting ? projRef as any : undefined} />
                         <EmitterGizmo />
                     </group>
                 )
@@ -242,7 +238,7 @@ const GameplayScene: React.FC<{
     onTriggerAttack?: () => void;
     lastAttackTrigger?: number;
     animConfig?: AnimationConfig;
-    customActions?: CustomAction[]; 
+    customActions?: CustomAction[];
     vfxAssets?: VfxAsset[]; // NEW
 }> = ({ config, mapConfig, cameraMode, cameraSettings, gearTransforms, customModels, assetTransforms, savedCharacters, onTriggerAttack, lastAttackTrigger, animConfig, customActions, vfxAssets }) => {
     const playerGroup = useRef<THREE.Group>(null);
@@ -251,16 +247,16 @@ const GameplayScene: React.FC<{
     const [isMoving, setIsMoving] = useState(false);
     const [isRunning, setIsRunning] = useState(false); // Toggle state for running
     const [moveLocal, setMoveLocal] = useState<THREE.Vector2>(new THREE.Vector2(0, 0));
-    
+
     // Key states
-    const keys = useRef<{ w: boolean; a: boolean; s: boolean; d: boolean }>({ 
-        w: false, a: false, s: false, d: false 
+    const keys = useRef<{ w: boolean; a: boolean; s: boolean; d: boolean }>({
+        w: false, a: false, s: false, d: false
     });
-    
+
     // Physics / Movement State
     const position = useRef(new THREE.Vector3(0, 0, 0));
     const mouseWorldPos = useRef(new THREE.Vector3(0, 0, 5)); // Default look target
-    
+
     // Mathematical Plane for Raycasting (Infinite Ground at Y=0)
     const mathPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
 
@@ -271,7 +267,7 @@ const GameplayScene: React.FC<{
             if (k === 'a') keys.current.a = true;
             if (k === 's') keys.current.s = true;
             if (k === 'd') keys.current.d = true;
-            
+
             // Toggle Run on Shift Press
             if (k === 'shift' && !e.repeat) {
                 setIsRunning(prev => !prev);
@@ -339,7 +335,7 @@ const GameplayScene: React.FC<{
 
         const moveSpeed = effectiveIsRunning ? 10.0 : 5.0;
         const inputVector = new THREE.Vector3(0, 0, 0);
-        
+
         // Get Camera Directions projected to Ground (XZ)
         const camForward = new THREE.Vector3();
         cam.getWorldDirection(camForward);
@@ -364,7 +360,7 @@ const GameplayScene: React.FC<{
             inputVector.normalize();
             setIsMoving(true);
             currentActionState = effectiveIsRunning ? CharacterAction.RUN : CharacterAction.WALK;
-            
+
             position.current.x += inputVector.x * moveSpeed * delta;
             position.current.z += inputVector.z * moveSpeed * delta;
         } else {
@@ -375,7 +371,7 @@ const GameplayScene: React.FC<{
         // --- REAL-TIME RAYCASTING (Fix for Stale Mouse Pos) ---
         // Update raycaster from camera based on current mouse position
         state.raycaster.setFromCamera(state.pointer, state.camera);
-        
+
         // Intersect with infinite mathematical plane
         // This ensures mouseWorldPos is ALWAYS accurate relative to the moving camera/character
         state.raycaster.ray.intersectPlane(mathPlane, mouseWorldPos.current);
@@ -391,17 +387,17 @@ const GameplayScene: React.FC<{
         if (mouseWorldPos.current) {
             const targetPos = mouseWorldPos.current.clone();
             targetPos.y = position.current.y;
-            
+
             // Distance Check (Deadzone) to prevent jitter when mouse is too close
             const dist = position.current.distanceTo(targetPos);
-            
+
             if (dist > 0.5) {
                 const targetDir = new THREE.Vector3().subVectors(targetPos, position.current).normalize();
                 const angle = Math.atan2(targetDir.x, targetDir.z);
-                
+
                 // Smooth Rotation (Damping)
                 const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-                playerGroup.current.quaternion.slerp(q, 20 * delta); 
+                playerGroup.current.quaternion.slerp(q, 20 * delta);
             }
         }
 
@@ -423,21 +419,21 @@ const GameplayScene: React.FC<{
 
         // --- 3. CAMERA LOGIC ---
         const target = position.current.clone();
-        
+
         let offset = new THREE.Vector3();
-        let lookAtOffset = new THREE.Vector3(0, 1.0, 0); 
+        let lookAtOffset = new THREE.Vector3(0, 1.0, 0);
         let lerpSpeed = 5 * delta;
 
-        switch(cameraMode) {
+        switch (cameraMode) {
             case CameraMode.ISOMETRIC:
                 // Use dynamic settings or defaults
                 const dist = cameraSettings?.distance || 14;
                 const height = cameraSettings?.height || 20;
-                offset.set(dist, height, dist); 
+                offset.set(dist, height, dist);
                 break;
             case CameraMode.TPS:
                 // High shoulder cam
-                offset.set(0, 8, 10); 
+                offset.set(0, 8, 10);
                 break;
             case CameraMode.SIDE_SCROLL:
                 offset.set(0, 3, 12);
@@ -455,10 +451,10 @@ const GameplayScene: React.FC<{
     return (
         <group>
             {/* Invisible Floor for Mouse Events (Clicks) - MOVES WITH PLAYER */}
-            <mesh 
+            <mesh
                 ref={groundPlaneRef}
-                rotation={[-Math.PI / 2, 0, 0]} 
-                position={[0, 0, 0]} 
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, 0, 0]}
                 visible={false}
                 onPointerDown={(e) => {
                     // Left click to attack
@@ -471,9 +467,9 @@ const GameplayScene: React.FC<{
             </mesh>
 
             <group ref={playerGroup}>
-                 <Character3D 
-                    config={config} 
-                    action={action} 
+                <Character3D
+                    config={config}
+                    action={action}
                     isMoving={isMoving}
                     moveLocal={moveLocal}
                     gearTransforms={gearTransforms}
@@ -487,12 +483,12 @@ const GameplayScene: React.FC<{
 
             {/* Map Elements */}
             {mapConfig.elements.map(el => (
-                <MapObject 
-                    key={el.id} 
-                    type={el.type} 
-                    position={new THREE.Vector3(...el.position)} 
-                    assetTransforms={assetTransforms} 
-                    customModels={customModels} 
+                <MapObject
+                    key={el.id}
+                    type={el.type}
+                    position={new THREE.Vector3(...el.position)}
+                    assetTransforms={assetTransforms}
+                    customModels={customModels}
                     savedCharacters={savedCharacters}
                     vfxAssets={vfxAssets} // Pass assets to NPC bindings
                 />
@@ -507,7 +503,7 @@ const GameplayScene: React.FC<{
 
 const MobRenderer: React.FC<{ type: MapItemType; hitFlash?: boolean; customModels?: CustomModel[] }> = ({ type, hitFlash, customModels }) => {
     const customModel = customModels?.find(m => m.id === type);
-    
+
     if (customModel) {
         return (
             <group>
@@ -529,7 +525,7 @@ const MobRenderer: React.FC<{ type: MapItemType; hitFlash?: boolean; customModel
     };
     const c = hitFlash ? '#ffffff' : (colorMap[type] || '#fff');
     const emissive = hitFlash ? 0.8 : 0;
-    
+
     return (
         <mesh position={[0, 0.5, 0]}>
             <boxGeometry args={[0.5, 0.8, 0.5]} />
@@ -538,20 +534,20 @@ const MobRenderer: React.FC<{ type: MapItemType; hitFlash?: boolean; customModel
     );
 }
 
-const MapObject: React.FC<{ 
-    type: MapItemType; 
-    position: THREE.Vector3; 
-    assetTransforms?: AssetTransformMap; 
-    customModels?: CustomModel[]; 
+const MapObject: React.FC<{
+    type: MapItemType;
+    position: THREE.Vector3;
+    assetTransforms?: AssetTransformMap;
+    customModels?: CustomModel[];
     savedCharacters?: SavedCharacter[];
     isEditing?: boolean;
-    isSelected?: boolean; 
+    isSelected?: boolean;
     vfxAssets?: VfxAsset[]; // NEW
 }> = React.memo(({ type, position, assetTransforms, customModels, savedCharacters, isEditing, isSelected, vfxAssets }) => {
-    
+
     // 1. Check if it's a Saved Character (NPC)
     const savedChar = savedCharacters?.find(c => c.id === type);
-    
+
     let content;
     let boundVfx: React.ReactNode = null;
 
@@ -575,9 +571,9 @@ const MapObject: React.FC<{
 
     if (savedChar) {
         content = (
-            <group scale={0.8}> 
-                <Character3D 
-                    config={savedChar} 
+            <group scale={0.8}>
+                <Character3D
+                    config={savedChar}
                     action={CharacterAction.IDLE}
                     customModels={customModels}
                     vfxAssets={vfxAssets} // Pass VFX Assets to NPC
@@ -618,20 +614,20 @@ const MapObject: React.FC<{
                     <boxGeometry args={[0.8, 1, 0.8]} />
                     <meshStandardMaterial color="#d97706" />
                     <mesh position={[0, 0, 0.41]} rotation={[0, 0, 0]}>
-                    <planeGeometry args={[0.6, 0.8]} />
-                    <meshStandardMaterial color="#92400e" />
+                        <planeGeometry args={[0.6, 0.8]} />
+                        <meshStandardMaterial color="#92400e" />
                     </mesh>
                 </mesh>
             );
         } else {
-             content = <MobRenderer type={type} customModels={customModels} />;
+            content = <MobRenderer type={type} customModels={customModels} />;
         }
     }
 
     const transform = assetTransforms?.[type];
     const userScale = transform?.scale || 1;
-    const userPos = transform?.position ? new THREE.Vector3(...transform.position) : new THREE.Vector3(0,0,0);
-    const userRot = transform?.rotation ? new THREE.Euler(...transform.rotation) : new THREE.Euler(0,0,0);
+    const userPos = transform?.position ? new THREE.Vector3(...transform.position) : new THREE.Vector3(0, 0, 0);
+    const userRot = transform?.rotation ? new THREE.Euler(...transform.rotation) : new THREE.Euler(0, 0, 0);
 
     return (
         <group position={position}>
@@ -665,10 +661,10 @@ const MapEditorScene: React.FC<{
     // ... (Map Editor logic remains the same, omitted for brevity but part of file)
     // Actually, I must include full file content or placeholder for existing parts.
     // I will include the full MapEditorScene logic to be safe.
-    
+
     const [hoverPos, setHoverPos] = useState<[number, number, number] | null>(null);
     const [isDragging, setIsDragging] = useState(false);
-    
+
     // Selection Box State
     const [selectionStart, setSelectionStart] = useState<THREE.Vector3 | null>(null);
     const [selectionEnd, setSelectionEnd] = useState<THREE.Vector3 | null>(null);
@@ -685,8 +681,8 @@ const MapEditorScene: React.FC<{
         setHoverPos([x, 0, z]);
 
         if (isDragging && selectedTool !== 'eraser' && selectedTool !== 'select') {
-             // Continuous painting
-             setMapConfig(prev => {
+            // Continuous painting
+            setMapConfig(prev => {
                 const exists = prev.elements.some(el => Math.round(el.position[0]) === x && Math.round(el.position[2]) === z);
                 if (!exists) {
                     return {
@@ -695,7 +691,7 @@ const MapEditorScene: React.FC<{
                     };
                 }
                 return prev;
-             });
+            });
         }
     };
 
@@ -722,7 +718,7 @@ const MapEditorScene: React.FC<{
                 elements: prev.elements.filter(el => Math.round(el.position[0]) !== x || Math.round(el.position[2]) !== z)
             }));
         } else {
-             setMapConfig(prev => {
+            setMapConfig(prev => {
                 const exists = prev.elements.some(el => Math.round(el.position[0]) === x && Math.round(el.position[2]) === z);
                 if (!exists) {
                     return {
@@ -731,38 +727,38 @@ const MapEditorScene: React.FC<{
                     };
                 }
                 return prev;
-             });
+            });
         }
     };
 
     const handlePointerUp = () => {
         setIsDragging(false);
         if (selectedTool === 'select' && selectionStart && selectionEnd) {
-             const minX = Math.min(selectionStart.x, selectionEnd.x);
-             const maxX = Math.max(selectionStart.x, selectionEnd.x);
-             const minZ = Math.min(selectionStart.z, selectionEnd.z);
-             const maxZ = Math.max(selectionStart.z, selectionEnd.z);
+            const minX = Math.min(selectionStart.x, selectionEnd.x);
+            const maxX = Math.max(selectionStart.x, selectionEnd.x);
+            const minZ = Math.min(selectionStart.z, selectionEnd.z);
+            const maxZ = Math.max(selectionStart.z, selectionEnd.z);
 
-             const selected = new Set(selectedEntityIds);
-             mapConfig.elements.forEach(el => {
-                 if (el.position[0] >= minX && el.position[0] <= maxX && el.position[2] >= minZ && el.position[2] <= maxZ) {
-                     selected.add(el.id);
-                 }
-             });
-             setSelectedEntityIds(selected);
-             setSelectionStart(null);
-             setSelectionEnd(null);
+            const selected = new Set(selectedEntityIds);
+            mapConfig.elements.forEach(el => {
+                if (el.position[0] >= minX && el.position[0] <= maxX && el.position[2] >= minZ && el.position[2] <= maxZ) {
+                    selected.add(el.id);
+                }
+            });
+            setSelectedEntityIds(selected);
+            setSelectionStart(null);
+            setSelectionEnd(null);
         }
     };
 
     return (
         <group>
             {/* Ground Plane for Interaction */}
-            <mesh 
-                rotation={[-Math.PI / 2, 0, 0]} 
-                position={[0, -0.05, 0]} 
-                onPointerMove={handlePointerMove} 
-                onPointerDown={handlePointerDown} 
+            <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, -0.05, 0]}
+                onPointerMove={handlePointerMove}
+                onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
                 receiveShadow
             >
@@ -789,17 +785,17 @@ const MapEditorScene: React.FC<{
             {/* Ghost Preview */}
             {hoverPos && selectedTool !== 'eraser' && selectedTool !== 'select' && (
                 <group position={new THREE.Vector3(...hoverPos)}>
-                    <MapObject type={selectedTool} position={new THREE.Vector3(0,0,0)} assetTransforms={assetTransforms} customModels={customModels} isEditing={true} savedCharacters={savedCharacters} vfxAssets={vfxAssets} />
+                    <MapObject type={selectedTool} position={new THREE.Vector3(0, 0, 0)} assetTransforms={assetTransforms} customModels={customModels} isEditing={true} savedCharacters={savedCharacters} vfxAssets={vfxAssets} />
                 </group>
             )}
 
             {/* Placed Objects */}
             {mapConfig.elements.map(el => (
-                <MapObject 
-                    key={el.id} 
-                    type={el.type} 
-                    position={new THREE.Vector3(...el.position)} 
-                    assetTransforms={assetTransforms} 
+                <MapObject
+                    key={el.id}
+                    type={el.type}
+                    position={new THREE.Vector3(...el.position)}
+                    assetTransforms={assetTransforms}
                     customModels={customModels}
                     isEditing={true}
                     isSelected={selectedEntityIds.has(el.id)}
@@ -822,7 +818,7 @@ const WorkshopScene: React.FC<{
     transformMode: 'translate' | 'rotate' | 'scale';
     isSnapping: boolean;
     onHistorySave?: () => void;
-    config?: CharacterConfig; 
+    config?: CharacterConfig;
     customModels?: CustomModel[];
     workshopRefType: WorkshopRefType;
     gearTransforms?: GearTransformMap;
@@ -838,7 +834,7 @@ const WorkshopScene: React.FC<{
     const { camera, controls } = useThree();
 
     const getBoneTarget = (refType: WorkshopRefType, boneMap: Record<string, THREE.Object3D>) => {
-        switch(refType) {
+        switch (refType) {
             case 'head': return boneMap.head;
             case 'chest': return boneMap.chest;
             case 'hips': return boneMap.hips;
@@ -887,19 +883,19 @@ const WorkshopScene: React.FC<{
         } else {
             setTargetObject(null);
         }
-    }, [selectedPrimId, primitives]); 
+    }, [selectedPrimId, primitives]);
 
     return (
         <group>
             {config && workshopRefType !== 'none' && (
                 <group>
-                    <Character3D 
-                        config={config} 
+                    <Character3D
+                        config={config}
                         customModels={customModels}
                         hiddenSlots={['weapon', 'shield', 'helm']}
                         gearTransforms={gearTransforms}
                         forceTPose={false}
-                        freezeAnim={true} 
+                        freezeAnim={true}
                         referenceOpacity={referenceOpacity}
                         onPartSelect={onPartSelect}
                         onBoneRegister={setBones}
@@ -910,17 +906,17 @@ const WorkshopScene: React.FC<{
                 <gridHelper args={[4, 10]} />
                 <axesHelper args={[0.5]} />
                 {primitives.map((prim, idx) => {
-                     const safeNum = (v: any, def: number) => { const n = Number(v); return isNaN(n) ? def : n; };
-                     const pos = Array.isArray(prim.position) && prim.position.length >= 3 ? prim.position : [0,0,0];
-                     const rot = Array.isArray(prim.rotation) && prim.rotation.length >= 3 ? prim.rotation : [0,0,0];
-                     let scl = [1, 1, 1];
-                     if (Array.isArray(prim.scale) && prim.scale.length >= 3) { scl = prim.scale as any; } else if (typeof prim.scale === 'number') { scl = [prim.scale, prim.scale, prim.scale]; }
-                     const vPos = new THREE.Vector3(safeNum(pos[0],0), safeNum(pos[1],0), safeNum(pos[2],0));
-                     const vRot = new THREE.Euler(safeNum(rot[0],0), safeNum(rot[1],0), safeNum(rot[2],0));
-                     const vScl = new THREE.Vector3(safeNum(scl[0],1), safeNum(scl[1],1), safeNum(scl[2],1));
+                    const safeNum = (v: any, def: number) => { const n = Number(v); return isNaN(n) ? def : n; };
+                    const pos = Array.isArray(prim.position) && prim.position.length >= 3 ? prim.position : [0, 0, 0];
+                    const rot = Array.isArray(prim.rotation) && prim.rotation.length >= 3 ? prim.rotation : [0, 0, 0];
+                    let scl = [1, 1, 1];
+                    if (Array.isArray(prim.scale) && prim.scale.length >= 3) { scl = prim.scale as any; } else if (typeof prim.scale === 'number') { scl = [prim.scale, prim.scale, prim.scale]; }
+                    const vPos = new THREE.Vector3(safeNum(pos[0], 0), safeNum(pos[1], 0), safeNum(pos[2], 0));
+                    const vRot = new THREE.Euler(safeNum(rot[0], 0), safeNum(rot[1], 0), safeNum(rot[2], 0));
+                    const vScl = new THREE.Vector3(safeNum(scl[0], 1), safeNum(scl[1], 1), safeNum(scl[2], 1));
 
-                     return (
-                         <mesh key={prim.id || idx} name={`prim-${prim.id}`} position={vPos} rotation={vRot} scale={vScl} onClick={(e) => { e.stopPropagation(); setSelectedPrimId(prim.id); }}>
+                    return (
+                        <mesh key={prim.id || idx} name={`prim-${prim.id}`} position={vPos} rotation={vRot} scale={vScl} onClick={(e) => { e.stopPropagation(); setSelectedPrimId(prim.id); }}>
                             {prim.type === 'box' && <boxGeometry />}
                             {prim.type === 'sphere' && <sphereGeometry args={[0.5]} />}
                             {prim.type === 'cylinder' && <cylinderGeometry args={[0.5, 0.5, 1]} />}
@@ -931,25 +927,25 @@ const WorkshopScene: React.FC<{
                             {prim.type === 'tetrahedron' && <tetrahedronGeometry args={[0.5]} />}
                             {prim.type === 'ring' && <torusGeometry args={[0.5, 0.05, 16, 100]} />}
                             <meshStandardMaterial color={prim.color} emissive={prim.id === selectedPrimId ? '#444' : '#000'} side={THREE.DoubleSide} />
-                         </mesh>
+                        </mesh>
                     );
                 })}
             </group>
             {targetObject && targetObject.parent && (
                 <TransformControls object={targetObject} mode={transformMode} space="local" translationSnap={isSnapping ? 0.5 : null} rotationSnap={isSnapping ? Math.PI / 4 : null}
-                    onMouseDown={() => { 
-                        if(onHistorySave) onHistorySave(); 
+                    onMouseDown={() => {
+                        if (onHistorySave) onHistorySave();
                         const activePrim = primitives.find(p => p.id === selectedPrimId);
                         if (activePrim && activePrim.groupId) {
-                             const groupPrims = primitives.filter(p => p.groupId === activePrim.groupId);
-                             groupSnapshot.current = groupPrims.map(p => {
-                                 const pos = new THREE.Vector3(...p.position);
-                                 const rot = new THREE.Euler(...p.rotation);
-                                 const scale = new THREE.Vector3(...p.scale);
-                                 const mat = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), scale);
-                                 return { id: p.id, matrix: mat };
-                             });
-                             if (targetObject) { targetObject.updateMatrix(); anchorInitialMatrix.current.copy(targetObject.matrix); }
+                            const groupPrims = primitives.filter(p => p.groupId === activePrim.groupId);
+                            groupSnapshot.current = groupPrims.map(p => {
+                                const pos = new THREE.Vector3(...p.position);
+                                const rot = new THREE.Euler(...p.rotation);
+                                const scale = new THREE.Vector3(...p.scale);
+                                const mat = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), scale);
+                                return { id: p.id, matrix: mat };
+                            });
+                            if (targetObject) { targetObject.updateMatrix(); anchorInitialMatrix.current.copy(targetObject.matrix); }
                         }
                     }}
                     onMouseUp={(e: any) => {
@@ -957,22 +953,22 @@ const WorkshopScene: React.FC<{
                         const o = e.target.object;
                         const activePrim = primitives.find(p => p.id === selectedPrimId);
                         if (activePrim && activePrim.groupId) {
-                             o.updateMatrix();
-                             const newAnchorMatrix = o.matrix;
-                             const oldAnchorInverse = anchorInitialMatrix.current.clone().invert();
-                             const deltaMatrix = new THREE.Matrix4().multiplyMatrices(newAnchorMatrix, oldAnchorInverse);
-                             setPrimitives(prev => prev.map(p => {
-                                 if (p.groupId === activePrim.groupId) {
-                                     const snap = groupSnapshot.current.find(s => s.id === p.id);
-                                     if (!snap) return p;
-                                     const finalMatrix = new THREE.Matrix4().multiplyMatrices(deltaMatrix, snap.matrix);
-                                     const pos = new THREE.Vector3(); const quat = new THREE.Quaternion(); const scale = new THREE.Vector3();
-                                     finalMatrix.decompose(pos, quat, scale);
-                                     const rot = new THREE.Euler().setFromQuaternion(quat);
-                                     return { ...p, position: [pos.x, pos.y, pos.z], rotation: [rot.x, rot.y, rot.z], scale: [scale.x, scale.y, scale.z] };
-                                 }
-                                 return p;
-                             }));
+                            o.updateMatrix();
+                            const newAnchorMatrix = o.matrix;
+                            const oldAnchorInverse = anchorInitialMatrix.current.clone().invert();
+                            const deltaMatrix = new THREE.Matrix4().multiplyMatrices(newAnchorMatrix, oldAnchorInverse);
+                            setPrimitives(prev => prev.map(p => {
+                                if (p.groupId === activePrim.groupId) {
+                                    const snap = groupSnapshot.current.find(s => s.id === p.id);
+                                    if (!snap) return p;
+                                    const finalMatrix = new THREE.Matrix4().multiplyMatrices(deltaMatrix, snap.matrix);
+                                    const pos = new THREE.Vector3(); const quat = new THREE.Quaternion(); const scale = new THREE.Vector3();
+                                    finalMatrix.decompose(pos, quat, scale);
+                                    const rot = new THREE.Euler().setFromQuaternion(quat);
+                                    return { ...p, position: [pos.x, pos.y, pos.z], rotation: [rot.x, rot.y, rot.z], scale: [scale.x, scale.y, scale.z] };
+                                }
+                                return p;
+                            }));
                         } else {
                             setPrimitives(prev => prev.map(p => {
                                 if (p.id === selectedPrimId) { return { ...p, position: [o.position.x, o.position.y, o.position.z], rotation: [o.rotation.x, o.rotation.y, o.rotation.z], scale: [o.scale.x, o.scale.y, o.scale.z] }; }
@@ -992,8 +988,8 @@ const BoneControlScene: React.FC<{
     bones: React.MutableRefObject<Record<string, THREE.Object3D> | null>;
     setOverridePose?: (pose: Record<string, [number, number, number]>) => void;
     overridePose?: Record<string, [number, number, number]>;
-    setOverridePosition?: (pos: Record<string, [number, number, number]>) => void; 
-    overridePosition?: Record<string, [number, number, number]>; 
+    setOverridePosition?: (pos: Record<string, [number, number, number]>) => void;
+    overridePosition?: Record<string, [number, number, number]>;
     onBoneChange?: (bone: string, value: [number, number, number], type: 'rotation' | 'position') => void;
     transformMode?: 'rotate' | 'translate';
 }> = ({ selectedBone, bones, setOverridePose, overridePose, setOverridePosition, overridePosition, onBoneChange, transformMode = 'rotate' }) => {
@@ -1004,7 +1000,7 @@ const BoneControlScene: React.FC<{
     const worldPos = new THREE.Vector3();
     targetObj.getWorldPosition(worldPos);
     const isHips = selectedBone === 'hips';
-    const effectiveMode = isHips ? transformMode : 'rotate'; 
+    const effectiveMode = isHips ? transformMode : 'rotate';
 
     return (
         <group>
@@ -1012,20 +1008,20 @@ const BoneControlScene: React.FC<{
                 <sphereGeometry args={[0.15, 8, 8]} />
                 <meshBasicMaterial color="#fbbf24" wireframe depthTest={false} />
             </mesh>
-            <TransformControls object={targetObj} mode={effectiveMode as any} space="local" 
+            <TransformControls object={targetObj} mode={effectiveMode as any} space="local"
                 // @ts-ignore
                 onDraggingChanged={(e) => setIsGizmoDragging(e.value)}
                 onObjectChange={(e: any) => {
                     if ((e.target as any).object) {
                         const o = (e.target as any).object;
-                        if (effectiveMode === 'rotate' && setOverridePose) { setOverridePose({ ...overridePose, [selectedBone]: [o.rotation.x, o.rotation.y, o.rotation.z] }); } 
+                        if (effectiveMode === 'rotate' && setOverridePose) { setOverridePose({ ...overridePose, [selectedBone]: [o.rotation.x, o.rotation.y, o.rotation.z] }); }
                         else if (effectiveMode === 'translate' && setOverridePosition) { setOverridePosition({ ...overridePosition, [selectedBone]: [o.position.x, o.position.y, o.position.z] }); }
                     }
                 }}
                 onMouseUp={(e: any) => {
                     if (onBoneChange && (e?.target as any)?.object) {
                         const o = (e.target as any).object;
-                        if (effectiveMode === 'rotate') { onBoneChange(selectedBone, [o.rotation.x, o.rotation.y, o.rotation.z], 'rotation'); } 
+                        if (effectiveMode === 'rotate') { onBoneChange(selectedBone, [o.rotation.x, o.rotation.y, o.rotation.z], 'rotation'); }
                         else { onBoneChange(selectedBone, [o.position.x, o.position.y, o.position.z], 'position'); }
                     }
                 }}
@@ -1035,137 +1031,139 @@ const BoneControlScene: React.FC<{
 }
 
 // --- MAIN CANVAS COMPONENT ---
-const GameCanvasComponent: React.FC<GameCanvasProps> = ({ 
-    config, mode, mapConfig, setMapConfig, selectedTool, gearTransforms, assetTransforms, 
-    onPartSelect, onPartRightClick, onBackgroundClick, animConfig, previewAction = CharacterAction.IDLE, 
-    lastAttackTrigger = 0, onTriggerAttack, focusedParentId, primitives, setPrimitives, selectedPrimId, setSelectedPrimId, 
+const GameCanvasComponent: React.FC<GameCanvasProps> = ({
+    config, mode, mapConfig, setMapConfig, selectedTool, gearTransforms, assetTransforms,
+    onPartSelect, onPartRightClick, onBackgroundClick, animConfig, previewAction = CharacterAction.IDLE,
+    lastAttackTrigger = 0, onTriggerAttack, focusedParentId, primitives, setPrimitives, selectedPrimId, setSelectedPrimId,
     customModels, transformMode = 'translate', workshopRefType = 'none', isSnapping = false, onHistorySave,
     onMapHistorySave, referenceOpacity,
-    selectedEntityIds, setSelectedEntityIds, 
+    selectedEntityIds, setSelectedEntityIds,
     selectedBone, overridePose, setOverridePose, overridePosition, setOverridePosition, activeCustomAction, customActions, animTime,
     savedCharacters, cameraMode = CameraMode.ISOMETRIC, cameraSettings, shadowSettings, isProceduralPaused = false,
     onBoneChange, gizmoMode, currentVfxAsset, vfxTestParams, vfxAssets,
     // NEW Props
     selectedVfxEmitterId, onVfxEmitterUpdate,
     archValidationManager, // NEW
-    archBloomStrength, // NEW: Bloom control
-    archBloomThreshold, // NEW: Bloom control
-    archGrassScale, // NEW: Grass scale control
-    archWindStrength, // NEW: Wind strength control
-    archGrassColor // NEW: Grass color control
+
 }) => {
-  const [bonesVersion, setBonesVersion] = useState(0);
-  const boneMap = useRef<Record<string, THREE.Object3D> | null>(null);
-  const handleBoneRegister = useCallback((bones: Record<string, THREE.Object3D>) => {
-      boneMap.current = bones;
-      setBonesVersion(v => v + 1); 
-  }, []);
+    const [bonesVersion, setBonesVersion] = useState(0);
+    const boneMap = useRef<Record<string, THREE.Object3D> | null>(null);
+    const handleBoneRegister = useCallback((bones: Record<string, THREE.Object3D>) => {
+        boneMap.current = bones;
+        setBonesVersion(v => v + 1);
+    }, []);
 
-  const isEditorMoving = previewAction === CharacterAction.WALK || previewAction === CharacterAction.RUN;
+    const isEditorMoving = previewAction === CharacterAction.WALK || previewAction === CharacterAction.RUN;
 
-  return (
-    <div className="relative w-full h-full bg-gray-900">
-        <Canvas shadows className="bg-gray-900" onPointerMissed={onBackgroundClick}>
-            <Suspense fallback={null}>
-                {/* 🔥 场景隔离：架构验证模式下屏蔽老版本灯光 */}
-                {mode !== AppMode.ARCHITECTURE_VALIDATOR && (
-                  <>
-                    {/* 基础环境光 - 提供整体亮度 */}
-                    <ambientLight intensity={0.7} />
-                    
-                    {/* 半球光 - 模拟天空和地面的反射光 */}
-                    <hemisphereLight args={["#ffffff", "#444444", 2.0]} />
-                    
-                    {/* 主平行光 - 提供方向性光照和阴影 */}
-                    <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-                    
-                    {/* 本地 HDR 环境光 - 提供金属质感和环境反射（不依赖 CDN） */}
-                    <Suspense fallback={null}>
-                        <Environment files="/assets/env/potsdamer_platz_1k.hdr" background={false} />
-                    </Suspense>
-                    
-                    {/* 接触阴影 - 角色脚底的假投影 */}
-                    <ContactShadows 
-                        resolution={1024} 
-                        scale={50} 
-                        blur={shadowSettings?.blur ?? 0.4} 
-                        opacity={shadowSettings?.opacity ?? 0.75} 
-                        color={shadowSettings?.color ?? "#000000"} 
-                        position={[shadowSettings?.offsetX ?? 0, shadowSettings?.offsetY ?? 0, shadowSettings?.offsetZ ?? 0]} 
-                        far={10} 
-                    />
-                  </>
-                )}
+    return (
+        <div className="relative w-full h-full bg-gray-900">
+            <Canvas
+                shadows
+                className="bg-gray-900"
+                onPointerMissed={onBackgroundClick}
+                gl={{
+                    toneMapping: THREE.ACESFilmicToneMapping,
+                    toneMappingExposure: 1.0
+                }}
+            >
+                <Suspense fallback={null}>
+                    {/* 🔥 场景隔离：架构验证模式下屏蔽老版本灯光 */}
+                    {mode !== AppMode.ARCHITECTURE_VALIDATOR && (
+                        <>
+                            {/* 基础环境光 - 提供整体亮度 */}
+                            <ambientLight intensity={0.7} />
 
-                {/* 🔥 场景隔离：架构验证模式下屏蔽网格 */}
-                {mode !== AppMode.ARCHITECTURE_VALIDATOR && (mode === AppMode.MAP_EDITOR || mode === AppMode.ACTION_STUDIO || mode === AppMode.ASSET_LIBRARY || mode === AppMode.CHARACTER_EDITOR || mode === AppMode.MODEL_WORKSHOP || mode === AppMode.VFX_STUDIO) && (
-                    <Grid infiniteGrid fadeDistance={40} cellColor="#374151" sectionColor="#1f2937" sectionSize={4} cellSize={1} position={[0, 0.01, 0]} />
-                )}
-                
-                {mode !== AppMode.GAMEPLAY && mode !== AppMode.ARCHITECTURE_VALIDATOR && <CameraController />}
+                            {/* 半球光 - 模拟天空和地面的反射光 */}
+                            <hemisphereLight args={["#ffffff", "#444444", 2.0]} />
 
-                {/* 🔥 场景隔离：架构验证模式下屏蔽地面 */}
-                {mode !== AppMode.ARCHITECTURE_VALIDATOR && mode !== AppMode.MAP_EDITOR && mode !== AppMode.MODEL_WORKSHOP && (
-                     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-                        <planeGeometry args={[200, 200]} />
-                        <meshStandardMaterial color={mode === AppMode.GAMEPLAY ? mapConfig.groundColor : "#2a2a2a"} roughness={0.8} />
-                    </mesh>
-                )}
+                            {/* 主平行光 - 提供方向性光照和阴影 */}
+                            <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
 
-                {/* --- MODE SPECIFIC RENDERING --- */}
-                
-                {mode === AppMode.MAP_EDITOR ? (
-                    <MapEditorScene 
-                        mapConfig={mapConfig} setMapConfig={setMapConfig} selectedTool={selectedTool} assetTransforms={assetTransforms} customModels={customModels} selectedEntityIds={selectedEntityIds || new Set()} setSelectedEntityIds={setSelectedEntityIds || (() => {})} onMapHistorySave={onMapHistorySave} savedCharacters={savedCharacters} vfxAssets={vfxAssets} 
-                    />
-                ) : mode === AppMode.MODEL_WORKSHOP ? (
-                     <WorkshopScene 
-                        primitives={primitives || []} selectedPrimId={selectedPrimId || null} setSelectedPrimId={setSelectedPrimId!} setPrimitives={setPrimitives!} transformMode={transformMode!} isSnapping={isSnapping} onHistorySave={onHistorySave} config={config} customModels={customModels} workshopRefType={workshopRefType || 'none'} gearTransforms={gearTransforms} referenceOpacity={referenceOpacity} onPartSelect={onPartSelect}
-                    />
-                ) : mode === AppMode.VFX_STUDIO ? (
-                    <VfxStudioScene 
-                        vfxAsset={currentVfxAsset} 
-                        testParams={vfxTestParams} 
-                        customModels={customModels}
-                        selectedEmitterId={selectedVfxEmitterId} // Propagate selection
-                        onUpdateEmitter={onVfxEmitterUpdate} // Propagate update logic
-                    />
-                ) : mode === AppMode.ARCHITECTURE_VALIDATOR && archValidationManager ? (
-                    <group onPointerDown={(e) => e.stopPropagation()}>
-                        <EngineBridge
-                            entityManager={archValidationManager.getEntityManager()}
-                            worldStateManager={archValidationManager.getWorldStateManager()}
-                            terrainSystem={archValidationManager.getTerrainSystem()}
-                            vegetationSystem={archValidationManager.getVegetationSystem()}
-                            archValidationManager={archValidationManager}
-                            postProcessingEnabled={true}
-                            bloomEnabled={true}
-                            bloomStrength={archBloomStrength ?? 1.5}
-                            bloomRadius={0.4}
-                            bloomThreshold={archBloomThreshold ?? 0.5}
-                            smaaEnabled={true}
-                        />
-                    </group>
-                ) : mode === AppMode.GAMEPLAY ? (
-                     <GameplayScene 
-                        config={config} mapConfig={mapConfig} cameraMode={cameraMode} cameraSettings={cameraSettings} gearTransforms={gearTransforms} customModels={customModels} assetTransforms={assetTransforms} savedCharacters={savedCharacters} onTriggerAttack={onTriggerAttack} lastAttackTrigger={lastAttackTrigger} animConfig={animConfig} customActions={customActions} vfxAssets={vfxAssets} 
-                     />
-                ) : (
-                    <>
-                        <Character3D 
-                            config={config} action={previewAction} isMoving={isEditorMoving} gearTransforms={gearTransforms} onPartSelect={onPartSelect} onPartRightClick={onPartRightClick} animConfig={animConfig} lastAttackTime={lastAttackTrigger} focusedParentId={focusedParentId} customModels={customModels} onBoneRegister={handleBoneRegister} overridePose={overridePose} overridePosition={overridePosition} activeCustomAction={activeCustomAction} animTime={animTime} isProceduralPaused={isProceduralPaused} customActions={customActions} vfxAssets={vfxAssets} 
-                        />
-                        {mode === AppMode.ACTION_STUDIO && selectedBone && (
-                            <BoneControlScene 
-                                selectedBone={selectedBone} bones={boneMap} overridePose={overridePose} setOverridePose={setOverridePose} overridePosition={overridePosition} setOverridePosition={setOverridePosition} onBoneChange={onBoneChange} transformMode={gizmoMode || 'rotate'} 
+                            {/* 本地 HDR 环境光 - 提供金属质感和环境反射（不依赖 CDN） */}
+                            <Suspense fallback={null}>
+                                <Environment files="/assets/env/potsdamer_platz_1k.hdr" background={false} />
+                            </Suspense>
+
+                            {/* 接触阴影 - 角色脚底的假投影 */}
+                            <ContactShadows
+                                resolution={1024}
+                                scale={50}
+                                blur={shadowSettings?.blur ?? 0.4}
+                                opacity={shadowSettings?.opacity ?? 0.75}
+                                color={shadowSettings?.color ?? "#000000"}
+                                position={[shadowSettings?.offsetX ?? 0, shadowSettings?.offsetY ?? 0, shadowSettings?.offsetZ ?? 0]}
+                                far={10}
                             />
-                        )}
-                    </>
-                )}
-          </Suspense>
-        </Canvas>
-    </div>
-  );
+                        </>
+                    )}
+
+                    {/* 🔥 场景隔离：架构验证模式下屏蔽网格 */}
+                    {mode !== AppMode.ARCHITECTURE_VALIDATOR && (mode === AppMode.MAP_EDITOR || mode === AppMode.ACTION_STUDIO || mode === AppMode.ASSET_LIBRARY || mode === AppMode.CHARACTER_EDITOR || mode === AppMode.MODEL_WORKSHOP || mode === AppMode.VFX_STUDIO) && (
+                        <Grid infiniteGrid fadeDistance={40} cellColor="#374151" sectionColor="#1f2937" sectionSize={4} cellSize={1} position={[0, 0.01, 0]} />
+                    )}
+
+                    {mode !== AppMode.GAMEPLAY && mode !== AppMode.ARCHITECTURE_VALIDATOR && <CameraController />}
+
+                    {/* 🔥 场景隔离：架构验证模式下屏蔽地面 */}
+                    {mode !== AppMode.ARCHITECTURE_VALIDATOR && mode !== AppMode.MAP_EDITOR && mode !== AppMode.MODEL_WORKSHOP && (
+                        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+                            <planeGeometry args={[200, 200]} />
+                            <meshStandardMaterial color={mode === AppMode.GAMEPLAY ? mapConfig.groundColor : "#2a2a2a"} roughness={0.8} />
+                        </mesh>
+                    )}
+
+                    {/* --- MODE SPECIFIC RENDERING --- */}
+
+                    {mode === AppMode.MAP_EDITOR ? (
+                        <MapEditorScene
+                            mapConfig={mapConfig} setMapConfig={setMapConfig} selectedTool={selectedTool} assetTransforms={assetTransforms} customModels={customModels} selectedEntityIds={selectedEntityIds || new Set()} setSelectedEntityIds={setSelectedEntityIds || (() => { })} onMapHistorySave={onMapHistorySave} savedCharacters={savedCharacters} vfxAssets={vfxAssets}
+                        />
+                    ) : mode === AppMode.MODEL_WORKSHOP ? (
+                        <WorkshopScene
+                            primitives={primitives || []} selectedPrimId={selectedPrimId || null} setSelectedPrimId={setSelectedPrimId!} setPrimitives={setPrimitives!} transformMode={transformMode!} isSnapping={isSnapping} onHistorySave={onHistorySave} config={config} customModels={customModels} workshopRefType={workshopRefType || 'none'} gearTransforms={gearTransforms} referenceOpacity={referenceOpacity} onPartSelect={onPartSelect}
+                        />
+                    ) : mode === AppMode.VFX_STUDIO ? (
+                        <VfxStudioScene
+                            vfxAsset={currentVfxAsset}
+                            testParams={vfxTestParams}
+                            customModels={customModels}
+                            selectedEmitterId={selectedVfxEmitterId} // Propagate selection
+                            onUpdateEmitter={onVfxEmitterUpdate} // Propagate update logic
+                        />
+                    ) : mode === AppMode.ARCHITECTURE_VALIDATOR && archValidationManager ? (
+                        <group onPointerDown={(e) => e.stopPropagation()}>
+                            <EngineBridge
+                                entityManager={archValidationManager.getEntityManager()}
+                                worldStateManager={archValidationManager.getWorldStateManager()}
+                                terrainSystem={archValidationManager.getTerrainSystem()}
+                                vegetationSystem={archValidationManager.getVegetationSystem()}
+                                archValidationManager={archValidationManager}
+                                postProcessingEnabled={true}
+                                bloomEnabled={true}
+                                bloomRadius={0.4}
+                                smaaEnabled={true}
+                            />
+                        </group>
+                    ) : mode === AppMode.GAMEPLAY ? (
+                        <GameplayScene
+                            config={config} mapConfig={mapConfig} cameraMode={cameraMode} cameraSettings={cameraSettings} gearTransforms={gearTransforms} customModels={customModels} assetTransforms={assetTransforms} savedCharacters={savedCharacters} onTriggerAttack={onTriggerAttack} lastAttackTrigger={lastAttackTrigger} animConfig={animConfig} customActions={customActions} vfxAssets={vfxAssets}
+                        />
+                    ) : (
+                        <>
+                            <Character3D
+                                config={config} action={previewAction} isMoving={isEditorMoving} gearTransforms={gearTransforms} onPartSelect={onPartSelect} onPartRightClick={onPartRightClick} animConfig={animConfig} lastAttackTime={lastAttackTrigger} focusedParentId={focusedParentId} customModels={customModels} onBoneRegister={handleBoneRegister} overridePose={overridePose} overridePosition={overridePosition} activeCustomAction={activeCustomAction} animTime={animTime} isProceduralPaused={isProceduralPaused} customActions={customActions} vfxAssets={vfxAssets}
+                            />
+                            {mode === AppMode.ACTION_STUDIO && selectedBone && (
+                                <BoneControlScene
+                                    selectedBone={selectedBone} bones={boneMap} overridePose={overridePose} setOverridePose={setOverridePose} overridePosition={overridePosition} setOverridePosition={setOverridePosition} onBoneChange={onBoneChange} transformMode={gizmoMode || 'rotate'}
+                                />
+                            )}
+                        </>
+                    )}
+                </Suspense>
+            </Canvas>
+        </div>
+    );
 };
 
 export const GameCanvas = React.memo(GameCanvasComponent);

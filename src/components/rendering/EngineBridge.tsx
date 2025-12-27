@@ -54,7 +54,8 @@ const EntityRenderer = React.memo<{
   worldState?: any;
   terrainSystem?: any;
   vegetationSystem?: any;
-}>(({ entity, worldState, terrainSystem, vegetationSystem }) => {
+  getCameraMode?: () => string; // 🔥 Added prop definition
+}>(({ entity, worldState, terrainSystem, vegetationSystem, getCameraMode }) => { // 🔥 Destructure getCameraMode
   const groupRef = useRef<THREE.Group>(null);
   const [meshes, setMeshes] = useState<THREE.Mesh[]>([]);
   const [modelLoaded, setModelLoaded] = useState(false);
@@ -67,7 +68,7 @@ const EntityRenderer = React.memo<{
 
   // 如果是地形实体，使用 TerrainVisual 渲染
   if (terrain) {
-    return <TerrainVisual entity={entity} terrainSystem={terrainSystem} />;
+    return <TerrainVisual entity={entity} terrainSystem={terrainSystem} getCameraMode={getCameraMode} />;
   }
 
   // 如果是植被实体，使用 VegetationVisual 渲染
@@ -261,7 +262,7 @@ const EntityRenderer = React.memo<{
 
       {/* 递归渲染子实体 */}
       {entity.children.map((child) => (
-        <EntityRenderer key={child.id} entity={child} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} />
+        <EntityRenderer key={child.id} entity={child} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} getCameraMode={getCameraMode} />
       ))}
     </group>
   );
@@ -376,6 +377,16 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const shadowCameraRef = useRef<THREE.PerspectiveCamera | null>(null); // 🔥 影子引擎专属相机引用
 
+  // Helper to get current camera mode safely
+  const getCameraMode = () => {
+    return archValidationManager?.cameraSystem?.mode || 'orbit';
+  };
+
+  // Inject getCameraMode into terrainSystem for passing down (hacky but effective)
+  if (terrainSystem) {
+    terrainSystem.getCameraMode = getCameraMode;
+  }
+
   // 🎮 设置输入系统的 DOM 元素（用于相机控制）
   useEffect(() => {
     if (archValidationManager && gl?.domElement) {
@@ -414,67 +425,93 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       // 直接设置 wheelDelta（InputSystem 会在 update 中读取）
       inputSystem.wheelDelta = e.deltaY;
 
-      console.log('🎮 Canvas wheel:', e.deltaY, 'wheelDelta set to:', inputSystem.wheelDelta);
+      // console.log('🎮 Canvas wheel:', e.deltaY, 'wheelDelta set to:', inputSystem.wheelDelta);
     };
 
     // 🎯 鼠标按下（追踪拖拽状态）
     const handlePointerDown = (e: PointerEvent) => {
-      if (e.button === 1 || e.button === 2) {
-        // 🔥 关键：同步更新 InputSystem 的 pressedButtons
-        inputSystem.pressedButtons.add(e.button);
+      // 0: Left, 1: Middle, 2: Right
+      // 🔥 关键：同步更新 InputSystem 的 pressedButtons
+      inputSystem.pressedButtons.add(e.button);
 
-        // 中键或右键按下
-        canvas.setPointerCapture(e.pointerId);
-        console.log('🎮 Pointer captured, button:', e.button, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
+      // 任何键按下都捕获指针，防止移出 Canvas 后丢失 Up 事件
+      canvas.setPointerCapture(e.pointerId);
+
+      // 只有中键(1)或右键(2)需要阻止默认行为（防止弹出菜单）
+      // 左键(0)需要允许点击 UI（虽然这里是在 Canvas 上，但以防万一）
+      if (e.button === 1 || e.button === 2) {
+        e.preventDefault();
       }
+
+      // console.log('🎮 Pointer DOWN:', e.button, 'Buttons:', e.buttons);
     };
 
     // 🎯 鼠标移动（物理拦截）
     const handlePointerMove = (e: PointerEvent) => {
-      // 只在按下右键或中键时处理
-      if (e.buttons === 2 || e.buttons === 4) {
-        e.preventDefault();
+      e.preventDefault();
 
-        // 直接设置 mouseDelta
-        inputSystem.mouseDelta = {
-          x: e.movementX,
-          y: e.movementY,
-        };
+      // 直接设置 mouseDelta
+      inputSystem.mouseDelta = {
+        x: e.movementX,
+        y: e.movementY,
+      };
 
-        console.log('🎮 Canvas pointer move:', e.movementX, e.movementY, 'buttons:', e.buttons, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
+      // 追踪当前真实位置
+      inputSystem.mousePosition = {
+        x: e.clientX,
+        y: e.clientY
+      };
+
+      // Debug: Log only if moving significantly
+      if (Math.abs(e.movementX) > 0 || Math.abs(e.movementY) > 0) {
+        // console.log('🎮 Pointer MOVE:', e.movementX, e.movementY);
       }
     };
 
     // 🎯 鼠标释放
     const handlePointerUp = (e: PointerEvent) => {
-      if (e.button === 1 || e.button === 2) {
-        // 🔥 关键：同步更新 InputSystem 的 pressedButtons
-        inputSystem.pressedButtons.delete(e.button);
+      // 🔥 关键：同步更新 InputSystem 的 pressedButtons
+      inputSystem.pressedButtons.delete(e.button);
 
-        canvas.releasePointerCapture(e.pointerId);
-        console.log('🎮 Pointer released, button:', e.button, 'pressedButtons:', Array.from(inputSystem.pressedButtons));
-      }
+      canvas.releasePointerCapture(e.pointerId);
+      // console.log('🎮 Pointer UP:', e.button, 'Remaining:', Array.from(inputSystem.pressedButtons));
+    };
+
+    // 🎯 额外保险：指针取消/丢失捕获
+    const handlePointerCancel = (e: PointerEvent) => {
+      inputSystem.pressedButtons.delete(e.button);
+      canvas.releasePointerCapture(e.pointerId);
+      // console.log('🎮 Pointer CANCEL/LOST:', e.button);
     };
 
     // 🎯 右键菜单拦截（只在 Canvas 上）
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      console.log('🎮 Context menu blocked on canvas');
+      // console.log('🎮 Context menu blocked');
     };
 
+    // 🎯 键盘焦点修复：Canvas 被点击时获取焦点，以便接收 KeyDown
+    // 之前的问题：初始化时 Canvas 没焦点，按空格没反应，直到右键点击（触发 focus？）
+    // 强行把这个逻辑加到 PointerDown
+
+    // Bind events
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     canvas.addEventListener('pointerdown', handlePointerDown);
     canvas.addEventListener('pointermove', handlePointerMove);
     canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerCancel);
+    canvas.addEventListener('lostpointercapture', handlePointerCancel);
     canvas.addEventListener('contextmenu', handleContextMenu);
 
-    console.log('✅ Canvas event listeners attached');
+    console.log('✅ Canvas event listeners attached (Enhanced)');
 
     return () => {
       canvas.removeEventListener('wheel', handleWheel);
       canvas.removeEventListener('pointerdown', handlePointerDown);
       canvas.removeEventListener('pointermove', handlePointerMove);
       canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('pointercancel', handlePointerCancel);
+      canvas.removeEventListener('lostpointercapture', handlePointerCancel);
       canvas.removeEventListener('contextmenu', handleContextMenu);
       console.log('🧹 Canvas event listeners removed');
     };
@@ -685,11 +722,13 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         <PostProcessing
           enabled={postProcessingEnabled}
           bloomEnabled={bloomEnabled}
-          bloomStrength={worldState?.bloomStrength ?? bloomStrength}
+          // 🔥 优先使用 WorldState (影子引擎状态)，其次尝试从管理器直接拉取，最后使用默认值
+          // 彻底切断对 App.tsx props 的依赖
+          bloomStrength={worldState?.bloomStrength ?? worldStateManager?.getState().bloomStrength ?? 0.5}
           bloomRadius={bloomRadius}
-          bloomThreshold={worldState?.bloomThreshold ?? bloomThreshold}
-          smaaEnabled={worldState?.smaaEnabled ?? smaaEnabled}
-          toneMappingExposure={worldState?.toneMappingExposure ?? 1.0}
+          bloomThreshold={worldState?.bloomThreshold ?? worldStateManager?.getState().bloomThreshold ?? 0.85}
+          smaaEnabled={worldState?.smaaEnabled ?? worldStateManager?.getState().smaaEnabled ?? true}
+          toneMappingExposure={worldState?.toneMappingExposure ?? worldStateManager?.getState().toneMappingExposure ?? 1.0}
         />
       )}
 
@@ -714,7 +753,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       <directionalLight
         ref={sunLightRef}
         position={[20, 20, 10]}
-        intensity={worldState?.lightIntensity * 8.0 || 8.0}
+        intensity={worldState?.lightIntensity * 2.5 || 2.5}
         color={worldState?.directionalColor || '#ffffff'}
         castShadow
         shadow-mapSize-width={4096}
@@ -728,7 +767,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
       {/* 渲染所有根实体 */}
       {rootEntities.map((entity) => (
-        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} />
+        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} getCameraMode={getCameraMode} />
       ))}
 
       {/* 物理调试渲染 */}

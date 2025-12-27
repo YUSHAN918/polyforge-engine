@@ -19,7 +19,7 @@ import { TransformComponent } from './components/TransformComponent';
 import { VisualComponent } from './components/VisualComponent';
 import { TerrainComponent } from './components/TerrainComponent';
 import { VegetationComponent } from './components/VegetationComponent';
-import { CameraComponent } from './components/CameraComponent';
+import { CameraComponent, CameraMode } from './components/CameraComponent';
 import { PhysicsComponent } from './components/PhysicsComponent'; // Added
 import { TerrainSystem } from './systems/TerrainSystem';
 import { VegetationSystem } from './systems/VegetationSystem';
@@ -31,7 +31,20 @@ import { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry'; // Add
 import { SerializationService } from './SerializationService';
 import { CommandManager } from './CommandManager';
 import { ArchitectureStorageManager } from './ArchitectureStorageManager';
-import { BundleSystem } from './bundling/BundleSystem'; // Added
+import { BundleSystem } from './bundling/BundleSystem';
+
+/**
+ * 验证上下文模式
+ */
+export enum ValidationContext {
+  CREATION = 'CREATION',     // 创造模式（编辑器）
+  EXPERIENCE = 'EXPERIENCE'  // 体验模式（第一/第三人称）
+}
+
+/**
+ * 玩法原型类型
+ */
+export type GameplayArchetype = 'FPS' | 'TPS' | 'ActionRPG' | 'Platformer';
 
 /**
  * ArchitectureValidationManager
@@ -68,6 +81,7 @@ export class ArchitectureValidationManager {
   // 实体引用
   private terrainEntity: Entity | null = null;
   private cameraEntity: Entity | null = null;
+  private avatarEntity: Entity | null = null; // 🔥 替身实体引用
 
   // 🎬 后处理参数（可通过控制接口修改）
   public postProcessingSettings = {
@@ -78,6 +92,9 @@ export class ArchitectureValidationManager {
     bloomThreshold: 0.85,
     smaaEnabled: true,
   };
+
+  // 🎭 当前验证上下文
+  private currentContext: ValidationContext = ValidationContext.CREATION;
 
   constructor() {
     console.log('🏗️ [ArchitectureValidationManager] Initializing...');
@@ -121,6 +138,8 @@ export class ArchitectureValidationManager {
 
     // 🎮 连接 InputSystem 到 CameraSystem
     this.cameraSystem.setInputSystem(this.inputSystem);
+    this.cameraSystem.setEntityManager(this.entityManager);
+    this.cameraSystem.setPhysicsSystem(this.physicsSystem);
 
     // 注册系统
     this.systemManager.registerSystem('InputSystem', this.inputSystem);
@@ -803,8 +822,8 @@ export class ArchitectureValidationManager {
       30 + Math.random() * 10,
       (Math.random() - 0.5) * 20
     ];
-    // 随机旋转
-    transform.rotation = [Math.random() * Math.PI, Math.random() * Math.PI, 0];
+    // 随机旋转 (使用度数 0-360)
+    transform.rotation = [Math.random() * 360, Math.random() * 360, Math.random() * 360];
 
     const visual = new VisualComponent();
     visual.geometry = { type: 'box', parameters: { width: 2, height: 2, depth: 2 } };
@@ -927,14 +946,6 @@ export class ArchitectureValidationManager {
     console.log('✓ Regeneration complete');
   }
 
-  /**
-   * 设置相机模式
-   */
-  public setCameraMode(mode: any): void {
-    if (this.cameraSystem) {
-      this.cameraSystem.setMode(mode);
-    }
-  }
 
   /**
    * 设置相机视野
@@ -1014,6 +1025,194 @@ export class ArchitectureValidationManager {
       this.vegetationSystem.spawnFlowers(density, terrainEntity.id);
     } else {
       console.warn('Cannot spawn flowers: No terrain found');
+    }
+  }
+
+
+  /**
+   * 切换相机模式
+   */
+  public setCameraMode(mode: CameraMode): void {
+    if (!this.cameraEntity) return;
+    const camera = this.cameraEntity.getComponent<CameraComponent>('Camera');
+    if (!camera) return;
+
+    console.log(`🎥 [ArchitectureValidationManager] Switching mode to: ${mode}`);
+
+    // 🔥 模式重连协议：根据模式自动切换 Context
+    // 制作人要求：创造块仅 orbit，体验块包含 firstPerson/thirdPerson/isometric/sidescroll
+    const isCreation = mode === 'orbit';
+    const newContext = isCreation ? ValidationContext.CREATION : ValidationContext.EXPERIENCE;
+
+    if (this.currentContext !== newContext) {
+      console.log(`🔄 [Context] Transition: ${this.currentContext} -> ${newContext}`);
+      this.currentContext = newContext;
+    }
+
+    camera.mode = mode;
+
+    // 🔥 模式对齐协议：同步输入预设
+    if (this.inputSystem) {
+      const preset = isCreation ? 'default' : 'game';
+      this.inputSystem.setPreset(preset);
+      console.log(`⌨️ [Input] Preset switched to: ${preset}`);
+    }
+
+    // 分场景同步
+    if (mode === 'firstPerson' || mode === 'thirdPerson' || mode === 'isometric' || mode === 'sidescroll') {
+      this.spawnOrRelockAvatar(mode);
+    } else {
+      this.removeAvatar();
+    }
+  }
+
+  /**
+   * 选择玩法原型
+   * 自动映射相机模式并生成角色
+   */
+  public selectArchetype(type: GameplayArchetype): void {
+    console.log(`🎮 [Archetype] Selecting: ${type}`);
+    switch (type) {
+      case 'FPS':
+        this.setCameraMode('firstPerson');
+        break;
+      case 'TPS':
+        this.setCameraMode('thirdPerson');
+        break;
+      case 'ActionRPG':
+        this.setCameraMode('isometric');
+        break;
+      case 'Platformer':
+        this.setCameraMode('sidescroll');
+        break;
+    }
+  }
+
+  /**
+   * 生成或重连替身
+   */
+  private spawnOrRelockAvatar(mode: CameraMode): void {
+    if (mode === 'orbit') return;
+
+    // 模式接管：所有非 Orbit 模式均支持替身生成
+    this.spawnAvatar(mode);
+  }
+
+  /**
+   * 获取当前上下文
+   */
+  public getContext(): ValidationContext {
+    return this.currentContext;
+  }
+
+  /**
+   * 生成替身 (Avatar)：一个受物理控制的胶囊体
+   */
+  private spawnAvatar(mode: CameraMode): void {
+    // 1. 如果已存在，先销毁
+    this.removeAvatar();
+
+    console.log(`👤 Spawning Avatar for ${mode}...`);
+
+    // 2. 创建实体
+    const avatar = this.entityManager.createEntity('Player_Avatar');
+    if (!avatar) return;
+
+    // 3. 初始位置
+    const startPos: [number, number, number] = [0, 5, 0];
+    if (this.cameraEntity) {
+      const camTransform = this.cameraEntity.getComponent('Transform') as TransformComponent;
+      if (camTransform) {
+        startPos[0] = camTransform.position[0];
+        startPos[2] = camTransform.position[2];
+        if (Math.abs(startPos[0]) < 1 && Math.abs(startPos[2]) < 1) {
+          startPos[1] = 10;
+        }
+      }
+    }
+
+    // 4. 添加组件
+    // (1) Transform
+    // (1) Transform
+    const transform = new TransformComponent(startPos, [0, 0, 0], [1, 1, 1]);
+    avatar.addComponent(transform);
+
+    // (2) Visual (仅 TP 模式显示)
+    // (2) Visual (仅 TP 模式显示)
+    if (mode === 'thirdPerson') {
+      const visual = new VisualComponent(
+        // 1. Geometry
+        { type: 'cylinder', parameters: { radius: 0.5, height: 2, segments: 16 } },
+        // 2. Material
+        { type: 'standard', color: '#00ff00', metalness: 0, roughness: 1 },
+        // 3. Emissive (High Intensity to verify visibility)
+        { color: '#00ff00', intensity: 2.0 },
+        // 4. PostProcessing (Enable Bloom)
+        { bloom: true, outline: false }
+      );
+      visual.visible = true;
+      visual.castShadow = true;
+      visual.receiveShadow = true;
+      avatar.addComponent(visual);
+    }
+
+    // (3) Physics (动力学刚体)
+    const physics = new PhysicsComponent(
+      'dynamic',
+      { shape: 'capsule', size: [0.5, 1.0, 0.5], offset: [0, 0, 0] },
+      1.0, 0.5, 0.0
+    );
+    physics.lockRotation = [true, true, true]; // Lock rotation to prevent tipping over
+    avatar.addComponent(physics);
+
+    // 6. 绑定相机
+    if (this.cameraEntity) {
+      const camera = this.cameraEntity.getComponent('Camera') as CameraComponent;
+      const camTransform = this.cameraEntity.getComponent('Transform') as TransformComponent;
+      if (camera && camTransform) {
+        camera.targetEntityId = avatar.id;
+
+        if (mode === 'firstPerson') {
+          camera.distance = 0.1;
+          camera.minDistance = 0.1;
+          const avatarVis = avatar.getComponent('Visual') as VisualComponent;
+          if (avatarVis) avatarVis.visible = false;
+          camera.yaw = 0;
+          camera.pitch = 0;
+        } else if (mode === 'isometric') {
+          camera.distance = 30; // 稍微拉远一些
+          camera.minDistance = 10;
+          camera.pitch = -45; // 45度角俯视
+          camera.yaw = 45;   // 45度角侧视
+        } else if (mode === 'sidescroll') {
+          camera.distance = 20;
+          camera.minDistance = 5;
+          camera.pitch = -10; // 近乎平视
+          camera.yaw = 0;    // 正对着
+        } else {
+          // Third Person Default
+          camera.distance = 10;
+          camera.minDistance = 2;
+          camera.yaw = 0;
+          camera.pitch = -20;
+        }
+
+        camera.pivotOffset = [0, 0, 0];
+        console.log(`🔗 Camera locked to Avatar (${mode}): ${avatar.id}`);
+      }
+    }
+
+    this.avatarEntity = avatar;
+  }
+
+  /**
+   * 移除替身
+   */
+  private removeAvatar(): void {
+    if (this.avatarEntity) {
+      this.entityManager.destroyEntity(this.avatarEntity.id);
+      this.avatarEntity = null;
+      console.log('👤 Avatar removed.');
     }
   }
 }

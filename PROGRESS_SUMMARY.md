@@ -462,7 +462,27 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 - 所有演示可在浏览器控制台交互运行
 - 遵循 EARS 模式和 INCOSE 质量规则
 
+
 ---
+
+## 🚨 架构经验总结 (2025-12-27)
+
+### Phase 14.6: 影子架构的红线（Shadow Architecture Redline）
+
+**问题复盘**:
+在修复后处理 UI 同步问题时，一度尝试在宿主层 (`App.tsx`) 同步影子引擎的状态 (`WorldState`)，导致了数据源冲突和隐蔽的 UI 重置 Bug。
+
+**核心教训**:
+1.  **绝对隔离**: 宿主层 (`App.tsx`) **严禁**直接管理影子引擎 (`ArchitectureValidationManager`) 的内部状态。
+2.  **单一数据源**: `WorldStateManager` 必须是环境参数的唯一真理来源 (Single Source of Truth)。
+3.  **桥接原则**: `EngineBridge` 应当是一个自治的观察者，直接订阅 `WorldStateManager`，而不是依赖宿主传递 Props。
+4.  **UI 绑定**: 影子引擎的调试 UI (`ArchitectureValidationPanel`) 应直接绑定到 Manager，绕过 React 的 Props Drilling。
+
+**修正结果**:
+移除了 `App.tsx` 中所有关于 `bloomStrength`, `grassColor` 等状态的 State，恢复了架构的纯洁性。系统现在更加健壮，UI 交互不再受宿主重绘干扰。
+
+---
+
 
 ## 📦 历史归档
 

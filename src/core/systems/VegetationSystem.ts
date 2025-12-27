@@ -459,8 +459,12 @@ export class VegetationSystem implements System {
     }
 
     // 🔥 CRITICAL: 防止实例数过载
+    // 如果 density 是一个较大的整数（如 500, 5000），我们视其为总量 (Count)
+    // 如果 density 是一个很小的数（如 0.1, 1.0, 5.0），我们视其为密度 (Density, 10 以内)
     let actualDensity = density;
-    if (density > 1000) {
+    const COUNT_THRESHOLD = 20; // 密度一般不会超过 20（每平米 20 棵已经很密了）
+
+    if (density >= COUNT_THRESHOLD) {
       const terrainEntity = this.entityManager.getEntity(terrainEntityId);
       if (terrainEntity) {
         const terrain = terrainEntity.getComponent('Terrain') as TerrainComponent;

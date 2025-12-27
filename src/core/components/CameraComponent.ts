@@ -10,7 +10,7 @@ import { Component, ComponentData } from '../types';
 /**
  * 相机模式
  */
-export type CameraMode = 
+export type CameraMode =
   | 'orbit'        // 编辑器风格旋转
   | 'firstPerson'  // 第一人称（锁定头部 Socket）
   | 'thirdPerson'  // 第三人称（平滑跟随）
@@ -30,8 +30,11 @@ export interface CameraSnapshot {
   maxDistance: number;
   pitch: number;
   yaw: number;
+  pivotOffset: [number, number, number];
   lockAxis?: 'x' | 'y' | 'z';
   smoothSpeed: number;
+  moveSpeed: number;
+  forceMultiplier: number;
 }
 
 /**
@@ -59,6 +62,9 @@ export class CameraComponent implements Component {
   // 第三人称偏移（相对于目标）
   public offset: [number, number, number] = [0, 2, 5];  // [x, y, z]
 
+  // 核心：平移偏移（Panning Offset，适用于 Orbit 和 Isometric）
+  public pivotOffset: [number, number, number] = [0, 0, 0];
+
   // 距离约束
   public distance: number = 5;
   public minDistance: number = 2;
@@ -75,10 +81,14 @@ export class CameraComponent implements Component {
   public smoothSpeed: number = 5.0;  // 跟随平滑速度
   public rotationSpeed: number = 100;  // 旋转速度（度/秒）
 
+  // 玩法响应参数 (New in Phase 16)
+  public moveSpeed: number = 10.0;     // 基础移动速度 (Transform)
+  public forceMultiplier: number = 25.0; // 物理推力倍率 (Physics)
+
   // 碰撞检测
   public enableCollision: boolean = true;
 
-  constructor() {}
+  constructor() { }
 
   /**
    * 获取当前配置快照
@@ -93,8 +103,11 @@ export class CameraComponent implements Component {
       maxDistance: this.maxDistance,
       pitch: this.pitch,
       yaw: this.yaw,
+      pivotOffset: [...this.pivotOffset] as [number, number, number],
       lockAxis: this.lockAxis,
       smoothSpeed: this.smoothSpeed,
+      moveSpeed: this.moveSpeed,
+      forceMultiplier: this.forceMultiplier,
     };
   }
 
@@ -110,8 +123,11 @@ export class CameraComponent implements Component {
     this.maxDistance = snapshot.maxDistance;
     this.pitch = snapshot.pitch;
     this.yaw = snapshot.yaw;
+    this.pivotOffset = [...snapshot.pivotOffset] as [number, number, number];
     this.lockAxis = snapshot.lockAxis;
     this.smoothSpeed = snapshot.smoothSpeed;
+    this.moveSpeed = snapshot.moveSpeed || 10.0;
+    this.forceMultiplier = snapshot.forceMultiplier || 25.0;
   }
 
   /**
@@ -133,9 +149,12 @@ export class CameraComponent implements Component {
       maxDistance: this.maxDistance,
       pitch: this.pitch,
       yaw: this.yaw,
+      pivotOffset: this.pivotOffset,
       lockAxis: this.lockAxis,
       smoothSpeed: this.smoothSpeed,
       rotationSpeed: this.rotationSpeed,
+      moveSpeed: this.moveSpeed,
+      forceMultiplier: this.forceMultiplier,
       enableCollision: this.enableCollision,
     };
   }
@@ -157,9 +176,12 @@ export class CameraComponent implements Component {
     this.maxDistance = data.maxDistance || 20;
     this.pitch = data.pitch || -20;
     this.yaw = data.yaw || 0;
+    this.pivotOffset = data.pivotOffset || [0, 0, 0];
     this.lockAxis = data.lockAxis;
     this.smoothSpeed = data.smoothSpeed || 5.0;
     this.rotationSpeed = data.rotationSpeed || 100;
+    this.moveSpeed = data.moveSpeed || 10.0;
+    this.forceMultiplier = data.forceMultiplier || 25.0;
     this.enableCollision = data.enableCollision !== undefined ? data.enableCollision : true;
   }
 }

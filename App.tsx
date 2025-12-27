@@ -50,14 +50,7 @@ export const App: React.FC = () => {
     // 架构验证观测窗口状态
     const [archValidationManager, setArchValidationManager] = useState<ArchitectureValidationManager | null>(null);
 
-    // 🎬 后处理控制状态（用于架构验证视口）
-    const [archBloomStrength, setArchBloomStrength] = useState(0.5);
-    const [archBloomThreshold, setArchBloomThreshold] = useState(0.85);
 
-    // 🌿 植被控制状态（用于架构验证视口）
-    const [archGrassScale, setArchGrassScale] = useState(1.0);
-    const [archWindStrength, setArchWindStrength] = useState(0.1);
-    const [archGrassColor, setArchGrassColor] = useState('#7cba3d');
 
     const [mapConfig, setMapConfig] = useState<MapConfig>(DEFAULT_MAP_CONFIG);
     const [mapHistory, setMapHistory] = useState<MapConfig[]>([]);
@@ -1341,11 +1334,7 @@ export const App: React.FC = () => {
                         onVfxEmitterUpdate={currentVfxAssetId ? (emitterId, updates) => handleVfxEmitterUpdate(currentVfxAssetId, emitterId, updates) : undefined}
                         // NEW: Architecture Validation Manager
                         archValidationManager={archValidationManager}
-                        archBloomStrength={archBloomStrength}
-                        archBloomThreshold={archBloomThreshold}
-                        archGrassScale={archGrassScale}
-                        archWindStrength={archWindStrength}
-                        archGrassColor={archGrassColor}
+
                     />
                     {mode === AppMode.GAMEPLAY && (
                         <div className="absolute top-4 left-4 z-40 bg-gray-900/80 backdrop-blur border border-gray-700 p-3 rounded-xl shadow-xl flex flex-col gap-2 min-w-[200px]">
@@ -1534,11 +1523,7 @@ export const App: React.FC = () => {
                 {mode === AppMode.ARCHITECTURE_VALIDATOR && (
                     <ArchitectureValidationPanel
                         manager={archValidationManager}
-                        onBloomStrengthChange={setArchBloomStrength}
-                        onBloomThresholdChange={setArchBloomThreshold}
-                        onGrassScaleChange={setArchGrassScale}
-                        onWindStrengthChange={setArchWindStrength}
-                        onGrassColorChange={setArchGrassColor}
+
                     />
                 )}
 

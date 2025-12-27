@@ -22,16 +22,17 @@ import { VisualComponent } from '../../core/components/VisualComponent';
 interface TerrainVisualProps {
   entity: Entity;
   terrainSystem?: any; // TerrainSystem 实例
+  getCameraMode?: () => string;
 }
 
 /**
  * TerrainVisual - 地形可视化组件
  */
-export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSystem }) => {
+export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSystem, getCameraMode }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const geometryRef = useRef<THREE.PlaneGeometry | null>(null);
   const { camera, raycaster, gl } = useThree();
-  
+
   const [isHovering, setIsHovering] = useState(false);
   const [brushRadius, setBrushRadius] = useState(2.0);
 
@@ -85,7 +86,7 @@ export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSys
       for (let x = 0; x <= widthSegments; x++) {
         const vertexIndex = z * (widthSegments + 1) + x;
         const height = terrain.getHeight(x, z);
-        
+
         // PlaneGeometry 旋转后，Y 轴是高度
         positions[vertexIndex * 3 + 1] = height;
       }
@@ -101,11 +102,22 @@ export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSys
     terrain.clearDirty();
   });
 
-  // 鼠标交互：左键抬高，右键降低
+  // 鼠标交互：Shift+左键抬高，Ctrl+左键降低
   const handlePointerDown = (event: any) => {
     if (!terrainSystem || !terrain) return;
 
-    event.stopPropagation();
+    // 🔥 冲突解决：只有按下 Shift 或 Ctrl 时才启用地形编辑
+    // 否则让事件冒泡，交由 CameraSystem 处理旋转/平移
+    // 🔥 模式隔离：只有在 Orbit 模式下才允许编辑地形
+    // Crash Fix: use safe getter or assume orbit if getter missing (but here we want strictly orbit)
+    // If getCameraMode is missing, we default to block or allow? Safest is to allow only if we know it's orbit.
+    // If undefined, let's assuming orbit for now to avoid breaking existing flow, OR default to 'orbit'.
+    const currentMode = getCameraMode ? getCameraMode() : 'orbit';
+    if (currentMode !== 'orbit') return;
+
+    if (!event.shiftKey && !event.ctrlKey) return;
+
+    event.stopPropagation(); // 阻止冒泡，避免同时旋转相机
 
     // 获取鼠标在地形上的交点
     const intersect = event.intersections[0];
@@ -113,24 +125,24 @@ export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSys
 
     const worldPoint = intersect.point;
 
-    // 左键：抬高（delta = 1.0）
-    // 右键：降低（delta = -1.0）
-    const delta = event.button === 0 ? 1.0 : event.button === 2 ? -1.0 : 0;
+    // Shift: 抬高 (1.0), Ctrl: 降低 (-1.0)
+    const delta = event.shiftKey ? 1.0 : -1.0;
 
-    if (delta !== 0) {
-      terrainSystem.modifyHeight(entity, worldPoint, delta);
-    }
+    terrainSystem.modifyHeight(entity, worldPoint, delta);
   };
 
-  // 滚轮：调整笔刷大小
+  // 滚轮：Shift/Ctrl + 滚轮调整笔刷大小
   const handleWheel = (event: any) => {
     if (!terrainSystem) return;
 
-    event.stopPropagation();
+    // 只有在编辑模式下拦截滚轮
+    if (!event.shiftKey && !event.ctrlKey) return;
+
+    event.stopPropagation(); // 阻止相机缩放
 
     const delta = event.deltaY > 0 ? -0.5 : 0.5;
     const newRadius = Math.max(0.5, Math.min(10, brushRadius + delta));
-    
+
     setBrushRadius(newRadius);
     terrainSystem.setBrush({ radius: newRadius });
 

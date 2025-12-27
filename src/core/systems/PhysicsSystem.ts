@@ -342,6 +342,9 @@ export class PhysicsSystem implements System {
   private quaternionToEuler(quat: { w: number; x: number; y: number; z: number }): [number, number, number] {
     const { w, x, y, z } = quat;
 
+    // 🔥 修正：使用标准 XYZ 顺序 (Tait-Bryan angles) 进行转换
+    // https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+
     // Roll (x-axis rotation)
     const sinr_cosp = 2 * (w * x + y * z);
     const cosr_cosp = 1 - 2 * (x * x + y * y);
@@ -349,19 +352,34 @@ export class PhysicsSystem implements System {
 
     // Pitch (y-axis rotation)
     const sinp = 2 * (w * y - z * x);
-    const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+    let pitch: number;
+    if (Math.abs(sinp) >= 1) {
+      pitch = Math.sign(sinp) * Math.PI / 2; // 使用 90 度锁定
+    } else {
+      pitch = Math.asin(sinp);
+    }
 
     // Yaw (z-axis rotation)
     const siny_cosp = 2 * (w * z + x * y);
     const cosy_cosp = 1 - 2 * (y * y + z * z);
     const yaw = Math.atan2(siny_cosp, cosy_cosp);
 
-    // 返回度数
+    // 返回度数（符合 PolyForge Transform 标准）
     return [
       roll * 180 / Math.PI,
       pitch * 180 / Math.PI,
       yaw * 180 / Math.PI
     ];
+  }
+
+  /**
+   * 设置线性速度 (用于角色控制器驱动)
+   */
+  public setLinearVelocity(entityId: string, x: number, y: number, z: number): void {
+    const rigidBody = this.bodyMap.get(entityId);
+    if (rigidBody) {
+      rigidBody.setLinvel({ x, y, z }, true);
+    }
   }
 
   /**

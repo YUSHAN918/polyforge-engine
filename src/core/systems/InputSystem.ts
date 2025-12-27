@@ -44,10 +44,10 @@ export class InputSystem implements System {
   private currentPreset: InputPreset;
   private presets: Map<string, InputPreset> = new Map();
   private contextStack: string[] = ['global'];  // 上下文栈
-  private pressedKeys: Set<string> = new Set();
+  public pressedKeys: Set<string> = new Set();
   public pressedButtons: Set<number> = new Set(); // 🔥 改为 public，让 CameraSystem 可以直接访问
   private commandManager: CommandManager | null = null;
-  
+
   // 🎮 鼠标状态（公共访问用于物理层控制）
   public mousePosition: { x: number; y: number } = { x: 0, y: 0 };
   public mouseDelta: { x: number; y: number } = { x: 0, y: 0 };
@@ -59,7 +59,7 @@ export class InputSystem implements System {
     this.presets.set('default', this.currentPreset);
     this.presets.set('blender', this.createBlenderPreset());
     this.presets.set('game', this.createGamePreset());
-    
+
     this.initializeEventListeners();
   }
 
@@ -90,7 +90,7 @@ export class InputSystem implements System {
     window.addEventListener('contextmenu', (e) => {
       const target = e.target as HTMLElement;
       const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
-      
+
       // 只在 Canvas 上拦截右键菜单
       if (isCanvas) {
         e.preventDefault();
@@ -110,7 +110,8 @@ export class InputSystem implements System {
       if (this.matchesAction(action, key, event)) {
         // 阻止默认行为（如 Ctrl+Z 的浏览器撤销）
         event.preventDefault();
-        
+        event.stopImmediatePropagation(); // 🔥 防止事件继续冒泡或被其他监听器捕获
+
         // 触发回调
         if (action.callback) {
           action.callback();
@@ -138,12 +139,20 @@ export class InputSystem implements System {
    * 处理鼠标按下事件
    */
   private handleMouseDown(event: MouseEvent): void {
+    // 🔥 过滤逻辑：如果在 Canvas 上，由 EngineBridge 接管，这里不处理
+    // 否则会导致双重事件
+    const target = event.target as HTMLElement;
+    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+    if (isCanvas) return;
+
     this.pressedButtons.add(event.button);
-    
+
     // 右键或中键按下时开始拖拽
     if (event.button === 1 || event.button === 2) {
       this.isDragging = true;
     }
+
+    // console.log('[InputSystem] Global MouseDown:', event.button, 'Buttons:', Array.from(this.pressedButtons));
 
     // 检查是否有匹配的动作
     for (const [, action] of this.currentPreset.actions) {
@@ -161,22 +170,32 @@ export class InputSystem implements System {
    * 处理鼠标释放事件
    */
   private handleMouseUp(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+    if (isCanvas) return;
+
     this.pressedButtons.delete(event.button);
     this.isDragging = false;
+
+    // console.log('[InputSystem] Global MouseUp:', event.button, 'Buttons:', Array.from(this.pressedButtons));
   }
 
   /**
    * 处理鼠标移动事件
    */
   private handleMouseMove(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+    if (isCanvas) return;
+
     const newX = event.clientX;
     const newY = event.clientY;
-    
+
     // 🔥 修正状态机：如果有按钮按下，自动进入拖拽状态
     if (event.buttons > 0 && (this.pressedButtons.has(1) || this.pressedButtons.has(2))) {
       this.isDragging = true;
     }
-    
+
     // 计算 delta（只在拖拽时有效）
     if (this.isDragging) {
       this.mouseDelta.x = newX - this.mousePosition.x;
@@ -185,7 +204,7 @@ export class InputSystem implements System {
       this.mouseDelta.x = 0;
       this.mouseDelta.y = 0;
     }
-    
+
     this.mousePosition.x = newX;
     this.mousePosition.y = newY;
   }
@@ -197,20 +216,22 @@ export class InputSystem implements System {
   private handleWheel(event: WheelEvent): void {
     // 🚫 检查事件目标：如果是 UI 面板内部，立即放行
     const target = event.target as HTMLElement;
-    
-    // 检查是否在右侧面板内（通过 class 或 data 属性识别）
-    if (target.closest('.architecture-validation-panel') || 
-        target.closest('[data-panel="true"]') ||
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT') {
-      // ✅ UI 元素，允许默认滚动
+
+    // 检查是否在输入框内
+    if (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT') {
+      // ✅ 正在输入文字，允许默认行为，且不触发游戏逻辑
       return;
     }
-    
+
+    // 🔥 修正：不再因为点击了 Panel 就屏蔽所有按键。
+    // 用户可能点击了 Panel 的按钮，然后想用 WASD 移动相机。
+    // 只要不是在输入文字，就应该允许全局快捷键。
+
     // 检查是否在 Canvas 上
     const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
-    
+
     // 🎮 Canvas 上的滚轮事件由 EngineBridge 的物理层拦截处理
     // 这里不再处理，避免冲突
     // 注释掉原有逻辑，让 EngineBridge 完全接管
