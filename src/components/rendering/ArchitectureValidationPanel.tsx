@@ -248,7 +248,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     }, 0);
   };
   const handleClearVegetation = () => {
-    if (confirm('Are you sure to clear all vegetation?')) {
+    if (confirm('确定要清除所有植被吗？ (Are you sure to clear all vegetation?)')) {
       dispatch(EngineCommandType.CLEAR_VEGETATION);
     }
   };
@@ -266,7 +266,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const handleSave = () => dispatch(EngineCommandType.SAVE_SCENE);
   const handleReset = () => dispatch(EngineCommandType.RESET_SCENE);
   const handleExportBundle = () => {
-    const name = prompt('Bundle Name:', 'MySceneLevel');
+    const name = prompt('捆绑包名称 (Bundle Name):', 'MySceneLevel');
     if (name) dispatch(EngineCommandType.EXPORT_BUNDLE, { name });
   };
   const handleImportBundle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -288,7 +288,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   // ... Render ...
   if (!manager) {
     return <div className="w-96 h-full bg-gray-950 flex items-center justify-center text-gray-500 italic font-mono">
-      <i className="fas fa-circle-notch fa-spin mr-2"></i> Connecting to Orbital Command...
+      <i className="fas fa-circle-notch fa-spin mr-2"></i> 正在连接至轨道指令中心...
     </div>;
   }
 
@@ -321,8 +321,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       {/* 1.1 Context Switch */}
       <div className="bg-gray-950 p-2 shrink-0">
         <div className="flex bg-gray-900 rounded-lg p-1 border border-gray-800">
-          <button onClick={() => handleContextSwitch(ValidationContext.CREATION)} className={`flex-1 py-2 rounded-md font-bold uppercase tracking-wider text-[10px] ${currentContext === ValidationContext.CREATION ? 'bg-blue-600 text-white' : 'text-gray-500'}`}><i className="fas fa-tools mr-1"></i> CREATION</button>
-          <button onClick={() => handleContextSwitch(ValidationContext.EXPERIENCE)} className={`flex-1 py-2 rounded-md font-bold uppercase tracking-wider text-[10px] ${currentContext === ValidationContext.EXPERIENCE ? 'bg-indigo-600 text-white' : 'text-gray-500'}`}><i className="fas fa-play mr-1"></i> EXPERIENCE</button>
+          <button onClick={() => handleContextSwitch(ValidationContext.CREATION)} className={`flex-1 py-2 rounded-md font-bold uppercase tracking-wider text-[10px] ${currentContext === ValidationContext.CREATION ? 'bg-blue-600 text-white' : 'text-gray-500'}`}><i className="fas fa-tools mr-1"></i> 创造模式</button>
+          <button onClick={() => handleContextSwitch(ValidationContext.EXPERIENCE)} className={`flex-1 py-2 rounded-md font-bold uppercase tracking-wider text-[10px] ${currentContext === ValidationContext.EXPERIENCE ? 'bg-indigo-600 text-white' : 'text-gray-500'}`}><i className="fas fa-play mr-1"></i> 体验模式</button>
         </div>
       </div>
 
@@ -330,14 +330,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       <div className="flex bg-gray-950 border-b border-gray-800 shrink-0">
         {currentContext === ValidationContext.CREATION ? (
           <>
-            <button onClick={() => setActiveTab('world')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'world' ? 'text-green-400 bg-gray-900/50 border-b-2 border-green-500' : 'text-gray-500'}`}><i className="fas fa-globe mr-1"></i> World</button>
-            <button onClick={() => setActiveTab('director')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'director' ? 'text-purple-400 bg-gray-900/50 border-b-2 border-purple-500' : 'text-gray-500'}`}><i className="fas fa-video mr-1"></i> Director</button>
-            <button onClick={() => setActiveTab('assets')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'assets' ? 'text-cyan-400 bg-gray-900/50 border-b-2 border-cyan-500' : 'text-gray-500'}`}><i className="fas fa-boxes mr-1"></i> Assets</button>
+            <button onClick={() => setActiveTab('world')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'world' ? 'text-green-400 bg-gray-900/50 border-b-2 border-green-500' : 'text-gray-500'}`}><i className="fas fa-globe mr-1"></i> 世界</button>
+            <button onClick={() => setActiveTab('director')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'director' ? 'text-purple-400 bg-gray-900/50 border-b-2 border-purple-500' : 'text-gray-500'}`}><i className="fas fa-video mr-1"></i> 导演</button>
+            <button onClick={() => setActiveTab('assets')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'assets' ? 'text-cyan-400 bg-gray-900/50 border-b-2 border-cyan-500' : 'text-gray-500'}`}><i className="fas fa-boxes mr-1"></i> 资产</button>
           </>
         ) : (
           <>
-            <button onClick={() => setActiveTab('experience')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'experience' ? 'text-indigo-400 bg-gray-900/50 border-b-2 border-indigo-500' : 'text-gray-500'}`}><i className="fas fa-gamepad mr-1"></i> Play</button>
-            <button onClick={() => setActiveTab('stats')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'stats' ? 'text-orange-400 bg-gray-900/50 border-b-2 border-orange-500' : 'text-gray-500'}`}><i className="fas fa-chart-line mr-1"></i> Stats</button>
+            <button onClick={() => setActiveTab('experience')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'experience' ? 'text-indigo-400 bg-gray-900/50 border-b-2 border-indigo-500' : 'text-gray-500'}`}><i className="fas fa-gamepad mr-1"></i> 游玩</button>
+            <button onClick={() => setActiveTab('stats')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider ${activeTab === 'stats' ? 'text-orange-400 bg-gray-900/50 border-b-2 border-orange-500' : 'text-gray-500'}`}><i className="fas fa-chart-line mr-1"></i> 统计</button>
           </>
         )}
       </div>
@@ -349,31 +349,31 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         {activeTab === 'world' && (
           <>
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-mountain text-orange-500 mr-2"></i> Terraform</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-mountain text-orange-500 mr-2"></i> 地形编辑 (Terraform)</h3>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={handleCreateMountain} disabled={isGenerating} className="py-3 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"><i className="fas fa-chevron-up mr-2"></i> Raise</button>
-                <button onClick={handleCreateValley} disabled={isGenerating} className="py-3 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"><i className="fas fa-chevron-down mr-2"></i> Lower</button>
-                <button onClick={handleFlattenTerrain} disabled={isGenerating} className="col-span-2 py-2 bg-gray-800 text-gray-400 text-[10px] rounded border border-gray-700 hover:bg-gray-700">Flatten</button>
+                <button onClick={handleCreateMountain} disabled={isGenerating} className="py-3 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"><i className="fas fa-chevron-up mr-2"></i> 隆起 (Raise)</button>
+                <button onClick={handleCreateValley} disabled={isGenerating} className="py-3 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"><i className="fas fa-chevron-down mr-2"></i> 凹陷 (Lower)</button>
+                <button onClick={handleFlattenTerrain} disabled={isGenerating} className="col-span-2 py-2 bg-gray-800 text-gray-400 text-[10px] rounded border border-gray-700 hover:bg-gray-700">平整地形 (Flatten)</button>
               </div>
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-seedling text-green-500 mr-2"></i> Ecosystem</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-seedling text-green-500 mr-2"></i> 生态系统 (Ecosystem)</h3>
               <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-gray-500 block mb-1">Scale</label>
+                    <label className="text-gray-500 block mb-1">缩放 (Scale)</label>
                     <input type="range" min="0.1" max="3" step="0.1" value={grassScale} onChange={(e) => handleGrassScaleChange(parseFloat(e.target.value))} className="w-full accent-green-500" />
                   </div>
                   <div>
-                    <label className="text-gray-500 block mb-1">Wind</label>
+                    <label className="text-gray-500 block mb-1">风力 (Wind)</label>
                     <input type="range" min="0" max="1" step="0.01" value={windStrength} onChange={(e) => handleWindStrengthChange(parseFloat(e.target.value))} className="w-full accent-green-500" />
                   </div>
                 </div>
 
                 <div className="flex bg-gray-900 rounded-lg p-0.5">
-                  <button onClick={() => setActiveVegType('grass')} className={`flex-1 py-1 text-[9px] uppercase font-bold rounded ${activeVegType === 'grass' ? 'bg-green-600 text-white' : 'text-gray-500'}`}>Grass</button>
-                  <button onClick={() => setActiveVegType('flower')} className={`flex-1 py-1 text-[9px] uppercase font-bold rounded ${activeVegType === 'flower' ? 'bg-pink-600 text-white' : 'text-gray-500'}`}>Flowers</button>
+                  <button onClick={() => setActiveVegType('grass')} className={`flex-1 py-1 text-[9px] uppercase font-bold rounded ${activeVegType === 'grass' ? 'bg-green-600 text-white' : 'text-gray-500'}`}>草丛 (Grass)</button>
+                  <button onClick={() => setActiveVegType('flower')} className={`flex-1 py-1 text-[9px] uppercase font-bold rounded ${activeVegType === 'flower' ? 'bg-pink-600 text-white' : 'text-gray-500'}`}>花朵 (Flowers)</button>
                 </div>
 
                 <div className="flex gap-2">
@@ -383,19 +383,19 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 </div>
 
                 <button onClick={handleSpawnVegetation} disabled={isGenerating} className={`w-full py-2 font-bold rounded shadow-lg text-white ${activeVegType === 'grass' ? 'bg-green-600 hover:bg-green-500' : 'bg-pink-600 hover:bg-pink-500'}`}>
-                  {isGenerating ? 'Spawning...' : (activeVegType === 'grass' ? 'Spawn Grass (5000)' : 'Plant Flowers (500)')}
+                  {isGenerating ? '生成中...' : (activeVegType === 'grass' ? '生成草丛 (Spawn Grass - 5000)' : '种植花朵 (Plant Flowers - 500)')}
                 </button>
-                <button onClick={handleClearVegetation} className="w-full text-red-400 text-[10px] uppercase font-bold hover:text-red-300">Clear All Vegetation</button>
+                <button onClick={handleClearVegetation} className="w-full text-red-400 text-[10px] uppercase font-bold hover:text-red-300">清除所有植被 (Clear All)</button>
               </div>
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-cubes text-blue-500 mr-2"></i> Physics</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-cubes text-blue-500 mr-2"></i> 物理系统 (Physics)</h3>
               <div className="space-y-2">
-                <button onClick={handleSpawnPhysicsCube} className="w-full py-2 bg-gray-800 rounded border border-gray-700 text-gray-300 hover:bg-gray-700">Spawn Physics Box</button>
-                <button onClick={handleExplosionTest} className="w-full py-2 bg-red-900/30 rounded border border-red-900/50 text-red-400 hover:bg-red-900/50">Test Explosion</button>
+                <button onClick={handleSpawnPhysicsCube} className="w-full py-2 bg-gray-800 rounded border border-gray-700 text-gray-300 hover:bg-gray-700">生成物理箱 (Spawn Physics Box)</button>
+                <button onClick={handleExplosionTest} className="w-full py-2 bg-red-900/30 rounded border border-red-900/50 text-red-400 hover:bg-red-900/50">测试爆炸 (Test Explosion)</button>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Physics Debug</span>
+                  <span className="text-gray-400">物理调试 (Physics Debug)</span>
                   <input type="checkbox" checked={physicsDebugEnabled} onChange={(e) => handlePhysicsDebugChange(e.target.checked)} className="accent-blue-500" />
                 </div>
               </div>
@@ -407,40 +407,40 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         {activeTab === 'director' && (
           <div className="space-y-6">
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Atmosphere</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">大气环境 (Atmosphere)</h3>
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
                 <div>
-                  <label className="text-gray-500 block mb-1 flex justify-between"><span>Time of Day</span> <span className="text-white font-mono">{timeOfDay.toFixed(1)}h</span></label>
+                  <label className="text-gray-500 block mb-1 flex justify-between"><span>时间 (Time)</span> <span className="text-white font-mono">{timeOfDay.toFixed(1)}h</span></label>
                   <input type="range" min="0" max="24" step="0.1" value={timeOfDay} onChange={(e) => handleTimeOfDayChange(parseFloat(e.target.value))} className="w-full accent-orange-500" />
                 </div>
                 <div>
-                  <label className="text-gray-500 block mb-1">Sun Intensity</label>
+                  <label className="text-gray-500 block mb-1">光照强度 (Sun Intensity)</label>
                   <input type="range" min="0" max="5" step="0.1" value={sunIntensity} onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))} className="w-full accent-yellow-500" />
                 </div>
                 <div>
-                  <label className="text-gray-500 block mb-1">Gravity (Y)</label>
+                  <label className="text-gray-500 block mb-1">重力 (Gravity Y)</label>
                   <input type="range" min="-20" max="0" step="0.1" value={gravityY} onChange={(e) => handleGravityChange(parseFloat(e.target.value))} className="w-full accent-blue-500" />
                 </div>
               </div>
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Post Processing</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">后处理 (Post Processing)</h3>
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
                 <div>
-                  <label className="text-gray-500 block mb-1">Bloom Strength</label>
+                  <label className="text-gray-500 block mb-1">辉光强度 (Bloom Strength)</label>
                   <input type="range" min="0" max="3" step="0.1" value={bloomStrength} onChange={(e) => handleBloomStrengthChange(parseFloat(e.target.value))} className="w-full accent-pink-500" />
                 </div>
                 <div>
-                  <label className="text-gray-500 block mb-1">Bloom Threshold</label>
+                  <label className="text-gray-500 block mb-1">辉光阈值 (Bloom Threshold)</label>
                   <input type="range" min="0" max="1" step="0.05" value={bloomThreshold} onChange={(e) => handleBloomThresholdChange(parseFloat(e.target.value))} className="w-full accent-pink-500" />
                 </div>
                 <div>
-                  <label className="text-gray-500 block mb-1">Exposure</label>
+                  <label className="text-gray-500 block mb-1">曝光 (Exposure)</label>
                   <input type="range" min="0" max="5" step="0.1" value={exposure} onChange={(e) => handleExposureChange(parseFloat(e.target.value))} className="w-full accent-gray-500" />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">SMAA (Anti-Aliasing)</span>
+                  <span className="text-gray-400">SMAA 抗锯齿 (Anti-Aliasing)</span>
                   <input type="checkbox" checked={smaaEnabled} onChange={(e) => handleSMAAChange(e.target.checked)} className="accent-green-500" />
                 </div>
               </div>
@@ -453,35 +453,35 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => document.getElementById('import_pfb')?.click()} className="col-span-2 py-3 bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 rounded font-bold hover:bg-indigo-900/50 block text-center">
-                <i className="fas fa-file-import mr-2"></i> Import Bundle (.pfb)
+                <i className="fas fa-file-import mr-2"></i> 导入捆绑包 (Import Bundle .pfb)
               </button>
               <input type="file" id="import_pfb" accept=".pfb" className="hidden" onChange={handleImportBundle} />
 
               <button onClick={handleExportBundle} className="col-span-2 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700">
-                <i className="fas fa-file-export mr-2"></i> Export Bundle
+                <i className="fas fa-file-export mr-2"></i> 导出捆绑包 (Export Bundle)
               </button>
             </div>
 
             <div className="border-t border-gray-800 pt-4">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">Quick Import</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">快速导入 (Quick Import)</h3>
               <div className="space-y-2">
                 <label className="block w-full py-2 bg-gray-800 text-center rounded cursor-pointer hover:bg-gray-700 text-gray-400">
-                  <i className="fas fa-cube mr-2"></i> Import Model (.glb)
+                  <i className="fas fa-cube mr-2"></i> 导入模型 (Model .glb)
                   <input type="file" className="hidden" accept=".glb,.gltf" onChange={(e) => handleAssetImport(e, 'models')} />
                 </label>
                 <label className="block w-full py-2 bg-gray-800 text-center rounded cursor-pointer hover:bg-gray-700 text-gray-400">
-                  <i className="fas fa-music mr-2"></i> Import Audio (.mp3)
+                  <i className="fas fa-music mr-2"></i> 导入音频 (Audio .mp3)
                   <input type="file" className="hidden" accept=".mp3,.wav,.ogg" onChange={(e) => handleAssetImport(e, 'audio')} />
                 </label>
                 <label className="block w-full py-2 bg-gray-800 text-center rounded cursor-pointer hover:bg-gray-700 text-gray-400">
-                  <i className="fas fa-image mr-2"></i> Import HDR (.hdr)
+                  <i className="fas fa-image mr-2"></i> 导入环境 (HDR .hdr)
                   <input type="file" className="hidden" accept=".hdr" onChange={(e) => handleAssetImport(e, 'environments')} />
                 </label>
               </div>
             </div>
 
             <div className="border-t border-gray-800 pt-4">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">Asset Registry ({stats.assetCount})</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">资产注册表 (Registry) - {stats.assetCount}</h3>
               <div className="max-h-48 overflow-y-auto bg-gray-900 rounded p-2 text-gray-500 font-mono text-[10px]">
                 {assetList.map((a, i) => (
                   <div key={i} className="mb-1 truncate hover:text-white cursor-help" title={a.id}>
@@ -497,7 +497,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         {activeTab === 'experience' && (
           <div className="space-y-6">
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Camera Mode</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">相机模式 (Camera Mode)</h3>
               <div className="grid grid-cols-2 gap-2">
                 {(['firstPerson', 'thirdPerson', 'isometric', 'topDown'] as CameraMode[]).map(m => (
                   <button key={m} onClick={() => handleCameraModeChange(m)} className={`py-4 rounded border font-bold capitalize ${cameraMode === m ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
@@ -508,18 +508,18 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Gameplay Config</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">玩法配置 (Gameplay Config)</h3>
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
                 <div>
-                  <label className="text-gray-500 block mb-1">FOV</label>
+                  <label className="text-gray-500 block mb-1">视场角 (FOV)</label>
                   <input type="range" min="30" max="120" value={fov} onChange={(e) => handleFovChange(parseFloat(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-gray-500 block mb-1">Move Speed</label>
+                  <label className="text-gray-500 block mb-1">移动速度 (Speed)</label>
                   <input type="range" min="1" max="50" value={moveSpeed} onChange={(e) => handleMoveSpeedChange(parseFloat(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-gray-500 block mb-1">Force Multiplier (Jump/Push)</label>
+                  <label className="text-gray-500 block mb-1">力度倍率 (Force Multiplier)</label>
                   <input type="range" min="1" max="100" value={forceMultiplier} onChange={(e) => handleForceMultiplierChange(parseFloat(e.target.value))} className="w-full accent-red-500" />
                 </div>
               </div>
@@ -531,20 +531,20 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         {activeTab === 'stats' && (
           <div className="space-y-4 font-mono text-gray-400">
             <div className="bg-gray-900 p-3 rounded border border-gray-800">
-              <div className="text-white font-bold mb-2 border-b border-gray-700 pb-1">Core Metrics</div>
+              <div className="text-white font-bold mb-2 border-b border-gray-700 pb-1">核心指标 (Core Metrics)</div>
               <div className="grid grid-cols-2 gap-y-1">
-                <span>Entities:</span> <span className="text-right text-green-400">{stats.entityCount}</span>
-                <span>Systems:</span> <span className="text-right text-green-400">{stats.systemCount}</span>
-                <span>Vegetation:</span> <span className="text-right text-green-400">{stats.vegetationCount}</span>
-                <span>Vertices:</span> <span className="text-right text-green-400">{stats.terrainVertices.toLocaleString()}</span>
-                <span>Phys Bodies:</span> <span className="text-right text-green-400">{stats.physicsBodies}</span>
+                <span>实体 (Entities):</span> <span className="text-right text-green-400">{stats.entityCount}</span>
+                <span>系统 (Systems):</span> <span className="text-right text-green-400">{stats.systemCount}</span>
+                <span>植被 (Veg):</span> <span className="text-right text-green-400">{stats.vegetationCount}</span>
+                <span>顶点 (Verts):</span> <span className="text-right text-green-400">{stats.terrainVertices.toLocaleString()}</span>
+                <span>刚体 (Bodies):</span> <span className="text-right text-green-400">{stats.physicsBodies}</span>
               </div>
             </div>
 
             <div className="bg-gray-900 p-3 rounded border border-gray-800">
-              <div className="text-white font-bold mb-2 border-b border-gray-700 pb-1">Command Log</div>
+              <div className="text-white font-bold mb-2 border-b border-gray-700 pb-1">指令日志 (Command Log)</div>
               <div className="space-y-1 opacity-70">
-                {stats.undoHistory.length === 0 ? <div className="italic text-gray-600">No history</div> : stats.undoHistory.map((cmd, i) => (
+                {stats.undoHistory.length === 0 ? <div className="italic text-gray-600">无记录 (No history)</div> : stats.undoHistory.map((cmd, i) => (
                   <div key={i} className="text-[10px] truncate border-l-2 border-blue-500 pl-2 mb-1">
                     {cmd.type}
                   </div>
@@ -558,7 +558,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
       {/* Footer Log (Collapsed by default, maybe show last command) */}
       <div className="h-6 bg-gray-950 border-t border-gray-900 text-[10px] text-gray-600 px-2 flex items-center select-none">
-        <span className="font-bold mr-2">LAST CMD:</span> {stats.lastCommand || 'READY'}
+        <span className="font-bold mr-2">最新指令 (LAST CMD):</span> {stats.lastCommand || '就绪 (READY)'}
       </div>
     </div>
   );
