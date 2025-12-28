@@ -799,12 +799,12 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             <section className="space-y-3">
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">相机模式 (Camera Mode)</h3>
               <div className="grid grid-cols-2 gap-2">
-                {(['firstPerson', 'thirdPerson', 'isometric', 'topDown'] as CameraMode[]).map(m => {
+                {(['firstPerson', 'thirdPerson', 'isometric', 'sidescroll'] as CameraMode[]).map(m => {
                   const names: Record<string, string> = {
                     firstPerson: '第一人称 (FPS)',
                     thirdPerson: '第三人称 (TPS)',
                     isometric: '上帝视角 (ISO)',
-                    topDown: '俯视 (Top)'
+                    sidescroll: '横板卷轴 (Side)' // 🔥 Restored Side-Scroller
                   };
                   return (
                     <button key={m} onClick={() => handleCameraModeChange(m)} className={`py-4 rounded border font-bold text-[10px] ${cameraMode === m ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
@@ -822,9 +822,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   <label className="text-gray-500 block mb-1">视场角 (FOV)</label>
                   <input type="range" min="30" max="120" value={fov} onChange={(e) => handleFovChange(parseFloat(e.target.value))} className="w-full accent-indigo-500" />
                 </div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">角色参数 (Character Config)</h3>
+              <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
                 <div>
                   <label className="text-gray-500 block mb-1">移动速度 (Speed)</label>
-                  <input type="range" min="1" max="50" value={moveSpeed} onChange={(e) => handleMoveSpeedChange(parseFloat(e.target.value))} className="w-full accent-indigo-500" />
+                  <input type="range" min="1" max="50" value={moveSpeed} onChange={(e) => handleMoveSpeedChange(parseFloat(e.target.value))} className="w-full accent-green-500" />
                 </div>
                 <div>
                   <label className="text-gray-500 block mb-1">力度倍率 (Force Multiplier)</label>

@@ -78,7 +78,7 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
     // EffectComposer depends on .clone() which might be missing on some RenderTarget instances
     if (typeof renderTarget.clone !== 'function') {
       renderTarget.clone = function () {
-        return new THREE.WebGLRenderTarget(this.width, this.height, this.options).copy(this);
+        return new THREE.WebGLRenderTarget(this.width, this.height).copy(this);
       };
     }
 

@@ -59,6 +59,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // 实体引用
   private terrainEntity: Entity | null = null;
   private cameraEntity: Entity | null = null;
+  private playerEntity: Entity | null = null;
 
   // 状态维护
   private autoSaveInterval: number = 5000;
@@ -352,6 +353,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     if (cam) updater(cam);
   }
 
+
+
   private setCameraMode(mode: CameraMode) {
     this.updateCameraComponent(c => {
       c.mode = mode;
@@ -367,11 +370,74 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.currentContext = ValidationContext.CREATION;
       this.inputSystem.popContext(); // Ensure clean slate
       this.inputSystem.pushContext('orbit');
+
+      // Optional: Despawn player when going back to orbit? 
+      // User didn't ask, but it might be cleaner. Keeping it simple for now.
     } else {
       this.currentContext = ValidationContext.EXPERIENCE;
       this.inputSystem.popContext();
       this.inputSystem.pushContext('gameplay');
+
+      // 🔥 Auto-Spawn Player for Experience
+      if (!this.playerEntity) {
+        this.spawnPlayerCharacter();
+      }
+
+      // 🔥 Link Camera to Player
+      if (this.playerEntity && this.cameraEntity) {
+        const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+        if (cam) {
+          cam.targetEntityId = this.playerEntity.id;
+          // Set socket for FPS default
+          if (mode === 'firstPerson') cam.firstPersonSocket = 'Head';
+        }
+      }
     }
+  }
+
+  private spawnPlayerCharacter() {
+    if (this.playerEntity) return;
+
+    const id = `Player_${Date.now()}`;
+    const entity = this.entityManager.createEntity('Player', id);
+    this.playerEntity = entity;
+
+    // 1. Transform
+    const transform = new TransformComponent();
+    transform.position = [0, 5, 0]; // Drop from sky
+    this.entityManager.addComponent(entity.id, transform);
+
+    // 2. Physics (Dynamic Capsule)
+    const physics = new PhysicsComponent('dynamic');
+    // Fix: Size requires [number, number, number]. For capsule: [radius, height, 0]
+    physics.setCollider('capsule', [0.5, 1, 0], [0, 0.5, 0]);
+    physics.mass = 1.0;
+    // Lock Rotation X/Z to prevent tipping over (crucial for characters)
+    physics.lockRotation = [true, false, true];
+    physics.friction = 0.5;
+    this.entityManager.addComponent(entity.id, physics);
+
+    // 3. Visual (Green Glowing Capsule -> Cylinder Proxy)
+    const visual = new VisualComponent();
+    // Fix: 'capsule' not in GeometryData type, using 'cylinder' proxy
+    visual.geometry = { type: 'cylinder', parameters: { radius: 0.5, height: 1 } };
+    visual.material = { type: 'standard', color: '#00ff00', roughness: 0.3 };
+    visual.emissive = { color: '#00ff00', intensity: 2.0 }; // 🔥 Glowing Green
+    visual.castShadow = true;
+    this.entityManager.addComponent(entity.id, visual);
+
+    // 4. Sockets (Head for FPS)
+    // Fix: addSocket takes a Socket object, not 3 args. Rotation is [x,y,z] Euler.
+    entity.addSocket({
+      name: 'Head',
+      localTransform: {
+        position: [0, 0.8, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1]
+      }
+    });
+
+    console.log('🦸 Spawning Player Character:', entity.id);
   }
 
   private updateVegetationConfig(updater: (config: any) => boolean) {
