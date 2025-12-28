@@ -41,7 +41,8 @@ export enum EngineCommandType {
     // Physics & Gameplay
     SPAWN_PHYSICS_BOX = 'SPAWN_PHYSICS_BOX',
     SPAWN_CHARACTER = 'SPAWN_CHARACTER',
-    DESPAWN_CHARACTER = 'DESPAWN_CHARACTER', // 🔥 New Command
+    DESPAWN_CHARACTER = 'DESPAWN_CHARACTER',
+    TOGGLE_FLIGHT_MODE = 'TOGGLE_FLIGHT_MODE',
     APPLY_PHYSICS_EXPLOSION = 'APPLY_PHYSICS_EXPLOSION',
     TOGGLE_PHYSICS_DEBUG = 'TOGGLE_PHYSICS_DEBUG',
     TOGGLE_AUDIO_DEBUG = 'TOGGLE_AUDIO_DEBUG',
@@ -90,7 +91,8 @@ export interface FlattenTerrainPayload { type: EngineCommandType.FLATTEN_TERRAIN
 
 export interface SpawnPhysicsBoxPayload { type: EngineCommandType.SPAWN_PHYSICS_BOX; }
 export interface SpawnCharacterPayload { type: EngineCommandType.SPAWN_CHARACTER; }
-export interface DespawnCharacterPayload { type: EngineCommandType.DESPAWN_CHARACTER; } // 🔥 Added Payload
+export interface DespawnCharacterPayload { type: EngineCommandType.DESPAWN_CHARACTER; }
+export interface ToggleFlightModePayload { type: EngineCommandType.TOGGLE_FLIGHT_MODE; enabled: boolean; }
 export interface ApplyExplosionPayload {
     type: EngineCommandType.APPLY_PHYSICS_EXPLOSION;
     position: [number, number, number];
@@ -133,7 +135,8 @@ export type EngineCommand =
     | FlattenTerrainPayload
     | SpawnPhysicsBoxPayload
     | SpawnCharacterPayload
-    | DespawnCharacterPayload // 🔥 Added to Union
+    | DespawnCharacterPayload
+    | ToggleFlightModePayload
     | ApplyExplosionPayload
     | TogglePhysicsDebugPayload
     | ToggleAudioDebugPayload

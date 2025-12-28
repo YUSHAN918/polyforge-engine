@@ -231,6 +231,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SPAWN_CHARACTER:
         this.spawnPlayerCharacter();
         break;
+      case EngineCommandType.DESPAWN_CHARACTER:
+        this.despawnPlayerCharacter();
+        break;
+      case EngineCommandType.TOGGLE_FLIGHT_MODE:
+        this.toggleFlightMode(command.enabled);
+        break;
       case EngineCommandType.APPLY_PHYSICS_EXPLOSION:
         this.physicsSystem.applyExplosion(command.position, command.force, command.radius);
         break;
@@ -467,9 +473,35 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     }
 
-    this.playerEntity.destroy();
+    this.entityManager.destroyEntity(this.playerEntity.id);
     this.playerEntity = null;
     console.log('👋 Despawning Player Character');
+  }
+
+  private toggleFlightMode(enabled: boolean) {
+    if (!this.playerEntity) return;
+
+    // Physics Component
+    const physics = this.playerEntity.getComponent<PhysicsComponent>('Physics');
+    if (physics) {
+      physics.useGravity = !enabled; // Flight = No Gravity
+      physics.linearDamping = enabled ? 5.0 : 0.01; // High damping for air control
+
+      // Update Rapier
+      const rigidBody = this.physicsSystem.getRigidBody(this.playerEntity.id);
+      if (rigidBody) {
+        rigidBody.setGravityScale(enabled ? 0.0 : 1.0, true);
+        rigidBody.setLinearDamping(enabled ? 5.0 : 0.0); // Keep damping consistent for now? Or user preference.
+
+        if (enabled) {
+          // 🔥 Lift off!
+          const currentPos = rigidBody.translation();
+          rigidBody.setTranslation({ x: currentPos.x, y: currentPos.y + 1.5, z: currentPos.z }, true);
+          rigidBody.setLinvel({ x: 0, y: 2, z: 0 }, true); // Gentle upward impulse
+        }
+      }
+    }
+    console.log(`✈️ Flight Mode: ${enabled ? 'ON' : 'OFF'}`);
   }
 
   private updateVegetationConfig(updater: (config: any) => boolean) {

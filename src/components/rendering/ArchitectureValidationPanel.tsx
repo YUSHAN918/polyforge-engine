@@ -64,6 +64,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [exposure, setExposure] = useState(1.0);
   const [moveSpeed, setMoveSpeed] = useState(10.0);
   const [forceMultiplier, setForceMultiplier] = useState(25.0);
+  const [flightMode, setFlightMode] = useState(false); // 🔥 Added State
 
   // World Controls
   const [grassScale, setGrassScale] = useState(1.0);
@@ -841,6 +842,21 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                     className="flex-1 py-2 bg-red-900/40 border border-red-500/30 text-red-400 rounded hover:bg-red-800/40 transition-colors font-bold text-[10px] uppercase flex items-center justify-center gap-2"
                   >
                     <i className="fas fa-user-times"></i> 删除 (Delete)
+                  </button>
+                </div>
+
+                {/* Flight Mode Toggle */}
+                <div className="flex items-center justify-between bg-gray-950/50 p-2 rounded">
+                  <span className="text-gray-400 text-[10px] font-bold uppercase">飞行模式 (Flight Mode)</span>
+                  <button
+                    onClick={() => {
+                      const newState = !flightMode;
+                      setFlightMode(newState);
+                      dispatch(EngineCommandType.TOGGLE_FLIGHT_MODE, { enabled: newState });
+                    }}
+                    className={`w-8 h-4 rounded-full transition-colors relative ${flightMode ? 'bg-cyan-600' : 'bg-gray-700'}`}
+                  >
+                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${flightMode ? '1.1rem' : '0.125rem'}`} style={{ left: flightMode ? '1.1rem' : '0.125rem' }}></div>
                   </button>
                 </div>
 

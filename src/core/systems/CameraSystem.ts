@@ -281,55 +281,61 @@ export class CameraSystem implements System {
       // 🔥 Sidescroll: 锁定为世界坐标 X 轴移动
       // A -> Left (-X), D -> Right (+X), W/S -> Ignored (or Z depth if needed)
       if (this.inputSystem.isActionPressed('MOVE_LEFT')) dx = -1;
-      if (this.inputSystem.isActionPressed('MOVE_RIGHT')) dx = 1;
-      // Optional: Allow Depth movement with W/S? For now, stick to 2D classic.
-      // if (this.inputSystem.isActionPressed('MOVE_FORWARD')) dz = -1;
-      // if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) dz = 1;
     } else {
       // 🔥 FPS/TPS/Isometric: 基于相机 Yaw 的移动
+      // 投影到地面 (Y=0) 的相机极坐标转换
       const moveYaw = camera.yaw * Math.PI / 180;
+      const sin = Math.sin(moveYaw);
+      const cos = Math.cos(moveYaw);
+
+      // 参照系说明 (Camera Forward is -Z when Yaw=0):
+      // Forward:  (-sin, -cos)
+      // Backward: (sin, cos)
+      // Left:     (-cos, sin)
+      // Right:    (cos, -sin)
 
       if (this.inputSystem.isActionPressed('MOVE_FORWARD')) {
-        dx -= Math.sin(moveYaw); dz -= Math.cos(moveYaw);
+        dx -= sin; dz -= cos;
       }
       if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) {
-        dx += Math.sin(moveYaw); dz += Math.cos(moveYaw);
+        dx += sin; dz += cos;
       }
       if (this.inputSystem.isActionPressed('MOVE_LEFT')) {
-        dx -= Math.cos(moveYaw); dz += Math.sin(moveYaw);
+        dx -= cos; dz += sin;
       }
       if (this.inputSystem.isActionPressed('MOVE_RIGHT')) {
-        dx += Math.cos(moveYaw); dz -= Math.sin(moveYaw);
+        dx += cos; dz -= sin;
       }
     }
+
+    // 🔥 Normalize Vector (Fix "Fast Diagonal" issue)
+    const length = Math.sqrt(dx * dx + dz * dz);
+    if (length > 0.001) {
+      dx /= length;
+      dz /= length;
+    }
+
+    // 应用速度 (Logic Scale)
+    // Speed Slider (moveSpeed) -> Velocity Magnitude
+    const speed = camera.moveSpeed || 10.0;
 
     // 应用移动
     const physics = (targetEntity as Entity).getComponent('Physics');
     if (physics && this.physicsSystem) {
-      const forceMultiplier = camera.forceMultiplier || 25.0;
-      // 保持原有 Y 速度 (重力)，只修改 X/Z
-      // 注意：直接 setLinearVelocity 会覆盖 Y。需要获取当前 velocity?
-      // Rapier 允许我们只设置部分吗？PolyForge PhysicsSystem 封装是 setLinearVelocity(x,y,z)。
-      // 这是一个潜在问题：如果我们设 Y=0，重力就没了？
-      // PhysicsSystem.setLinearVelocity 实现： rigidBody.setLinvel({ x, y, z }, true); 
-      // 确实会覆盖。
-
       // ✅ 修正：获取当前速度，保留 Y
       const currentVel = this.physicsSystem.getRigidBody((targetEntity as Entity).id)?.linvel();
       const currentY = currentVel ? currentVel.y : 0;
 
       this.physicsSystem.setLinearVelocity(
         (targetEntity as Entity).id,
-        dx * forceMultiplier,
-        currentY, // Keep Gravity
-        dz * forceMultiplier
+        dx * speed, // Use Speed Slider directly
+        currentY,
+        dz * speed
       );
     } else {
       // 非物理移动 (Fallback)
       const transform = (targetEntity as Entity).getComponent<TransformComponent>('Transform');
       if (transform) {
-        const speed = (camera.moveSpeed || 10.0) * deltaTime;
-        transform.position[0] += dx * speed;
         transform.position[2] += dz * speed;
         transform.markLocalDirty();
       }
@@ -518,26 +524,31 @@ export class CameraSystem implements System {
       ? target.getComponent<TransformComponent>('Transform')?.getWorldPosition() || [0, 0, 0]
       : [0, 0, 0];
 
-    // 固定俯仰角（45度）和偏航角（45度）
-    // 🔥 修正：使用正 45 度从斜上方俯视，而非 -45 度从地底仰视
-    const pitch = 45;
-    const yaw = 45;
+    // 🔥 制作人提示：纠正方向乱跳。Isometric 模式应使用组件自身的参数，
+    // 这样 handleInputs 修改的 camera.yaw 才能与 updateCharacterControl 保持一致。
+    const pitch = 45; // Isometric 俯视通常固定 45 度，或者使用 camera.pitch
+    const yaw = camera.yaw; // 使用组件 Yaw，保证 WASD 逻辑一致
     const distance = camera.distance;
 
     const pitchRad = pitch * Math.PI / 180;
     const yawRad = yaw * Math.PI / 180;
 
-    const x = targetPos[0] + camera.pivotOffset[0] + distance * Math.cos(pitchRad) * Math.sin(yawRad);
-    const y = targetPos[1] + camera.pivotOffset[1] + distance * Math.sin(pitchRad);
-    const z = targetPos[2] + camera.pivotOffset[2] + distance * Math.cos(pitchRad) * Math.cos(yawRad);
+    // 相机位置 (围绕目标点旋转)
+    const x = targetPos[0] + distance * Math.cos(pitchRad) * Math.sin(yawRad);
+    const y = targetPos[1] + distance * Math.sin(pitchRad);
+    const z = targetPos[2] + distance * Math.cos(pitchRad) * Math.cos(yawRad);
 
-    // 🔥 Update Pivot for interpolation
-    const pivotX = targetPos[0] + camera.pivotOffset[0];
-    const pivotY = targetPos[1] + camera.pivotOffset[1];
-    const pivotZ = targetPos[2] + camera.pivotOffset[2];
+    // 🔥 Pivot: 看向目标实体的中心
+    const pivotX = targetPos[0];
+    const pivotY = targetPos[1] + 1.0; // 稍微抬高看向头部
+    const pivotZ = targetPos[2];
 
-    this.targetState.position = [x, y, z];
-    this.targetState.rotation = [-pitch, yaw, 0]; // 旋转角度需要负数来向下看
+    this.targetState.position = [
+      x + camera.pivotOffset[0],
+      y + camera.pivotOffset[1],
+      z + camera.pivotOffset[2]
+    ];
+    this.targetState.rotation = [-pitch, yaw, 0];
     this.targetState.pivot = [pivotX, pivotY, pivotZ];
 
     // 锁定 Y 轴旋转
