@@ -140,7 +140,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     switch (command.type) {
       // --- Environment ---
       case EngineCommandType.SET_TIME_OF_DAY:
-        this.worldStateManager.setTimeOfDay(command.hour);
+        this.worldStateManager.setTimeOfDay(command.hour); // 恢复自动光照更新
         break;
       case EngineCommandType.SET_LIGHT_INTENSITY:
         this.worldStateManager.setLightIntensity(command.intensity);
@@ -410,7 +410,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         // Validation specific overrides
         if (type === 'flower') {
           veg.config.baseColor = '#ff69b4'; // Default Pink
-          veg.config.scale = 1.5;
+          // 🔥 修复:不再硬编码 scale,使用 VegetationSystem 的全局缩放值
+          // veg.config.scale = 1.5; // ❌ 移除硬编码
         }
         veg.markDirty();
       }

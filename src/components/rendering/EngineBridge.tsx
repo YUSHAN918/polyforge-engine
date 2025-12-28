@@ -371,6 +371,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   const [rootEntities, setRootEntities] = useState<Entity[]>([]);
   const [worldState, setWorldState] = useState<any>(null);
   const [hdrEnvMap, setHdrEnvMap] = useState<THREE.Texture | null>(null);
+  const [sunPosition, setSunPosition] = useState<[number, number, number]>([20, 20, 10]); // 🔥 修复:使用 state 管理太阳位置
 
   const { scene, gl, camera } = useThree();
   const sunLightRef = useRef<THREE.DirectionalLight>(null);
@@ -641,13 +642,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     loadHDR();
   }, [scene, gl]);
 
-  // 计算太阳位置（用于同步光照和天空背景）
-  const time = worldState?.timeOfDay || 12;
-  const sunAngle = ((time - 6) / 12) * Math.PI;
-  const sunX = Math.cos(sunAngle) * 20;
-  const sunY = Math.sin(sunAngle) * 20;
-
-  // 🔥 主渲染循环：神经合龙（ECS → R3F 相机强制同步）
+  // 🔥 主渲染循环:神经合龙(ECS → R3F 相机强制同步)
   useFrame((state, delta) => {
     // 🎮 调用 ECS 更新循环（关键！）
     if (archValidationManager) {
@@ -663,10 +658,17 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       }
     }
 
-    // 更新太阳光照（塞尔达式光影联动）
+    // 更新太阳光照(塞尔达式光影联动)
     if (!worldState || !sunLightRef.current) return;
 
+    // 🔥 修复:每帧根据最新时间计算太阳位置,防止阴影分界线
+    const time = worldState.timeOfDay || 12;
+    const sunAngle = ((time - 6) / 12) * Math.PI;
+    const sunX = Math.cos(sunAngle) * 20;
+    const sunY = Math.sin(sunAngle) * 20;
+
     sunLightRef.current.position.set(sunX, Math.max(sunY, 1), 10);
+    setSunPosition([sunX, sunY, 10]); // 🔥 修复:更新 state 供 Sky 组件使用
 
     // 🔥 环境自适应联动：让 HDR 环境光随昼夜变化
     // 三分律：中午(12:00)最亮，黄昏(18:00)变橘，深夜(0:00)漆黑
@@ -738,7 +740,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
           <color attach="background" args={['#1a2a44']} /> {/* 深蓝底色 */}
           <Sky
             distance={450000}
-            sunPosition={[sunX, sunY, 10]}
+            sunPosition={sunPosition}
             inclination={0}
             azimuth={0.25}
           />

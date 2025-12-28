@@ -101,9 +101,12 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
         shader.uniforms.windStrength.value = veg.config.windStrength || 0.1;
         shader.uniforms.uGlobalScale.value = veg.config.scale || 1.0;
 
-        // 🎨 额外惊喜：同步草地基础颜色
+        // 🎨 额外惊喜:同步草地基础颜色
         if (customMaterial.color.getHexString() !== new THREE.Color(veg.config.baseColor).getHexString()) {
           customMaterial.color.set(veg.config.baseColor);
+          // 🔥 修复:换色时同步更新 emissive,保持泛光效果
+          const baseColor = new THREE.Color(veg.config.baseColor);
+          customMaterial.emissive.set(baseColor).multiplyScalar(0.15); // 15% 的基础色作为自发光
         }
       }
     }
