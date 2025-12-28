@@ -78,6 +78,20 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'models' | 'audio' | 'environments' | 'textures'>('all');
   const [assetViewMode, setAssetViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
 
+  // 🔥 UX Polish States
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('Processing...');
+  const [showConfirm, setShowConfirm] = useState<{ message: string, onConfirm: () => void } | null>(null);
+  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Auto-dismiss notification
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   const fpsRef = useRef<HTMLSpanElement>(null);
   const lastTimeRef = useRef(performance.now());
   const frameCountRef = useRef(0);
@@ -267,13 +281,52 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const handleRedo = () => dispatch(EngineCommandType.REDO);
   const handleSave = () => dispatch(EngineCommandType.SAVE_SCENE);
   const handleReset = () => dispatch(EngineCommandType.RESET_SCENE);
-  const handleExportBundle = () => {
+  // --- Bundling with Safety & UX ---
+  const handleExportBundle = async () => {
     const name = prompt('捆绑包名称 (Bundle Name):', 'MySceneLevel');
-    if (name) dispatch(EngineCommandType.EXPORT_BUNDLE, { name });
+    if (!name) return;
+
+    setIsLoading(true);
+    setLoadingText('正在打包导出 (Bundling)...');
+    try {
+      await dispatch(EngineCommandType.EXPORT_BUNDLE, { name });
+      setNotification({ message: `导出成功: ${name}.pfb`, type: 'success' });
+    } catch (err) {
+      console.error(err);
+      setNotification({ message: '导出失败 (Export Failed)', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
   const handleImportBundle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) dispatch(EngineCommandType.IMPORT_BUNDLE, { file });
+    if (!file) return;
+
+    // 清空 input 使得同一个文件可以再次选择
+    e.target.value = '';
+
+    setShowConfirm({
+      message: '确定要导入该生态包吗？当前场景将被覆盖。\n(Import this bundle? Current scene will be overwritten.)',
+      onConfirm: async () => {
+        setIsLoading(true);
+        setLoadingText('正在解析生态包 (Parsing Bundle)...');
+        try {
+          await dispatch(EngineCommandType.IMPORT_BUNDLE, { file });
+          setNotification({ message: '导入成功 (Import Complete)', type: 'success' });
+          // Force refresh world state UI
+          if (manager) {
+            const state = manager.getEnvironmentState();
+            setGravityY(state.gravityY);
+          }
+        } catch (err) {
+          console.error(err);
+          setNotification({ message: '导入失败 (Import Failed)', type: 'error' });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
   };
 
   // New Asset Imports (using registry)
@@ -814,6 +867,60 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       <div className="h-6 bg-gray-950 border-t border-gray-900 text-[10px] text-gray-600 px-2 flex items-center select-none">
         <span className="font-bold mr-2">最新指令 (LAST CMD):</span> {stats.lastCommand || '就绪 (READY)'}
       </div>
+
+      {/* --- UX Overlays --- */}
+
+      {/* 1. Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fadeIn">
+          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <span className="text-indigo-400 font-bold tracking-widest text-[10px] uppercase animate-pulse">{loadingText}</span>
+        </div>
+      )}
+
+      {/* 2. Confirmation Modal */}
+      {showConfirm && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fadeIn">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 shadow-2xl max-w-sm w-full">
+            <h3 className="text-orange-500 font-bold uppercase tracking-wider mb-2 flex items-center">
+              <i className="fas fa-exclamation-triangle mr-2"></i> 警告 (Warning)
+            </h3>
+            <p className="text-gray-300 text-[11px] mb-6 whitespace-pre-line leading-relaxed">
+              {showConfirm.message}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowConfirm(null)}
+                className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded text-[10px] font-bold uppercase"
+              >
+                取消 (Cancel)
+              </button>
+              <button
+                onClick={() => {
+                  showConfirm.onConfirm();
+                  setShowConfirm(null);
+                }}
+                className="flex-1 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-500/30 text-red-400 rounded text-[10px] font-bold uppercase"
+              >
+                确认 (Confirm)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Notification Toast */}
+      {notification && (
+        <div className={`absolute top-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full shadow-xl border backdrop-blur-md flex items-center gap-2 animate-slideDown z-50 ${notification.type === 'success' ? 'bg-green-900/80 border-green-500/50 text-green-300' :
+            notification.type === 'error' ? 'bg-red-900/80 border-red-500/50 text-red-300' :
+              'bg-blue-900/80 border-blue-500/50 text-blue-300'
+          }`}>
+          <i className={`fas ${notification.type === 'success' ? 'fa-check-circle' :
+              notification.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'
+            }`}></i>
+          <span className="text-[10px] font-bold">{notification.message}</span>
+        </div>
+      )}
     </div>
   );
 };

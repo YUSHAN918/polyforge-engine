@@ -75,7 +75,7 @@ export class PhysicsSystem implements System {
         entities.forEach((entity: Entity) => this.onEntityAdded(entity));
       }
 
-      console.log(`  Gravity: [${this.gravity.join(', ')}]`);
+      // console.log(`  Gravity: [${this.gravity.join(', ')}]`);
     } catch (error) {
       console.error('Failed to initialize PhysicsSystem:', error);
       this.enabled = false;
@@ -89,7 +89,7 @@ export class PhysicsSystem implements System {
     this.gravity = [x, y, z];
     if (this.world) {
       this.world.gravity = { x, y, z };
-      console.log(`✓ Gravity updated: [${x}, ${y}, ${z}]`);
+      // console.log(`✓ Gravity updated: [${x}, ${y}, ${z}]`);
     }
   }
 
@@ -109,7 +109,7 @@ export class PhysicsSystem implements System {
 
     // 🔥 初始位置同步
     this.syncTransformToPhysics(entity);
-    console.log(`✓ RigidBody created and synced for entity: ${entity.id}`);
+    // console.log(`✓ RigidBody created and synced for entity: ${entity.id}`);
   }
 
   /**

@@ -56,6 +56,9 @@ export class VegetationSystem implements System {
   // 植被全局缩放（用于新批次同步）
   private globalScale: number = 1.0;
 
+  // 🔥 PERFORMANCE: Dirty set to track entities needing matrix updates
+  private dirtyEntities: Set<string> = new Set();
+
   constructor(worldStateManager?: WorldStateManager) {
     this.worldStateManager = worldStateManager;
   }
@@ -72,6 +75,7 @@ export class VegetationSystem implements System {
    */
   registerMesh(entityId: string, mesh: THREE.InstancedMesh): void {
     this.meshMap.set(entityId, mesh);
+    this.dirtyEntities.add(entityId); // 🔥 Mark as dirty for initial injection
     // console.log(`[VegetationSystem] 🔥 Mesh registered for Entity ${entityId}`);
   }
 
@@ -106,6 +110,9 @@ export class VegetationSystem implements System {
         const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
         if (vegetation) {
           vegetation.config.scale = targetGlobalScale;
+          // Scale update might need matrix update if not handled by shader
+          // But usually we regenerate or shader handles it. 
+          // For now, let's assume shader or regen handles it.
         }
       }
     }
@@ -127,8 +134,9 @@ export class VegetationSystem implements System {
     }
 
     // 🔥 架构剥离：物理灌入矩阵 (多 Mesh 遍历)
-    if (this.meshMap.size > 0 && this.instanceCache.size > 0) {
-      this.injectMatricesToMesh();
+    // Only update meshes that are marked as dirty
+    if (this.dirtyEntities.size > 0) {
+      this.flushDirtyMeshes();
     }
   }
 
@@ -136,13 +144,15 @@ export class VegetationSystem implements System {
    * 🔥 架构剥离：物理灌入矩阵 (多 Mesh)
    * 支持多实体、多 Mesh 独立灌入，解决渲染覆盖 Bug
    */
-  private injectMatricesToMesh(): void {
+  private flushDirtyMeshes(): void {
     const dummy = new THREE.Object3D();
 
-    // 遍历所有缓存的实例数据
-    for (const [entityId, instances] of this.instanceCache.entries()) {
+    // 遍历所有 dirty 的实体
+    for (const entityId of this.dirtyEntities) {
+      const instances = this.instanceCache.get(entityId);
       const mesh = this.meshMap.get(entityId);
-      if (!mesh) continue;
+
+      if (!mesh || !instances) continue;
 
       const entity = this.entityManager.getEntity(entityId);
       if (!entity) continue;
@@ -157,6 +167,9 @@ export class VegetationSystem implements System {
         dummy.position.copy(instance.position);
         dummy.rotation.y = instance.rotation;
         dummy.scale.copy(instance.scale);
+
+        // Apply Global Scale if CPU side is needed (assuming instance.scale is base variation)
+        // dummy.scale.multiplyScalar(vegetation.config.scale || 1.0);
 
         dummy.updateMatrix();
         this._tempMatrix.copy(dummy.matrix);
@@ -179,6 +192,9 @@ export class VegetationSystem implements System {
         mesh.instanceColor.needsUpdate = true;
       }
     }
+
+    // Clear dirty set after processing
+    this.dirtyEntities.clear();
   }
 
   onEntityAdded(entity: any): void {
@@ -292,6 +308,9 @@ export class VegetationSystem implements System {
 
     // 🔥 关键：递增版本号，打破引用不变的魔咒
     vegetation.version++;
+
+    // Mark as dirty for mesh update
+    this.dirtyEntities.add(entity.id);
 
     // 🔥 调试日志：检查前几个实例的位置
     // if (instances.length > 0) {
@@ -498,6 +517,7 @@ export class VegetationSystem implements System {
       density: actualDensity,
       type: VegetationType.FLOWER,
       seed: Math.random() * 10000,
+      scale: this.globalScale, // 🔥 Fix: Inherit global scale to avoid resetting it
       minHeight: 0.2,
       maxHeight: 0.5,
       minWidth: 0.1,

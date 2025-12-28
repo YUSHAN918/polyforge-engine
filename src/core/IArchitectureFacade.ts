@@ -32,7 +32,7 @@ export interface IArchitectureFacade {
     /**
      * 核心交互入口：分发指令
      */
-    dispatch(command: EngineCommand): void;
+    dispatch(command: EngineCommand): Promise<void>;
 
     /**
      * 获取环境状态快照 (只读)

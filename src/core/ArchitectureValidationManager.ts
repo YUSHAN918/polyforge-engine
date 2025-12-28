@@ -138,7 +138,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // console.log(`⚡ Dispatching: ${command.type}`, command); // Debug log
     // 记录到历史栈 (除了 UNDO/REDO)
     if (command.type !== EngineCommandType.UNDO && command.type !== EngineCommandType.REDO) {
-      this.commandManager.execute(command);
+      // ⚠️ FIXME: EngineCommand is a raw data payload, not an ICommand object with execute/undo methods.
+      // We cannot pass it directly to CommandManager. To support Undo/Redo for these, we need to wrap them.
+      // this.commandManager.execute(command);
     }
 
     // 执行命令
@@ -480,16 +482,16 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Visual
     const visual = new VisualComponent();
     visual.geometry = { type: 'box', parameters: { width: 1, height: 1, depth: 1 } };
-    // 🔥 美学回归：使用深蓝色材质
-    visual.material = { type: 'standard', color: '#3498db', metalness: 0.1, roughness: 0.2 };
-    // 🔥 灵魂注入：青蓝色自发光，增强科幻感
-    visual.emissive = { color: '#00aaff', intensity: 1.5 };
+    // 🔥 美学回归：正蓝色
+    visual.material = { type: 'standard', color: '#0000FF', metalness: 0.1, roughness: 0.2 };
+    // 无自发光
+    visual.emissive = { color: '#000000', intensity: 0 };
     visual.castShadow = true;
     visual.visible = true;
-    visual.postProcessing = { bloom: true, outline: false }; // 启用辉光
+    visual.postProcessing = { bloom: false, outline: false }; // 禁用辉光
     this.entityManager.addComponent(entity.id, visual);
 
-    console.log('🌌 Spawning Blue Gravity Cube:', entity.id);
+    // console.log('🌌 Spawning Blue Gravity Cube:', entity.id);
   }
 
   private async exportBundle(name: string) {
