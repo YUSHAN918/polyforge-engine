@@ -285,6 +285,9 @@ export class PhysicsSystem implements System {
       transform.rotation[0] = euler[0];
       transform.rotation[1] = euler[1];
       transform.rotation[2] = euler[2];
+
+      // 🔥 Force update matrix so Camera can read new position
+      transform.markLocalDirty();
     }
   }
 

@@ -505,8 +505,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // Zoom Out to 100
     cam.distance = 100;
-    cam.mode = 'orbit';
-    console.log('🔓 Camera Unbound & Zoomed-Out to 100');
+    // 🔥 Fix: Switch to Isometric (God View) instead of Orbit (Editor View) to prevent free rotation
+    cam.mode = 'isometric';
+    console.log('🔓 Camera Unbound & Zoomed-Out to 100 (Isometric Mode)');
   }
 
   public getSpawnButtonState(): 'Spawn' | 'Bind' | 'Unbind' {

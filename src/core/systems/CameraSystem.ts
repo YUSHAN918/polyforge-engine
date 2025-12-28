@@ -266,12 +266,14 @@ export class CameraSystem implements System {
     const mouseDelta = this.inputSystem.mouseDelta;
     const pressedButtons = this.inputSystem.pressedButtons || new Set();
 
-    // 1. 视角旋转 (通用逻辑，Sidescroll 除外)
+    // 1. 视角旋转 (通用逻辑，Sidescroll 和 Isometric 禁止自由旋转)
     // 🔥 Remove Right Click (Button 2) support to avoid browser conflict
-    const canRotate = camera.mode !== 'sidescroll';
+    // 🔥 Disable Rotation for Isometric (Fixed Angle Strategy)
+    const canRotate = camera.mode !== 'sidescroll' && camera.mode !== 'isometric';
     if (canRotate && pressedButtons.has(1)) {
       if (mouseDelta && (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0)) {
-        camera.yaw -= mouseDelta.x * 0.3;
+        // 🔥 Fix: Invert Rotation Direction (Move Mouse Right -> Rotate Right -> Increase Yaw)
+        camera.yaw += mouseDelta.x * 0.3;
         if (camera.mode !== 'isometric') {
           camera.pitch -= mouseDelta.y * 0.3;
           camera.pitch = Math.max(-85, Math.min(85, camera.pitch));
@@ -578,9 +580,15 @@ export class CameraSystem implements System {
     // 🎮 处理输入 (只支持缩放)
     // this.handleInputs(camera, deltaTime); // Handled once at the beginning of update
 
-    const targetPos = target
-      ? target.getComponent<TransformComponent>('Transform')?.getWorldPosition() || [0, 0, 0]
-      : [0, 0, 0];
+    let targetPos: [number, number, number] = [0, 0, 0];
+    if (target) {
+      const t = target.getComponent<TransformComponent>('Transform');
+      if (t) {
+        // 🔥 Fix: Use raw position for root entities to avoid HierarchySystem latency/stale matrix
+        // Player is usually a root entity.
+        targetPos = (target.parent && t.getWorldPosition) ? t.getWorldPosition() : t.position;
+      }
+    }
 
     // 🔥 制作人提示：纠正方向乱跳。Isometric 模式应使用组件自身的参数，
     // 这样 handleInputs 修改的 camera.yaw 才能与 updateCharacterControl 保持一致。
@@ -597,9 +605,14 @@ export class CameraSystem implements System {
     const pivotZ = targetPos[2];
 
     // 相机位置 (围绕目标点旋转)
+    // 🔥 Force Pitch to 45 or 30 for strict ISO look? 
+    // User requested "Isometric", usually implies fixed pitch. Let's stick to camera.pitch but input is disabled.
+    // If logic above disabled input, then camera.pitch stays constant.
     const x = distance * Math.cos(pitchRad) * Math.sin(yawRad);
     const y = distance * Math.sin(pitchRad);
     const z = distance * Math.cos(pitchRad) * Math.cos(yawRad);
+
+
 
     // 最终状态：将 pivotOffset 应用于整体 (跟随模式下为 0)
     this.targetState.pivot = [
