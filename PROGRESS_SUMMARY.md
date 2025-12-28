@@ -204,6 +204,13 @@
 - ✅ **API 对齐 (12-28)** - 补全 `IArchitectureFacade` 缺失的 Getter
 - ✅ **UI 本地化 (12-28)** - 观测窗口全中文界面实装
 
+### ✅ Phase 15: Character & Camera Mechanics 角色与相机机制重构
+- ✅ **相机三态逻辑 (Tri-State Layout)** - Spawn (生成) -> Unbind (释放/God View) -> Bind (锁定/Combat View)
+- ✅ **万能控制 (Universal Control)** - WASD 始终控制角色，无论相机处于何种模式
+- ✅ **上帝视角铁律 (Strict ISO)** - ISO 模式严禁旋转，解绑后变为可平移的上帝视角
+- ✅ **物理同步修复 (Physics Sync)** - 修复 PhysicsSystem 脏标记缺失导致的镜头跟随失效
+- ✅ **交互校正** - 修正旋转反向、移除右键冲突、优化 FPS/TPS 逻辑
+
 ---
 
 ## 🔧 核心架构特性
