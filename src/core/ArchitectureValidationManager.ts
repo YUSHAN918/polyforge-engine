@@ -228,6 +228,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SPAWN_PHYSICS_BOX:
         this.spawnPhysicsBox();
         break;
+      case EngineCommandType.SPAWN_CHARACTER:
+        this.spawnPlayerCharacter();
+        break;
       case EngineCommandType.APPLY_PHYSICS_EXPLOSION:
         this.physicsSystem.applyExplosion(command.position, command.force, command.radius);
         break;
@@ -378,12 +381,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.inputSystem.popContext();
       this.inputSystem.pushContext('gameplay');
 
-      // 🔥 Auto-Spawn Player for Experience
-      if (!this.playerEntity) {
-        this.spawnPlayerCharacter();
-      }
+      // 🔥 Auto-Spawn Removed (User Request)
+      // if (!this.playerEntity) {
+      //   this.spawnPlayerCharacter();
+      // }
 
-      // 🔥 Link Camera to Player
+      // Link Camera if player exists
       if (this.playerEntity && this.cameraEntity) {
         const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
         if (cam) {
@@ -396,7 +399,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private spawnPlayerCharacter() {
-    if (this.playerEntity) return;
+    if (this.playerEntity) {
+      console.warn('Player already exists!');
+      return;
+    }
 
     const id = `Player_${Date.now()}`;
     const entity = this.entityManager.createEntity('Player', id);
@@ -437,7 +443,33 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     });
 
+    // 🔥 Auto-Link Camera if in Experience Mode
+    if (this.currentContext === ValidationContext.EXPERIENCE && this.cameraEntity) {
+      const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+      if (cam) {
+        cam.targetEntityId = this.playerEntity.id;
+        console.log('📷 Camera linked to new player');
+      }
+    }
+
     console.log('🦸 Spawning Player Character:', entity.id);
+  }
+
+  private despawnPlayerCharacter() {
+    if (!this.playerEntity) return;
+
+    // Unlink Camera first
+    if (this.cameraEntity) {
+      const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+      if (cam && cam.targetEntityId === this.playerEntity.id) {
+        cam.targetEntityId = null;
+        // Maybe reset lookat?
+      }
+    }
+
+    this.playerEntity.destroy();
+    this.playerEntity = null;
+    console.log('👋 Despawning Player Character');
   }
 
   private updateVegetationConfig(updater: (config: any) => boolean) {

@@ -248,9 +248,16 @@ export class CameraSystem implements System {
       }
     }
 
-    // 2. 分发到特定控制器
+    // 2. 统一角色控制逻辑 (Unified Character Control)
+    // 只要有目标实体，就允许控制（WASD），无论相机模式如何
+    if (camera.targetEntityId) {
+      this.updateCharacterControl(camera, deltaTime);
+    }
+
+    // 3. 分发到特定相机行为控制器 (Camera Behavior Only)
     if (camera.mode === 'firstPerson' || camera.mode === 'thirdPerson') {
-      this.updateKineticController(camera, deltaTime);
+      // FP/TP Camera Logic allows for rotation, covered by generic rotation above.
+      // Specific follow logic is in update*Mode methods.
     } else if (camera.mode === 'isometric') {
       this.updateStrategyController(camera, deltaTime);
     } else if (camera.mode === 'sidescroll') {
@@ -259,39 +266,66 @@ export class CameraSystem implements System {
   }
 
   /**
-   * 动力学控制器 (Kinetic): 处理 FPS/TPS WASD 物理位移
+   * 角色控制器 (Character Control): 通用 WASD 物理驱动
+   * 支持 FPS/TPS (基于 Yaw), Isometric (基于 Yaw), Sidescroll (基于 World X)
    */
-  private updateKineticController(camera: CameraComponent, deltaTime: number): void {
+  private updateCharacterControl(camera: CameraComponent, deltaTime: number): void {
     const targetEntity = camera.targetEntityId ? this.entityManager.getEntity(camera.targetEntityId) : null;
     if (!targetEntity) return;
 
     let dx = 0;
     let dz = 0;
-    const moveYaw = camera.yaw * Math.PI / 180;
 
-    if (this.inputSystem.isActionPressed('MOVE_FORWARD')) {
-      dx -= Math.sin(moveYaw); dz -= Math.cos(moveYaw);
-    }
-    if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) {
-      dx += Math.sin(moveYaw); dz += Math.cos(moveYaw);
-    }
-    if (this.inputSystem.isActionPressed('MOVE_LEFT')) {
-      dx -= Math.cos(moveYaw); dz += Math.sin(moveYaw);
-    }
-    if (this.inputSystem.isActionPressed('MOVE_RIGHT')) {
-      dx += Math.cos(moveYaw); dz -= Math.sin(moveYaw);
+    // 根据模式决定移动参照系
+    if (camera.mode === 'sidescroll') {
+      // 🔥 Sidescroll: 锁定为世界坐标 X 轴移动
+      // A -> Left (-X), D -> Right (+X), W/S -> Ignored (or Z depth if needed)
+      if (this.inputSystem.isActionPressed('MOVE_LEFT')) dx = -1;
+      if (this.inputSystem.isActionPressed('MOVE_RIGHT')) dx = 1;
+      // Optional: Allow Depth movement with W/S? For now, stick to 2D classic.
+      // if (this.inputSystem.isActionPressed('MOVE_FORWARD')) dz = -1;
+      // if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) dz = 1;
+    } else {
+      // 🔥 FPS/TPS/Isometric: 基于相机 Yaw 的移动
+      const moveYaw = camera.yaw * Math.PI / 180;
+
+      if (this.inputSystem.isActionPressed('MOVE_FORWARD')) {
+        dx -= Math.sin(moveYaw); dz -= Math.cos(moveYaw);
+      }
+      if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) {
+        dx += Math.sin(moveYaw); dz += Math.cos(moveYaw);
+      }
+      if (this.inputSystem.isActionPressed('MOVE_LEFT')) {
+        dx -= Math.cos(moveYaw); dz += Math.sin(moveYaw);
+      }
+      if (this.inputSystem.isActionPressed('MOVE_RIGHT')) {
+        dx += Math.cos(moveYaw); dz -= Math.sin(moveYaw);
+      }
     }
 
+    // 应用移动
     const physics = (targetEntity as Entity).getComponent('Physics');
     if (physics && this.physicsSystem) {
       const forceMultiplier = camera.forceMultiplier || 25.0;
+      // 保持原有 Y 速度 (重力)，只修改 X/Z
+      // 注意：直接 setLinearVelocity 会覆盖 Y。需要获取当前 velocity?
+      // Rapier 允许我们只设置部分吗？PolyForge PhysicsSystem 封装是 setLinearVelocity(x,y,z)。
+      // 这是一个潜在问题：如果我们设 Y=0，重力就没了？
+      // PhysicsSystem.setLinearVelocity 实现： rigidBody.setLinvel({ x, y, z }, true); 
+      // 确实会覆盖。
+
+      // ✅ 修正：获取当前速度，保留 Y
+      const currentVel = this.physicsSystem.getRigidBody((targetEntity as Entity).id)?.linvel();
+      const currentY = currentVel ? currentVel.y : 0;
+
       this.physicsSystem.setLinearVelocity(
         (targetEntity as Entity).id,
         dx * forceMultiplier,
-        0, // Keep Y as is (gravity)
+        currentY, // Keep Gravity
         dz * forceMultiplier
       );
     } else {
+      // 非物理移动 (Fallback)
       const transform = (targetEntity as Entity).getComponent<TransformComponent>('Transform');
       if (transform) {
         const speed = (camera.moveSpeed || 10.0) * deltaTime;
@@ -310,6 +344,9 @@ export class CameraSystem implements System {
     let dz = 0;
     const moveYaw = camera.yaw * Math.PI / 180;
 
+    // 🔥 Disable Camera WASD for Isometric Mode (User Request)
+    // Keys are reserved for Character Control now.
+    /*
     if (this.inputSystem.isActionPressed('MOVE_FORWARD')) {
       dx -= Math.sin(moveYaw); dz -= Math.cos(moveYaw);
     }
@@ -326,6 +363,7 @@ export class CameraSystem implements System {
     const panSpeed = camera.distance * 0.01;
     camera.pivotOffset[0] += dx * panSpeed;
     camera.pivotOffset[2] += dz * panSpeed;
+    */
   }
 
   /**

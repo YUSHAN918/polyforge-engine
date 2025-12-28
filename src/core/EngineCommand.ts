@@ -38,8 +38,10 @@ export enum EngineCommandType {
     CREATE_VALLEY = 'CREATE_VALLEY',
     FLATTEN_TERRAIN = 'FLATTEN_TERRAIN',
 
-    // Physics & Debug
+    // Physics & Gameplay
     SPAWN_PHYSICS_BOX = 'SPAWN_PHYSICS_BOX',
+    SPAWN_CHARACTER = 'SPAWN_CHARACTER',
+    DESPAWN_CHARACTER = 'DESPAWN_CHARACTER', // 🔥 New Command
     APPLY_PHYSICS_EXPLOSION = 'APPLY_PHYSICS_EXPLOSION',
     TOGGLE_PHYSICS_DEBUG = 'TOGGLE_PHYSICS_DEBUG',
     TOGGLE_AUDIO_DEBUG = 'TOGGLE_AUDIO_DEBUG',
@@ -87,6 +89,8 @@ export interface CreateValleyPayload { type: EngineCommandType.CREATE_VALLEY; }
 export interface FlattenTerrainPayload { type: EngineCommandType.FLATTEN_TERRAIN; }
 
 export interface SpawnPhysicsBoxPayload { type: EngineCommandType.SPAWN_PHYSICS_BOX; }
+export interface SpawnCharacterPayload { type: EngineCommandType.SPAWN_CHARACTER; }
+export interface DespawnCharacterPayload { type: EngineCommandType.DESPAWN_CHARACTER; } // 🔥 Added Payload
 export interface ApplyExplosionPayload {
     type: EngineCommandType.APPLY_PHYSICS_EXPLOSION;
     position: [number, number, number];
@@ -128,6 +132,8 @@ export type EngineCommand =
     | CreateValleyPayload
     | FlattenTerrainPayload
     | SpawnPhysicsBoxPayload
+    | SpawnCharacterPayload
+    | DespawnCharacterPayload // 🔥 Added to Union
     | ApplyExplosionPayload
     | TogglePhysicsDebugPayload
     | ToggleAudioDebugPayload

@@ -828,6 +828,22 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             <section className="space-y-3">
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">角色参数 (Character Config)</h3>
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
+                {/* Spawn/Despawn Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => dispatch(EngineCommandType.SPAWN_CHARACTER)}
+                    className="flex-1 py-2 bg-green-900/40 border border-green-500/30 text-green-400 rounded hover:bg-green-800/40 transition-colors font-bold text-[10px] uppercase flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-user-plus"></i> 生成 (Spawn)
+                  </button>
+                  <button
+                    onClick={() => dispatch(EngineCommandType.DESPAWN_CHARACTER)}
+                    className="flex-1 py-2 bg-red-900/40 border border-red-500/30 text-red-400 rounded hover:bg-red-800/40 transition-colors font-bold text-[10px] uppercase flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-user-times"></i> 删除 (Delete)
+                  </button>
+                </div>
+
                 <div>
                   <label className="text-gray-500 block mb-1">移动速度 (Speed)</label>
                   <input type="range" min="1" max="50" value={moveSpeed} onChange={(e) => handleMoveSpeedChange(parseFloat(e.target.value))} className="w-full accent-green-500" />
