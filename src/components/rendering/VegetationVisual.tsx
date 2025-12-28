@@ -2,6 +2,10 @@ import React, { useRef, useEffect, useMemo, useLayoutEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
+import { Entity } from '../../core/types';
+import { VegetationSystem } from '../../core/systems/VegetationSystem';
+import { VegetationComponent } from '../../core/components/VegetationComponent';
+
 /**
  * 🔥 稳定引用：Geometry 提取到组件外部
  * 避免每次渲染都创建新对象，防止 React 认为参数变化而重建 InstancedMesh
@@ -9,7 +13,12 @@ import { useFrame } from '@react-three/fiber';
 const GRASS_GEOMETRY = new THREE.PlaneGeometry(0.5, 1, 1, 4);
 GRASS_GEOMETRY.translate(0, 0.5, 0); // 🔥 关键修复：将几何体底座移至 Y=0，防止“半截入土”变成影子
 
-export const VegetationVisual = ({ entity, vegetationSystem }) => {
+interface VegetationVisualProps {
+  entity: Entity;
+  vegetationSystem: VegetationSystem;
+}
+
+export const VegetationVisual = ({ entity, vegetationSystem }: VegetationVisualProps) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
@@ -95,7 +104,7 @@ export const VegetationVisual = ({ entity, vegetationSystem }) => {
       const shader = customMaterial.userData.shader;
       shader.uniforms.time.value = state.clock.elapsedTime;
 
-      const veg = entity?.getComponent('Vegetation');
+      const veg = entity?.getComponent<VegetationComponent>('Vegetation');
       if (veg) {
         // 🔥 核心修复：直接从 ECS 组件每帧读取数值，无视 React 刷新机制
         shader.uniforms.windStrength.value = veg.config.windStrength || 0.1;
