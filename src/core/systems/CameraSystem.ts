@@ -210,6 +210,17 @@ export class CameraSystem implements System {
       camera.distance += wheelDelta * 0.05;
       camera.distance = Math.max(camera.minDistance, Math.min(camera.maxDistance, camera.distance));
     }
+
+    // 🌍 全局角色控制 (Global Character Control)
+    // 移出 if/else，确保在 Orbit 模式 (Unbound) 下也能控制角色
+    const controlledId = camera.controlledEntityId || camera.targetEntityId;
+    if (controlledId) {
+      // 如果正在跟随，强制归心
+      if (camera.targetEntityId) {
+        camera.pivotOffset.fill(0);
+      }
+      this.updateCharacterControl(camera, controlledId, deltaTime);
+    }
   }
 
   /**
@@ -238,7 +249,7 @@ export class CameraSystem implements System {
       }
     }
 
-    // 2. Rotation: Middle Click Only
+    // 2. Rotation: Middle Click Only (Fixed: Removed Right Click/Button 2)
     if (pressedButtons.has(1)) {
       if (mouseDelta && (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0)) {
         camera.yaw -= mouseDelta.x * 0.3;
@@ -256,8 +267,9 @@ export class CameraSystem implements System {
     const pressedButtons = this.inputSystem.pressedButtons || new Set();
 
     // 1. 视角旋转 (通用逻辑，Sidescroll 除外)
+    // 🔥 Remove Right Click (Button 2) support to avoid browser conflict
     const canRotate = camera.mode !== 'sidescroll';
-    if (canRotate && (pressedButtons.has(1) || pressedButtons.has(2))) {
+    if (canRotate && pressedButtons.has(1)) {
       if (mouseDelta && (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0)) {
         camera.yaw -= mouseDelta.x * 0.3;
         if (camera.mode !== 'isometric') {
@@ -297,19 +309,7 @@ export class CameraSystem implements System {
       }
     }
 
-    // 2. 统一角色控制逻辑 (Unified Character Control)
-    // 🔥 制作人：控制逻辑脱钩。只要有受控实体，无论相机是否跟随，WASD 始终有效。
-    const controlledId = camera.controlledEntityId || camera.targetEntityId;
-    if (controlledId) {
-      if (camera.targetEntityId) {
-        // 跟随状态下：强制归心，禁用手动平移
-        camera.pivotOffset[0] = 0;
-        camera.pivotOffset[1] = 0;
-        camera.pivotOffset[2] = 0;
-      }
 
-      this.updateCharacterControl(camera, controlledId, deltaTime);
-    }
 
     // 3. 分发到特定相机行为控制器 (Camera Behavior Only)
     if (camera.mode === 'firstPerson' || camera.mode === 'thirdPerson') {
@@ -409,26 +409,26 @@ export class CameraSystem implements System {
     let dz = 0;
     const moveYaw = camera.yaw * Math.PI / 180;
 
-    // 🔥 Disable Camera WASD for Isometric Mode (User Request)
-    // Keys are reserved for Character Control now.
-    /*
-    if (this.inputSystem.isActionPressed('MOVE_FORWARD')) {
-      dx -= Math.sin(moveYaw); dz -= Math.cos(moveYaw);
-    }
-    if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) {
-      dx += Math.sin(moveYaw); dz += Math.cos(moveYaw);
-    }
-    if (this.inputSystem.isActionPressed('MOVE_LEFT')) {
-      dx -= Math.cos(moveYaw); dz += Math.sin(moveYaw);
-    }
-    if (this.inputSystem.isActionPressed('MOVE_RIGHT')) {
-      dx += Math.cos(moveYaw); dz -= Math.sin(moveYaw);
-    }
+    // 🔥 Legacy Fallback: Enable Camera WASD if NO Character is being controlled
+    // This restores functionality for old demos that rely on camera panning.
+    if (!camera.controlledEntityId && !camera.targetEntityId) {
+      if (this.inputSystem.isActionPressed('MOVE_FORWARD')) {
+        dx -= Math.sin(moveYaw); dz -= Math.cos(moveYaw);
+      }
+      if (this.inputSystem.isActionPressed('MOVE_BACKWARD')) {
+        dx += Math.sin(moveYaw); dz += Math.cos(moveYaw);
+      }
+      if (this.inputSystem.isActionPressed('MOVE_LEFT')) {
+        dx -= Math.cos(moveYaw); dz += Math.sin(moveYaw);
+      }
+      if (this.inputSystem.isActionPressed('MOVE_RIGHT')) {
+        dx += Math.cos(moveYaw); dz -= Math.sin(moveYaw);
+      }
 
-    const panSpeed = camera.distance * 0.01;
-    camera.pivotOffset[0] += dx * panSpeed;
-    camera.pivotOffset[2] += dz * panSpeed;
-    */
+      const panSpeed = camera.distance * 0.01;
+      camera.pivotOffset[0] += dx * panSpeed;
+      camera.pivotOffset[2] += dz * panSpeed;
+    }
   }
 
   /**

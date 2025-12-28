@@ -405,11 +405,29 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private spawnPlayerCharacter() {
+    // 🔥 Tri-state Logic: Spawn (Start Fresh) -> Unbind (Release Camera) -> Bind (Re-Lock Camera)
+
+    // Case 2 & 3: Player already exists
     if (this.playerEntity) {
-      console.warn('Player already exists!');
+      if (this.cameraEntity) {
+        const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+        if (cam) {
+          // Case 2: Camera currently following player -> Unbind (Release)
+          if (cam.targetEntityId === this.playerEntity.id) {
+            this.unbindCamera(cam);
+            return;
+          }
+          // Case 3: Camera unbound but player exists -> Bind (Re-Lock)
+          else {
+            this.bindCamera(cam, this.playerEntity);
+            return;
+          }
+        }
+      }
       return;
     }
 
+    // Case 1: Player does not exist -> Spawn & Bind
     const id = `Player_${Date.now()}`;
     const entity = this.entityManager.createEntity('Player', id);
     this.playerEntity = entity;
@@ -421,25 +439,22 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // 2. Physics (Dynamic Capsule)
     const physics = new PhysicsComponent('dynamic');
-    // Fix: Size requires [number, number, number]. For capsule: [radius, height, 0]
     physics.setCollider('capsule', [0.5, 1, 0], [0, 0.5, 0]);
     physics.mass = 1.0;
-    // Lock Rotation X/Z to prevent tipping over (crucial for characters)
     physics.lockRotation = [true, false, true];
     physics.friction = 0.5;
     this.entityManager.addComponent(entity.id, physics);
+    physics.isCharacterController = true; // Enable CharacterController Logic
 
     // 3. Visual (Green Glowing Capsule -> Cylinder Proxy)
     const visual = new VisualComponent();
-    // Fix: 'capsule' not in GeometryData type, using 'cylinder' proxy
     visual.geometry = { type: 'cylinder', parameters: { radius: 0.5, height: 1 } };
     visual.material = { type: 'standard', color: '#00ff00', roughness: 0.3 };
-    visual.emissive = { color: '#00ff00', intensity: 2.0 }; // 🔥 Glowing Green
+    visual.emissive = { color: '#00ff00', intensity: 2.0 };
     visual.castShadow = true;
     this.entityManager.addComponent(entity.id, visual);
 
     // 4. Sockets (Head for FPS)
-    // Fix: addSocket takes a Socket object, not 3 args. Rotation is [x,y,z] Euler.
     entity.addSocket({
       name: 'Head',
       localTransform: {
@@ -449,31 +464,58 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     });
 
-    // 🔥 Auto-Link Camera: No longer restricted by context
+    // Link
     if (this.cameraEntity) {
       const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
-      if (cam) {
-        // 备份当前视距，用于 ESC 退出后还原
-        cam.preFollowDistance = cam.distance;
-
-        // 1. 设置目标实体 (同时设置跟随和控制)
-        cam.targetEntityId = this.playerEntity.id;
-        cam.controlledEntityId = this.playerEntity.id;
-
-        // 2. 自动拉近镜头 (Zoom-In)
-        cam.distance = 35;
-
-        // 3. 自动切换模式 (如果原本是 Orbit)
-        if (cam.mode === 'orbit') {
-          cam.mode = 'isometric';
-          console.log('🎥 Mode auto-switched to ISO for combat follow');
-        }
-
-        console.log(`📷 Camera linked & Zoomed-In (Distance: ${cam.distance}, Pre: ${cam.preFollowDistance})`);
-      }
+      if (cam) this.bindCamera(cam, entity);
     }
 
     console.log('🦸 Spawning Player Character:', entity.id);
+  }
+
+  // --- Helpers for Tri-state Logic ---
+
+  private bindCamera(cam: CameraComponent, target: Entity) {
+    cam.preFollowDistance = cam.distance; // Backup current distance
+    cam.targetEntityId = target.id;
+    cam.controlledEntityId = target.id; // Ensure WASD works
+
+    // Zoom In to 35
+    cam.distance = 35;
+
+    // Switch to ISO if in Orbit
+    if (cam.mode === 'orbit') cam.mode = 'isometric';
+
+    console.log('📷 Camera Bound & Zoomed-In to 35');
+  }
+
+  private unbindCamera(cam: CameraComponent) {
+    // Sync pivot before unbinding for continuity
+    if (this.entityManager && cam.targetEntityId) {
+      const t = this.entityManager.getEntity(cam.targetEntityId)?.getComponent<TransformComponent>('Transform');
+      if (t) {
+        cam.pivotOffset[0] = t.position[0];
+        cam.pivotOffset[1] = t.position[1];
+        cam.pivotOffset[2] = t.position[2];
+      }
+    }
+
+    cam.targetEntityId = null;
+    // Note: we Keep controlledEntityId set so WASD still works!
+
+    // Zoom Out to 100
+    cam.distance = 100;
+    cam.mode = 'orbit';
+    console.log('🔓 Camera Unbound & Zoomed-Out to 100');
+  }
+
+  public getSpawnButtonState(): 'Spawn' | 'Bind' | 'Unbind' {
+    if (!this.playerEntity) return 'Spawn';
+    if (this.cameraEntity) {
+      const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+      if (cam && cam.targetEntityId === this.playerEntity.id) return 'Unbind';
+    }
+    return 'Bind';
   }
 
   private despawnPlayerCharacter() {

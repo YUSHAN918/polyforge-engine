@@ -56,6 +56,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [bloomThreshold, setBloomThreshold] = useState(0.85);
   const [physicsDebugEnabled, setPhysicsDebugEnabled] = useState(false);
   const [audioDebugEnabled, setAudioDebugEnabled] = useState(false);
+
+  // 🔥 Spawn Button State (Spawn -> Bind -> Unbind)
+  const [spawnButtonState, setSpawnButtonState] = useState<'Spawn' | 'Bind' | 'Unbind'>('Spawn');
   const [timeOfDay, setTimeOfDay] = useState(12);
   const [sunIntensity, setSunIntensity] = useState(1.0);
   const [cameraMode, setCameraMode] = useState<CameraMode>('orbit');
@@ -135,6 +138,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
       // 4. Pull Context
       setCurrentContext(manager.getContext());
+
+      // 5. Pull Spawn Button State
+      setSpawnButtonState(manager.getSpawnButtonState());
 
     }, 500); // 2Hz Sync
 
@@ -833,9 +839,18 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 <div className="flex gap-2">
                   <button
                     onClick={() => dispatch(EngineCommandType.SPAWN_CHARACTER)}
-                    className="flex-1 py-2 bg-green-900/40 border border-green-500/30 text-green-400 rounded hover:bg-green-800/40 transition-colors font-bold text-[10px] uppercase flex items-center justify-center gap-2"
+                    className={`flex-1 py-2 border rounded transition-colors font-bold text-[10px] uppercase flex items-center justify-center gap-2 ${spawnButtonState === 'Bind'
+                      ? 'bg-blue-900/40 border-blue-500/30 text-blue-400 hover:bg-blue-800/40'
+                      : spawnButtonState === 'Unbind'
+                        ? 'bg-yellow-900/40 border-yellow-500/30 text-yellow-400 hover:bg-yellow-800/40' // Yellow for Unbind (Release)
+                        : 'bg-green-900/40 border-green-500/30 text-green-400 hover:bg-green-800/40' // Green for Spawn
+                      }`}
                   >
-                    <i className="fas fa-user-plus"></i> 生成 (Spawn)
+                    <i className={`fas ${spawnButtonState === 'Bind' ? 'fa-link' :
+                      spawnButtonState === 'Unbind' ? 'fa-unlink' :
+                        'fa-user-plus'
+                      }`}></i>
+                    {spawnButtonState === 'Spawn' ? '生成 (Spawn)' : spawnButtonState === 'Bind' ? '锁定 (Bind)' : '释放 (Unbind)'}
                   </button>
                   <button
                     onClick={() => dispatch(EngineCommandType.DESPAWN_CHARACTER)}

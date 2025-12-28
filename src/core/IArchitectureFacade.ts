@@ -72,6 +72,11 @@ export interface IArchitectureFacade {
    */
     dispose(): void;
 
+    /**
+     * 获取生成按钮显示状态
+     */
+    getSpawnButtonState(): 'Spawn' | 'Bind' | 'Unbind';
+
     // --- 桥接层专用接口 (For EngineBridge Only) ---
     // 这些接口允许 React 视图层 (EngineBridge) 绑定事件和同步相机
     // UI 层严禁调用！

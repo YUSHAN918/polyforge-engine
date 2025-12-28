@@ -57,6 +57,9 @@ export class PhysicsComponent implements Component {
   // 重力
   public useGravity: boolean; // 是否受重力影响
 
+  // 角色控制器标记
+  public isCharacterController: boolean = false;
+
   constructor(
     bodyType: BodyType = 'dynamic',
     collider: ColliderConfig = {
