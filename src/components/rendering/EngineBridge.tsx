@@ -66,18 +66,9 @@ const EntityRenderer = React.memo<{
   const terrain = entity.getComponent<TerrainComponent>('Terrain');
   const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
 
-  // 如果是地形实体，使用 TerrainVisual 渲染
-  if (terrain) {
-    return <TerrainVisual entity={entity} terrainSystem={terrainSystem} getCameraMode={getCameraMode} />;
-  }
-
-  // 如果是植被实体，使用 VegetationVisual 渲染
-  if (vegetation) {
-    return <VegetationVisual entity={entity} vegetationSystem={vegetationSystem} />;
-  }
-
   // 加载模型资产
   useEffect(() => {
+    if (terrain || vegetation) return; // 🔥 如果是特殊实体，跳过模型加载
     if (!visual || !visual.geometry.assetId) return;
 
     const assetRegistry = getAssetRegistry();
@@ -93,7 +84,7 @@ const EntityRenderer = React.memo<{
       const blob = await assetRegistry.getAsset(visual.geometry.assetId!);
 
       if (!blob) {
-        console.warn(`Model asset not found: ${visual.geometry.assetId}`);
+        // console.warn(`Model asset not found: ${visual.geometry.assetId}`);
         return;
       }
 
@@ -129,11 +120,12 @@ const EntityRenderer = React.memo<{
     loadModel().catch((error) => {
       console.error(`Failed to load model asset: ${visual.geometry.assetId}`, error);
     });
-  }, [visual?.geometry.assetId]);
+  }, [visual?.geometry.assetId, terrain, vegetation]);
 
   // 🔥 核心修复：使用 useFrame 实时同步变换 (解决 React 不重绘物理结果的问题)
   // 通过 useFrame 直接推送到 Three.js 对象，避开 React 脏检查和重渲染
   useFrame(() => {
+    if (terrain || vegetation) return; // 🔥 如果是特殊实体，跳过常规同步
     if (!groupRef.current || !transform) return;
 
     const group = groupRef.current;
@@ -160,8 +152,9 @@ const EntityRenderer = React.memo<{
     );
   });
 
-  // 更新材质（响应 WorldState 变化）
+  // 更新材质(响应 WorldState 变化)
   useEffect(() => {
+    if (terrain || vegetation) return; // 🔥 如果是特殊实体,跳过材质更新
     if (!visual || meshes.length === 0) return;
 
     meshes.forEach((mesh) => {
@@ -192,7 +185,20 @@ const EntityRenderer = React.memo<{
         mesh.material.needsUpdate = true;
       }
     });
-  }, [visual, meshes, worldState]);
+  }, [visual, meshes, worldState, terrain, vegetation]);
+
+  // 渲染逻辑分发
+  // 如果是地形实体,使用 TerrainVisual 渲染
+  if (terrain) {
+    return <TerrainVisual entity={entity} terrainSystem={terrainSystem} getCameraMode={getCameraMode} />;
+  }
+
+  // 如果是植被实体,使用 VegetationVisual 渲染
+  if (vegetation) {
+    return <VegetationVisual entity={entity} vegetationSystem={vegetationSystem} />;
+  }
+
+
 
   if (!visual || !visual.visible) return null;
 

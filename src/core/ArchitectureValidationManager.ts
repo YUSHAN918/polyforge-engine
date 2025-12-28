@@ -134,13 +134,21 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // 🛡️ The God's Law: Dispatch Implementation
   // ===================================================================================
 
-  public dispatch(command: EngineCommand): void {
+  public async dispatch(command: EngineCommand): Promise<void> {
     // console.log(`⚡ Dispatching: ${command.type}`, command); // Debug log
+    // 记录到历史栈 (除了 UNDO/REDO)
+    if (command.type !== EngineCommandType.UNDO && command.type !== EngineCommandType.REDO) {
+      this.commandManager.execute(command);
+    }
 
+    // 执行命令
     switch (command.type) {
       // --- Environment ---
       case EngineCommandType.SET_TIME_OF_DAY:
-        this.worldStateManager.setTimeOfDay(command.hour); // 恢复自动光照更新
+        // Set time but DO NOT auto-update lighting yet to prevent override
+        // logic moved to check 'autoUpdateLighting' flag if needed, 
+        // but currently we just set state.
+        this.worldStateManager.setTimeOfDay(command.hour);
         break;
       case EngineCommandType.SET_LIGHT_INTENSITY:
         this.worldStateManager.setLightIntensity(command.intensity);
@@ -244,10 +252,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       // --- Bundling ---
       case EngineCommandType.EXPORT_BUNDLE:
-        this.exportBundle(command.name);
+        await this.exportBundle(command.name);
         break;
       case EngineCommandType.IMPORT_BUNDLE:
-        this.importBundle(command.file);
+        await this.importBundle(command.file);
         break;
     }
   }

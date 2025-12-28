@@ -596,7 +596,25 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   'flex flex-col gap-1'
                 }`}>
                 {assetList
-                  .filter(a => activeAssetTab === 'all' || a.category === activeAssetTab)
+                  .filter(a => {
+                    if (activeAssetTab === 'all') return true;
+
+                    const cat = (a.category || '').toLowerCase().trim();
+                    const tab = activeAssetTab.toLowerCase();
+
+                    // 🔥 终极兼容: 归一化比较 + 别名支持
+                    if (tab === 'textures') {
+                      return cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images' || cat === 'png' || cat === 'jpg';
+                    }
+                    if (tab === 'models') {
+                      return cat === 'models' || cat === 'model' || cat === 'glb' || cat === 'gltf';
+                    }
+                    if (tab === 'audio') {
+                      return cat === 'audio' || cat === 'sound' || cat === 'music' || cat === 'mp3';
+                    }
+
+                    return cat === tab || cat.includes(tab);
+                  })
                   .map((asset, i) => (
                     <div key={i} className={`group transition-all duration-300 ${assetViewMode === 'grid' ? 'bg-gray-900/40 border border-gray-800 rounded-2xl p-3 flex flex-col gap-2 hover:border-cyan-500/40 hover:bg-gray-800/50 hover:-translate-y-1 shadow-lg' :
                       assetViewMode === 'compact' ? 'bg-gray-900/30 border border-gray-800/50 rounded-lg p-1 aspect-square hover:border-cyan-500/50 transition-all cursor-crosshair' :
@@ -648,10 +666,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                         <>
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded bg-gray-900 flex items-center justify-center text-cyan-700">
-                              <i className={`fas ${asset.category === 'models' ? 'fa-cube' :
-                                asset.category === 'audio' ? 'fa-music' :
-                                  asset.category === 'textures' ? 'fa-image' : 'fa-mountain'
-                                } text-[10px]`}></i>
+                              {(() => {
+                                const cat = (asset.category || '').toLowerCase().trim();
+                                const isModel = cat === 'models' || cat === 'model' || cat === 'glb';
+                                const isAudio = cat === 'audio' || cat === 'music' || cat === 'sound';
+                                const isTexture = cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images';
+
+                                return <i className={`fas ${isModel ? 'fa-cube' : isAudio ? 'fa-music' : isTexture ? 'fa-image' : 'fa-mountain'} text-[10px]`}></i>;
+                              })()}
                             </div>
                             <div className="flex flex-col">
                               <span className="text-[10px] text-gray-300 font-bold group-hover:text-cyan-400 transition-colors">{asset.name}</span>
@@ -667,16 +689,33 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                     </div>
                   ))}
 
-                {assetList.filter(a => activeAssetTab === 'all' || a.category === activeAssetTab).length === 0 && (
-                  <div className={`${assetViewMode === 'grid' ? 'col-span-2' : assetViewMode === 'compact' ? 'col-span-4' : ''} py-20 flex flex-col items-center justify-center text-gray-700 bg-gray-950/40 rounded-3xl border-2 border-dashed border-gray-900/50 backdrop-blur-sm`}>
-                    <div className="relative mb-4">
-                      <i className="fas fa-ghost text-4xl opacity-10"></i>
-                      <div className="absolute -top-1 -right-1 h-3 w-3 bg-cyan-500/20 rounded-full animate-ping"></div>
+                {assetList.filter(a => {
+                  if (activeAssetTab === 'all') return true;
+
+                  const cat = (a.category || '').toLowerCase().trim();
+                  const tab = activeAssetTab.toLowerCase();
+
+                  if (tab === 'textures') {
+                    return cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images' || cat === 'png' || cat === 'jpg';
+                  }
+                  if (tab === 'models') {
+                    return cat === 'models' || cat === 'model' || cat === 'glb' || cat === 'gltf';
+                  }
+                  if (tab === 'audio') {
+                    return cat === 'audio' || cat === 'sound' || cat === 'music' || cat === 'mp3';
+                  }
+
+                  return cat === tab || cat.includes(tab);
+                }).length === 0 && (
+                    <div className={`${assetViewMode === 'grid' ? 'col-span-2' : assetViewMode === 'compact' ? 'col-span-4' : ''} py-20 flex flex-col items-center justify-center text-gray-700 bg-gray-950/40 rounded-3xl border-2 border-dashed border-gray-900/50 backdrop-blur-sm`}>
+                      <div className="relative mb-4">
+                        <i className="fas fa-ghost text-4xl opacity-10"></i>
+                        <div className="absolute -top-1 -right-1 h-3 w-3 bg-cyan-500/20 rounded-full animate-ping"></div>
+                      </div>
+                      <span className="text-[10px] uppercase font-black tracking-[0.4em] opacity-30">Registry Empty</span>
+                      <span className="text-[8px] mt-2 opacity-10 italic">SYNC_STATUS: IDLE // SCANNING_FAIL</span>
                     </div>
-                    <span className="text-[10px] uppercase font-black tracking-[0.4em] opacity-30">Registry Empty</span>
-                    <span className="text-[8px] mt-2 opacity-10 italic">SYNC_STATUS: IDLE // SCANNING_FAIL</span>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
 
