@@ -448,30 +448,31 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private spawnPhysicsBox() {
-    // Manually spawn a box since PhysicsSystem doesn't expose debug helper
     const id = `DebugBox_${Date.now()}`;
-    const entity = this.entityManager.createEntity(id);
+    // 🔥 修正：createEntity(name, id)，确保 id 匹配，否则 addComponent 会失败
+    const entity = this.entityManager.createEntity('DebugBox', id);
 
     // Transform
     const transform = new TransformComponent();
     transform.position = [0, 20, 0];
-    this.entityManager.addComponent(id, transform);
+    this.entityManager.addComponent(entity.id, transform);
 
     // Physics
     const physics = new PhysicsComponent('dynamic');
     physics.setCollider('box', [1, 1, 1]);
     physics.mass = 1.0;
     physics.restitution = 0.5;
-    this.entityManager.addComponent(id, physics);
+    this.entityManager.addComponent(entity.id, physics);
 
     // Visual
     const visual = new VisualComponent();
     visual.geometry = { type: 'box', parameters: { width: 1, height: 1, depth: 1 } };
     visual.material = { type: 'standard', color: '#ff0000' };
     visual.castShadow = true;
-    this.entityManager.addComponent(id, visual);
+    visual.visible = true; // 显式确保可见
+    this.entityManager.addComponent(entity.id, visual);
 
-    console.log('📦 Spawning Physics Box:', id);
+    console.log('📦 Spawning Physics Box:', entity.id);
   }
 
   private async exportBundle(name: string) {
@@ -549,6 +550,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const cComp = new CameraComponent();
     cComp.mode = 'orbit';
     cComp.distance = 70;
+    cComp.maxDistance = 200; // Ensure we can zoom out
     cComp.pitch = -45;
     cComp.yaw = 45;
     this.entityManager.addComponent(this.cameraEntity.id, cComp);
@@ -572,5 +574,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // Re-init Physics bodies
     this.entityManager.getEntitiesWithComponents(['Physics']).forEach(e => this.physicsSystem.onEntityAdded(e));
+
+    // 🔥 Force Upgrade: Fix persisting 1.2.x state where maxDistance was 20
+    if (this.cameraEntity) {
+      const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+      if (cam && cam.maxDistance < 200) {
+        cam.maxDistance = 200;
+        console.log('🔄 [Manager] Upgraded camera maxDistance to 200 for persisted state');
+      }
+    }
   }
 }

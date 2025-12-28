@@ -391,9 +391,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
             <section className="space-y-3">
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-cubes text-blue-500 mr-2"></i> 物理系统 (Physics)</h3>
-              <div className="space-y-2">
-                <button onClick={handleSpawnPhysicsCube} className="w-full py-2 bg-gray-800 rounded border border-gray-700 text-gray-300 hover:bg-gray-700">生成物理箱 (Spawn Physics Box)</button>
-                <button onClick={handleExplosionTest} className="w-full py-2 bg-red-900/30 rounded border border-red-900/50 text-red-400 hover:bg-red-900/50">测试爆炸 (Test Explosion)</button>
+              <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
+                <div className="space-y-2">
+                  <button onClick={handleSpawnPhysicsCube} className="w-full py-2 bg-gray-800 rounded border border-gray-700 text-gray-300 hover:bg-gray-700">生成物理箱 (Spawn Physics Box)</button>
+                  <button onClick={handleExplosionTest} className="w-full py-2 bg-red-900/30 rounded border border-red-900/50 text-red-400 hover:bg-red-900/50">测试爆炸 (Test Explosion)</button>
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1">重力 (Gravity Y)</label>
+                  <input type="range" min="-20" max="0" step="0.1" value={gravityY} onChange={(e) => handleGravityChange(parseFloat(e.target.value))} className="w-full accent-blue-500" />
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">物理调试 (Physics Debug)</span>
                   <input type="checkbox" checked={physicsDebugEnabled} onChange={(e) => handlePhysicsDebugChange(e.target.checked)} className="accent-blue-500" />
@@ -416,10 +422,6 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 <div>
                   <label className="text-gray-500 block mb-1">光照强度 (Sun Intensity)</label>
                   <input type="range" min="0" max="5" step="0.1" value={sunIntensity} onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))} className="w-full accent-yellow-500" />
-                </div>
-                <div>
-                  <label className="text-gray-500 block mb-1">重力 (Gravity Y)</label>
-                  <input type="range" min="-20" max="0" step="0.1" value={gravityY} onChange={(e) => handleGravityChange(parseFloat(e.target.value))} className="w-full accent-blue-500" />
                 </div>
               </div>
             </section>
@@ -484,8 +486,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
               <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">资产注册表 (Registry) - {stats.assetCount}</h3>
               <div className="max-h-48 overflow-y-auto bg-gray-900 rounded p-2 text-gray-500 font-mono text-[10px]">
                 {assetList.map((a, i) => (
-                  <div key={i} className="mb-1 truncate hover:text-white cursor-help" title={a.id}>
-                    [{a.metadata.category}] {a.metadata.name}
+                  <div key={i} className="mb-1 truncate hover:text-white cursor-help" title={a?.id || 'Unknown'}>
+                    [{a?.metadata?.category || 'Unknown'}] {a?.metadata?.name || 'Untitled Asset'}
                   </div>
                 ))}
               </div>
@@ -499,11 +501,19 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             <section className="space-y-3">
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">相机模式 (Camera Mode)</h3>
               <div className="grid grid-cols-2 gap-2">
-                {(['firstPerson', 'thirdPerson', 'isometric', 'topDown'] as CameraMode[]).map(m => (
-                  <button key={m} onClick={() => handleCameraModeChange(m)} className={`py-4 rounded border font-bold capitalize ${cameraMode === m ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
-                    {m.replace(/([A-Z])/g, ' $1').trim()}
-                  </button>
-                ))}
+                {(['firstPerson', 'thirdPerson', 'isometric', 'topDown'] as CameraMode[]).map(m => {
+                  const names: Record<string, string> = {
+                    firstPerson: '第一人称 (FPS)',
+                    thirdPerson: '第三人称 (TPS)',
+                    isometric: '上帝视角 (ISO)',
+                    topDown: '俯视 (Top)'
+                  };
+                  return (
+                    <button key={m} onClick={() => handleCameraModeChange(m)} className={`py-4 rounded border font-bold text-[10px] ${cameraMode === m ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
+                      {names[m] || m}
+                    </button>
+                  );
+                })}
               </div>
             </section>
 

@@ -423,7 +423,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       e.stopPropagation();
 
       // 直接设置 wheelDelta（InputSystem 会在 update 中读取）
-      inputSystem.wheelDelta = e.deltaY;
+      inputSystem.wheelDelta += e.deltaY;
 
       // console.log('🎮 Canvas wheel:', e.deltaY, 'wheelDelta set to:', inputSystem.wheelDelta);
     };

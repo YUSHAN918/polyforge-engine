@@ -68,7 +68,7 @@ export class CameraComponent implements Component {
   // 距离约束
   public distance: number = 5;
   public minDistance: number = 2;
-  public maxDistance: number = 20;
+  public maxDistance: number = 200;
 
   // 旋转角度（度）
   public pitch: number = -20;  // 俯仰角（上下）

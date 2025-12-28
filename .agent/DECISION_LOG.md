@@ -70,3 +70,21 @@
     1. **SMAA 替换**：用 `SMAAPass` 替换旧版 `FXAAShader`。
     2. **Pass 顺序优化**：Render -> Bloom -> ToneMapping(Output) -> SMAA。
 - **状态**：Warning Clear。
+## 📅 2025-12-28: 相机系统稳定性与输入锚点修复
+- **执行者**：山神 (Mountain God)
+- **背景**：在 1.3.0 架构隔离重构中，由于逻辑碎片导致 `CameraSystem` 出现代码冗余与编译崩溃。
+- **修正内容**：
+    1. **消除冗余实现**：移除了错误的、带有占位符性质的重复 `smoothUpdate` 方法，确保逻辑单一性。
+    2. **纠正分发路由**：将相机模式路由重新映射到正确的 `updateFirstPersonMode` 与 `updateThirdPersonMode` 方法。
+    3. **稳固输入重置锚点**：根据《山神核心规约》，将 `inputSystem.resetFrameData()` 物理移动至 `CameraSystem.update` 每一帧逻辑的最末端（循环体外），彻底解决输入“粘连”风险。
+    4. **距离限制扩展**：将默认相机最大距离由 20 提升至 200，并实现了旧存档的强制静默升级。
+- **状态**：编译错误已清除，输入链条恢复闭环。
+
+## 📅 2025-12-28: 物理方块不可见逻辑修复
+- **执行者**：山神 (Mountain God)
+- **发现**：`spawnPhysicsBox` 在创建实体时，由于 `createEntity` 参数顺序误用（将原本期望的 ID 传给了 Name），导致后续 `addComponent` 传入的 ID 无法在管理器中匹配到对应实体。方块虽被创建，但处于“无组件”状态，故无法渲染且无物理特性。
+- **修正**：
+    1. 显式指定 `createEntity(name, id)`。
+    2. 统一使用 `entity.id` 作为组件挂载的句柄。
+    3. 显式设置 `visual.visible = true` 增强渲染鲁棒性。
+- **状态**：物理方块加载正常。

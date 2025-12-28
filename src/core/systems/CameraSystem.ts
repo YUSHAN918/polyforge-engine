@@ -126,17 +126,20 @@ export class CameraSystem implements System {
       // 🔥 缓存当前活跃相机引用
       this.currentCameraComponent = camera;
 
+      // 更新目标状态前处理输入
+      this.handleInputs(camera, deltaTime);
+
       // 更新目标状态
       this.updateTargetState(camera, entities, deltaTime);
 
       // 平滑插值到目标状态
       this.smoothUpdate(camera, transform, deltaTime);
     }
+
+    // 🔥 Fix: Reset frame data ONLY ONCE after ALL cameras are processed
+    this.inputSystem.resetFrameData();
   }
 
-  /**
-   * 更新目标状态（根据相机模式）
-   */
   /**
    * 更新目标状态（根据相机模式）
    */
@@ -186,15 +189,12 @@ export class CameraSystem implements System {
       this.handleExperienceInputs(camera, deltaTime);
     }
 
-    // 🔄 共用缩放逻辑 (Orbit, ThirdPerson, Isometric, Sidescroll)
     const wheelDelta = this.inputSystem.wheelDelta;
     if (wheelDelta !== 0 && (camera.mode === 'orbit' || camera.mode === 'thirdPerson' || camera.mode === 'isometric' || camera.mode === 'sidescroll')) {
-      camera.distance += wheelDelta * 0.1;
+      // 调整缩放速度：1.3.0 优化
+      camera.distance += wheelDelta * 0.05;
       camera.distance = Math.max(camera.minDistance, Math.min(camera.maxDistance, camera.distance));
     }
-
-    // 🔥 Restore: Reset frame data at the end of input processing
-    this.inputSystem.resetFrameData();
   }
 
   /**

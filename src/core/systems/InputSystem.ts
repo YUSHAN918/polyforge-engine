@@ -221,27 +221,18 @@ export class InputSystem implements System {
     if (target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
       target.tagName === 'SELECT') {
-      // ✅ 正在输入文字，允许默认行为，且不触发游戏逻辑
       return;
     }
-
-    // 🔥 修正：不再因为点击了 Panel 就屏蔽所有按键。
-    // 用户可能点击了 Panel 的按钮，然后想用 WASD 移动相机。
-    // 只要不是在输入文字，就应该允许全局快捷键。
 
     // 检查是否在 Canvas 上
     const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
 
-    // 🎮 Canvas 上的滚轮事件由 EngineBridge 的物理层拦截处理
-    // 这里不再处理，避免冲突
-    // 注释掉原有逻辑，让 EngineBridge 完全接管
-    /*
-    const context = this.getCurrentContext();
-    if (context === 'orbit' && isCanvas) {
+    if (isCanvas) {
       event.preventDefault();
-      this.wheelDelta = event.deltaY;
+      // 累积 wheelDelta，或者直接覆盖（取决于帧率同步）
+      // 由于 update 是按帧调用的，这里累积比较安全，并在 resetFrameData 中清除
+      this.wheelDelta += event.deltaY;
     }
-    */
   }
 
   /**
