@@ -16,9 +16,10 @@ GRASS_GEOMETRY.translate(0, 0.5, 0); // 🔥 关键修复：将几何体底座�
 interface VegetationVisualProps {
   entity: Entity;
   vegetationSystem: VegetationSystem;
+  lightIntensity?: number; // 🔥 新增 prop
 }
 
-export const VegetationVisual = ({ entity, vegetationSystem }: VegetationVisualProps) => {
+export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.0 }: VegetationVisualProps) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
@@ -29,8 +30,8 @@ export const VegetationVisual = ({ entity, vegetationSystem }: VegetationVisualP
   const customMaterial = useMemo(() => {
     const mat = new THREE.MeshStandardMaterial({
       color: '#4ade80',
-      emissive: '#1a3c1a', // 🔥 添加微弱自发光，防止全黑
-      emissiveIntensity: 0.2,
+      emissive: '#2f8f50', // 🔥 初始给一个较亮的自发光色，确保默认就有光
+      emissiveIntensity: 0.3,
       side: THREE.DoubleSide,
       alphaTest: 0.5,
     });
@@ -111,12 +112,26 @@ export const VegetationVisual = ({ entity, vegetationSystem }: VegetationVisualP
         shader.uniforms.uGlobalScale.value = veg.config.scale || 1.0;
 
         // 🎨 额外惊喜:同步草地基础颜色
-        if (customMaterial.color.getHexString() !== new THREE.Color(veg.config.baseColor).getHexString()) {
-          customMaterial.color.set(veg.config.baseColor);
-          // 🔥 修复:换色时同步更新 emissive,保持泛光效果
-          const baseColor = new THREE.Color(veg.config.baseColor);
-          customMaterial.emissive.set(baseColor).multiplyScalar(0.15); // 15% 的基础色作为自发光
-        }
+        customMaterial.color.set(veg.config.baseColor);
+
+        // 🔥 修复:使用 HSL 智能增益确保泛光
+        // 无论底色多暗，我们强制提升自发光的亮度（Lightness），保留原色相
+        const baseColor = new THREE.Color(veg.config.baseColor);
+        const hsl = { h: 0, s: 0, l: 0 };
+        baseColor.getHSL(hsl);
+
+        // 策略：如果亮度太低(<0.2)，强制提升到 0.4 作为自发光底色，否则直接用原亮度
+        // 这样深色草也会有微弱的幽光，而不是死黑
+        const targetL = Math.max(hsl.l, 0.4);
+        const emissiveColor = new THREE.Color().setHSL(hsl.h, hsl.s, targetL);
+
+        customMaterial.emissive.copy(emissiveColor);
+
+        // 🔥 动态光感联动：
+        // 基础强度 (0.3) * 环境光强度 (0~1)
+        // 白天(1.0) -> intensity 0.3 (发光)
+        // 晚上(0.0) -> intensity 0.0 (不发光)
+        customMaterial.emissiveIntensity = 0.3 * lightIntensity;
       }
     }
   });

@@ -195,7 +195,11 @@ const EntityRenderer = React.memo<{
 
   // 如果是植被实体,使用 VegetationVisual 渲染
   if (vegetation) {
-    return <VegetationVisual entity={entity} vegetationSystem={vegetationSystem} />;
+    return <VegetationVisual
+      entity={entity}
+      vegetationSystem={vegetationSystem}
+      lightIntensity={worldState?.lightIntensity ?? 1.0}
+    />;
   }
 
 
@@ -740,22 +744,8 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         />
       )}
 
-      {/* 🌅 程序化天空（当没有 HDR 环境贴图时，提供一个深蓝色到浅蓝色的渐变，而非死白） */}
-      {!hdrEnvMap && (
-        <>
-          <color attach="background" args={['#1a2a44']} /> {/* 深蓝底色 */}
-          <Sky
-            distance={450000}
-            sunPosition={sunPosition}
-            inclination={0}
-            azimuth={0.25}
-          />
-          <fog attach="fog" args={['#1a2a44', 10, 200]} />
-        </>
-      )}
-
-      {/* 🌙 环境光基底（确保深夜时地形依然可见） */}
-      <ambientLight intensity={0.3} color="#ffffff" />
+      {/* 🌙 环境光基底：完全由 WorldState.ambientColor 控制，不再硬编码 */}
+      {/* <ambientLight intensity={0.3} color="#ffffff" />  <-- 移除造成灰蒙蒙的元凶 */}
 
       {/* 方向光（太阳） */}
       <directionalLight
