@@ -448,9 +448,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private spawnPhysicsBox() {
-    const id = `DebugBox_${Date.now()}`;
-    // 🔥 修正：createEntity(name, id)，确保 id 匹配，否则 addComponent 会失败
-    const entity = this.entityManager.createEntity('DebugBox', id);
+    const id = `GravityCube_${Date.now()}`;
+    // 🔥 复原：使用 GravityCube 作为名称，建立更强的业务关联
+    const entity = this.entityManager.createEntity('GravityCube', id);
 
     // Transform
     const transform = new TransformComponent();
@@ -467,12 +467,16 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Visual
     const visual = new VisualComponent();
     visual.geometry = { type: 'box', parameters: { width: 1, height: 1, depth: 1 } };
-    visual.material = { type: 'standard', color: '#ff0000' };
+    // 🔥 美学回归：使用深蓝色材质
+    visual.material = { type: 'standard', color: '#3498db', metalness: 0.1, roughness: 0.2 };
+    // 🔥 灵魂注入：青蓝色自发光，增强科幻感
+    visual.emissive = { color: '#00aaff', intensity: 1.5 };
     visual.castShadow = true;
-    visual.visible = true; // 显式确保可见
+    visual.visible = true;
+    visual.postProcessing = { bloom: true, outline: false }; // 启用辉光
     this.entityManager.addComponent(entity.id, visual);
 
-    console.log('📦 Spawning Physics Box:', entity.id);
+    console.log('🌌 Spawning Blue Gravity Cube:', entity.id);
   }
 
   private async exportBundle(name: string) {

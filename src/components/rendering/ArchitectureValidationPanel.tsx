@@ -393,7 +393,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-cubes text-blue-500 mr-2"></i> 物理系统 (Physics)</h3>
               <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
                 <div className="space-y-2">
-                  <button onClick={handleSpawnPhysicsCube} className="w-full py-2 bg-gray-800 rounded border border-gray-700 text-gray-300 hover:bg-gray-700">生成物理箱 (Spawn Physics Box)</button>
+                  <button onClick={handleSpawnPhysicsCube} className="w-full py-2 bg-blue-900/30 rounded border border-blue-500/30 text-blue-300 font-bold hover:bg-blue-900/50 shadow-lg shadow-blue-500/10">
+                    <i className="fas fa-cube mr-2"></i> 生成蓝色重力方块 (Gravity Cube)
+                  </button>
                   <button onClick={handleExplosionTest} className="w-full py-2 bg-red-900/30 rounded border border-red-900/50 text-red-400 hover:bg-red-900/50">测试爆炸 (Test Explosion)</button>
                 </div>
                 <div>
