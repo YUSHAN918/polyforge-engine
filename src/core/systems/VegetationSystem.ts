@@ -37,8 +37,8 @@ export class VegetationSystem implements System {
   readonly priority = 110; // 在 TerrainSystem 之后
   readonly requiredComponents: string[] = [];
 
-  private entityManager: EntityManager;
-  private clock: Clock;
+  private entityManager!: EntityManager;
+  private clock!: Clock;
   private worldStateManager?: WorldStateManager;
 
   // 植被实例缓存（entityId -> instances）
@@ -75,7 +75,7 @@ export class VegetationSystem implements System {
     // console.log(`[VegetationSystem] 🔥 Mesh registered for Entity ${entityId}`);
   }
 
-  update(): void {
+  update(_deltaTime: number, _entities?: import('../types').Entity[]): void {
     // 🆕 健壮性检查
     if (!this.entityManager) {
       console.warn('[VegetationSystem] EntityManager not initialized, skipping update');

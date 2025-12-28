@@ -324,6 +324,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return this.vegetationSystem;
   }
 
+  public getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
+    return this.physicsSystem.getDebugBuffers();
+  }
+
   public dispose(): void {
     this.clock.pause();
   }

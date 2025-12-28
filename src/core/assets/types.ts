@@ -92,6 +92,16 @@ export interface HDRMetadata {
 }
 
 /**
+ * 纹理元数据
+ */
+export interface TextureMetadata {
+  width: number;           // 宽度（像素）
+  height: number;          // 高度（像素）
+  format: string;          // 格式（png/jpg/webp）
+  isPowerOfTwo: boolean;   // 是否为 2 的幂次（优化建议）
+}
+
+/**
  * 内容指纹（用于去重）
  */
 export interface ContentFingerprint {

@@ -80,4 +80,5 @@ export interface IArchitectureFacade {
     getCameraSystem(): CameraSystem;
     getTerrainSystem(): TerrainSystem;
     getVegetationSystem(): VegetationSystem;
+    getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null;
 }

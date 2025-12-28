@@ -460,9 +460,8 @@ export class InputSystem implements System {
   /**
    * System 接口：更新
    */
-  public update(_deltaTime: number): void {
-    // InputSystem 主要是事件驱动，不需要每帧更新
-    // 但可以在这里处理持续按键的逻辑
+  public update(_deltaTime: number, _entities?: import('../types').Entity[]): void {
+    // InputSystem 主要是事件驱动，不需要每帧抢先重置数据
   }
 
   /**

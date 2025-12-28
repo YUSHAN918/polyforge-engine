@@ -15,18 +15,20 @@ import { IndexedDBStorage } from './IndexedDBStorage';
 import { ModelImporter } from './ModelImporter';
 import { AudioImporter } from './AudioImporter';
 import { HDRImporter } from './HDRImporter';
-import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata, AudioMetadata, HDRMetadata } from './types';
+import { TextureImporter } from './TextureImporter';
+import type { AssetMetadata, AssetType, AssetFilter, ImportOptions, AssetData, ModelMetadata, AudioMetadata, HDRMetadata, TextureMetadata } from './types';
 
 /**
  * 资产注册表（单例）
  */
 export class AssetRegistry {
   private static instance: AssetRegistry | null = null;
-  
+
   private storage: IndexedDBStorage;
   private modelImporter: ModelImporter;
   private audioImporter: AudioImporter;
   private hdrImporter: HDRImporter;
+  private textureImporter: TextureImporter;
   private cache: Map<string, any>;           // 内存缓存
   private metadataCache: Map<string, AssetMetadata>; // 元数据缓存
   private envMapCache: Map<string, THREE.Texture>; // HDR envMap 缓存
@@ -40,6 +42,7 @@ export class AssetRegistry {
     this.modelImporter = new ModelImporter();
     this.audioImporter = new AudioImporter();
     this.hdrImporter = new HDRImporter();
+    this.textureImporter = new TextureImporter();
     this.cache = new Map();
     this.metadataCache = new Map();
     this.envMapCache = new Map();
@@ -65,13 +68,13 @@ export class AssetRegistry {
 
     try {
       await this.storage.initialize();
-      
+
       // 预加载所有元数据到缓存
       const allMetadata = await this.storage.getAllMetadata();
       for (const metadata of allMetadata) {
         this.metadataCache.set(metadata.id, metadata);
       }
-      
+
       this.initialized = true;
       console.log(`[AssetRegistry] Initialized with ${allMetadata.length} assets`);
     } catch (error) {
@@ -104,14 +107,14 @@ export class AssetRegistry {
     try {
       // 如果是 Blob，转换为 ArrayBuffer
       const buffer = data instanceof Blob ? await data.arrayBuffer() : data;
-      
+
       // 使用 Web Crypto API 计算 SHA-256
       const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-      
+
       // 转换为十六进制字符串
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
+
       return hashHex;
     } catch (error) {
       console.error('[AssetRegistry] Failed to calculate hash:', error);
@@ -129,14 +132,14 @@ export class AssetRegistry {
     try {
       // 1. 计算内容哈希
       const hash = await this.calculateHash(data);
-      
+
       // 2. 查询指纹表
       const fingerprint = await this.storage.getFingerprintByHash(hash);
-      
+
       if (fingerprint) {
         // 3. 验证资产是否仍然存在（防止指纹未被清理的情况）
         const metadata = await this.storage.getMetadata(fingerprint.assetId);
-        
+
         if (metadata) {
           console.log(`[AssetRegistry] Content duplication detected! Hash: ${hash}, Existing asset: ${fingerprint.assetId}`);
           return fingerprint.assetId;
@@ -147,7 +150,7 @@ export class AssetRegistry {
           return null;
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error('[AssetRegistry] Failed to check duplication:', error);
@@ -169,7 +172,7 @@ export class AssetRegistry {
     try {
       // 1. 检查内容去重
       const existingAssetId = await this.checkDuplication(data);
-      
+
       if (existingAssetId) {
         // 内容已存在，直接返回已有资产的 ID
         console.log(`[AssetRegistry] Skipping duplicate content, reusing asset: ${existingAssetId}`);
@@ -296,8 +299,8 @@ export class AssetRegistry {
    * @param options 导入选项
    * @returns 资产 ID、元数据和预处理的 envMap
    */
-  async importHDR(file: File, options: ImportOptions = {}): Promise<{ 
-    id: string; 
+  async importHDR(file: File, options: ImportOptions = {}): Promise<{
+    id: string;
     metadata: HDRMetadata;
     envMap: THREE.Texture;
   }> {
@@ -340,6 +343,46 @@ export class AssetRegistry {
   }
 
   /**
+   * 导入纹理资产
+   * 
+   * @param file 图片文件
+   * @param options 导入选项
+   * @returns 资产 ID 和元数据
+   */
+  async importTexture(file: File, options: ImportOptions = {}): Promise<{ id: string; metadata: TextureMetadata }> {
+    this.ensureInitialized();
+
+    console.log(`[AssetRegistry] Importing texture: ${file.name}`);
+
+    try {
+      // 1. 使用 TextureImporter 导入纹理
+      const { blob, metadata, thumbnail } = await this.textureImporter.importTexture(file);
+
+      // 2. 注册资产
+      const assetId = await this.registerAsset(
+        {
+          name: file.name.replace(/\.(png|jpg|jpeg|webp)$/i, ''),
+          type: 'texture' as any,
+          category: options.category || 'textures',
+          tags: options.tags || ['imported', 'texture', metadata.format],
+          size: blob.size,
+          thumbnail,
+        },
+        blob
+      );
+
+      console.log(`[AssetRegistry] Texture imported successfully: ${assetId}`);
+      return {
+        id: assetId,
+        metadata,
+      };
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to import texture:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取 HDR envMap（从缓存）
    * 
    * @param id 资产 ID
@@ -368,7 +411,7 @@ export class AssetRegistry {
     // 2. 从 IndexedDB 加载
     try {
       const data = await this.storage.getFile(id);
-      
+
       if (data) {
         // 3. 更新缓存
         this.cache.set(id, data);
@@ -430,7 +473,7 @@ export class AssetRegistry {
 
       // 2. 获取文件数据以计算哈希（用于删除指纹）
       const fileData = await this.storage.getFile(id);
-      
+
       if (fileData) {
         try {
           // 确保 Blob 转换为 ArrayBuffer
@@ -443,7 +486,7 @@ export class AssetRegistry {
             console.warn(`[AssetRegistry] Blob.arrayBuffer() not available, skipping fingerprint deletion for asset ${id}`);
             throw new Error('arrayBuffer() not available');
           }
-          
+
           const hash = await this.calculateHash(arrayBuffer);
           await this.storage.deleteFingerprint(hash);
           console.log(`[AssetRegistry] Deleted fingerprint for asset: ${id}`);
@@ -494,11 +537,11 @@ export class AssetRegistry {
       if (filter.type) {
         // 按类型查询（使用 IndexedDB 索引）
         results = await this.storage.getMetadataByType(filter.type);
-      } 
+      }
       else if (filter.category) {
         // 按分类查询（使用 IndexedDB 索引）
         results = await this.storage.getMetadataByCategory(filter.category);
-      } 
+      }
       else {
         // 获取所有资产（从内存缓存）
         results = Array.from(this.metadataCache.values());
@@ -518,7 +561,7 @@ export class AssetRegistry {
 
       // 如果指定了 tags，过滤包含所有指定标签的资产（交集）
       if (filter.tags && filter.tags.length > 0) {
-        results = results.filter(metadata => 
+        results = results.filter(metadata =>
           filter.tags!.every(tag => metadata.tags.includes(tag))
         );
       }
@@ -526,7 +569,7 @@ export class AssetRegistry {
       // 如果指定了 namePattern，进行模糊匹配
       if (filter.namePattern) {
         const pattern = filter.namePattern.toLowerCase();
-        results = results.filter(metadata => 
+        results = results.filter(metadata =>
           metadata.name.toLowerCase().includes(pattern)
         );
       }
@@ -575,7 +618,7 @@ export class AssetRegistry {
    */
   async clearAll(): Promise<void> {
     this.ensureInitialized();
-    
+
     await this.storage.clear();
     this.cache.clear();
     this.metadataCache.clear();
@@ -584,7 +627,7 @@ export class AssetRegistry {
       envMap.dispose();
     }
     this.envMapCache.clear();
-    
+
     console.log('[AssetRegistry] All data cleared');
   }
 
@@ -596,6 +639,7 @@ export class AssetRegistry {
     this.modelImporter.dispose();
     this.audioImporter.dispose();
     this.hdrImporter.dispose();
+    this.textureImporter.dispose();
     this.cache.clear();
     this.metadataCache.clear();
     // 清理 envMap 纹理

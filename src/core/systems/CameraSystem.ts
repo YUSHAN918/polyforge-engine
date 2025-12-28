@@ -9,8 +9,7 @@
  * - 碰撞检测（可选）
  */
 
-import type { System } from '../types';
-import type { Entity } from '../Entity';
+import type { System, Entity } from '../types';
 import { TransformComponent } from '../components/TransformComponent';
 import * as THREE from 'three';
 import { CameraComponent, type CameraMode, type CameraSnapshot } from '../components/CameraComponent';
@@ -155,19 +154,19 @@ export class CameraSystem implements System {
 
     switch (camera.mode) {
       case 'orbit':
-        this.updateOrbitMode(camera, target, deltaTime);
+        this.updateOrbitMode(camera, target || null, deltaTime);
         break;
       case 'firstPerson':
-        this.updateFirstPersonMode(camera, target, deltaTime);
+        this.updateFirstPersonMode(camera, target || null, deltaTime);
         break;
       case 'thirdPerson':
-        this.updateThirdPersonMode(camera, target, deltaTime);
+        this.updateThirdPersonMode(camera, target || null, deltaTime);
         break;
       case 'isometric':
-        this.updateIsometricMode(camera, target, deltaTime);
+        this.updateIsometricMode(camera, target || null, deltaTime);
         break;
       case 'sidescroll':
-        this.updateSidescrollMode(camera, target, deltaTime);
+        this.updateSidescrollMode(camera, target || null, deltaTime);
         break;
     }
 

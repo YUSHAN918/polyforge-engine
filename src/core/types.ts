@@ -23,13 +23,13 @@ export interface ComponentData {
 export interface Component {
   /** 组件类型标识 */
   type: string;
-  
+
   /** 启用状态 */
   enabled: boolean;
-  
+
   /** 序列化为 JSON 数据 */
   serialize(): ComponentData;
-  
+
   /** 从 JSON 数据反序列化 */
   deserialize(data: ComponentData): void;
 }
@@ -44,17 +44,17 @@ export interface Component {
 export interface Socket {
   /** 挂点名称（如 'hand_right', 'weapon_mount'） */
   name: string;
-  
+
   /** 本地变换 */
   localTransform: {
     position: [number, number, number];
     rotation: [number, number, number];
     scale: [number, number, number];
   };
-  
+
   /** 允许附加的实体类型（可选） */
   allowedTypes?: string[];
-  
+
   /** 当前附加的实体 */
   occupied?: Entity;
 }
@@ -70,49 +70,52 @@ export interface Socket {
 export interface Entity {
   /** 唯一标识符 */
   id: string;
-  
+
   /** 可读名称 */
   name: string;
-  
+
   /** 组件映射 */
   components: Map<string, Component>;
-  
+
   /** 父实体（用于层级） */
   parent?: Entity;
-  
+
   /** 父实体的 Socket 名称 */
   parentSocket: string | null;
-  
+
   /** 子实体列表 */
   children: Entity[];
-  
+
   /** 挂点定义 */
   sockets: Map<string, Socket>;
-  
+
   /** 激活状态 */
   active: boolean;
-  
+
   /** 组件管理方法 */
   addComponent(component: Component): void;
   removeComponent(componentType: string): boolean;
   getComponent<T extends Component>(componentType: string): T | undefined;
   hasComponent(componentType: string): boolean;
   hasAllComponents(componentTypes: string[]): boolean;
-  
+
   /** 层级管理方法 */
   setParent(parent: Entity, socketName?: string): void;
   removeParent(): void;
   getAllChildren(): Entity[];
-  
+
   /** Socket 管理方法 */
   addSocket(socket: Socket): void;
   removeSocket(socketName: string): boolean;
   getSocket(socketName: string): Socket | undefined;
   isSocketOccupied(socketName: string): boolean;
-  
+
+  /** 克隆实体 */
+  clone(newName?: string): Entity;
+
   /** 序列化方法 */
   serialize(): SerializedEntity;
-  
+
   /** 销毁方法 */
   destroy(): void;
 }
@@ -128,10 +131,10 @@ export interface Entity {
 export interface System {
   /** 执行优先级（数值越小越先执行） */
   priority: number;
-  
+
   /** 需要的组件类型 */
   requiredComponents: string[];
-  
+
   /**
    * 初始化方法（可选）
    * 在 System 注册时由 SystemManager 自动调用
@@ -139,13 +142,13 @@ export interface System {
    * @param clock - 时钟引用
    */
   initialize?(entityManager: any, clock: any): void;
-  
+
   /** 更新逻辑 */
-  update(deltaTime: number, entities: Entity[]): void;
-  
+  update(deltaTime: number, entities?: Entity[]): void;
+
   /** 实体添加回调 */
   onEntityAdded(entity: Entity): void;
-  
+
   /** 实体移除回调 */
   onEntityRemoved(entity: Entity): void;
 }

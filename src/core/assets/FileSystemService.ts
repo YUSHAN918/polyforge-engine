@@ -254,9 +254,11 @@ export class FileSystemService {
         break;
 
       case 'texture':
-        // 纹理导入（暂时跳过，因为还没有 TextureImporter）
-        console.warn(`[FileSystemService] Texture import not yet implemented: ${file.name}`);
-        throw new Error('Texture import not yet implemented');
+        await registry.importTexture(file, {
+          category: 'textures',
+          tags: ['batch-import', 'texture', path],
+        });
+        break;
 
       default:
         throw new Error(`Unsupported file type: ${type}`);

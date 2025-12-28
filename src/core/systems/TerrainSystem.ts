@@ -34,8 +34,8 @@ export class TerrainSystem implements System {
   readonly priority = 100;
   readonly requiredComponents: string[] = [];  // TerrainSystem 不需要特定组件
 
-  private entityManager: EntityManager;
-  private clock: Clock;
+  private entityManager!: EntityManager;
+  private clock!: Clock;
 
   // 笔刷配置
   private brush: BrushConfig = {
@@ -57,9 +57,8 @@ export class TerrainSystem implements System {
     console.log('[TerrainSystem] Initialized');
   }
 
-  update(): void {
-    // TerrainSystem 主要通过外部调用 modifyHeight 来工作
-    // update 循环中不需要做什么
+  update(_deltaTime: number, _entities?: import('../types').Entity[]): void {
+    // TerrainSystem 主要是响应式更新，通过 modifyHeight 触发
   }
 
   onEntityAdded(entity: any): void {

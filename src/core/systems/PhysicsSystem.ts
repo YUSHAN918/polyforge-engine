@@ -9,8 +9,7 @@
  * - 支持 Static, Dynamic, Kinematic 刚体
  */
 
-import type { System } from '../types';
-import type { Entity } from '../Entity';
+import type { System, Entity } from '../types';
 import { TransformComponent } from '../components/TransformComponent';
 import { PhysicsComponent, type BodyType } from '../components/PhysicsComponent';
 
@@ -73,7 +72,7 @@ export class PhysicsSystem implements System {
       if (this.entityManager) {
         const entities = this.entityManager.getEntitiesWithComponents(this.requiredComponents);
         console.log(`[PhysicsSystem] Catch-up: processing ${entities.length} entities`);
-        entities.forEach(entity => this.onEntityAdded(entity));
+        entities.forEach((entity: Entity) => this.onEntityAdded(entity));
       }
 
       console.log(`  Gravity: [${this.gravity.join(', ')}]`);

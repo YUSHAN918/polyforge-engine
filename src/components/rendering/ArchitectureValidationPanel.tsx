@@ -10,6 +10,7 @@ import { ValidationContext } from '../../core/ArchitectureValidationManager';
 import { IArchitectureFacade } from '../../core/IArchitectureFacade'; // Use Interface
 import { EngineCommandType } from '../../core/EngineCommand';
 import { CameraMode } from '../../core/components/CameraComponent';
+import { FileSystemService } from '../../core/assets/FileSystemService';
 
 interface ArchitectureValidationPanelProps {
   manager: IArchitectureFacade | null; // Strict typing
@@ -74,7 +75,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Asset Controls
-  // const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'model' | 'image' | 'audio' | 'hdr'>('all');
+  const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'models' | 'audio' | 'environments' | 'textures'>('all');
+  const [assetViewMode, setAssetViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
 
   const fpsRef = useRef<HTMLSpanElement>(null);
   const lastTimeRef = useRef(performance.now());
@@ -283,6 +285,46 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     if (category === 'models') registry.importModel(file, { category: 'models' });
     else if (category === 'audio') registry.importAudio(file, { category: 'audio' });
     else if (category === 'environments') registry.importHDR(file, { category: 'environments' });
+    else if (category === 'textures') registry.importTexture(file, { category: 'textures' });
+  };
+
+  const handleBatchImport = async (e?: React.ChangeEvent<HTMLInputElement>) => {
+    if (!manager) return;
+    const registry = manager.getAssetRegistry();
+
+    try {
+      if (e) {
+        // Simple file select (if used via input)
+        const file = e.target.files?.[0];
+        if (file) {
+          const type = FileSystemService.getFileType(file.name);
+          if (type === 'model') registry.importModel(file, { category: 'models' });
+          else if (type === 'audio') registry.importAudio(file, { category: 'audio' });
+          else if (type === 'hdr') registry.importHDR(file, { category: 'environments' });
+          else if (type === 'texture') registry.importTexture(file, { category: 'textures' });
+        }
+      } else {
+        // Modern Directory Picker (Power Feature)
+        const dirHandle = await FileSystemService.selectDirectory();
+        if (dirHandle) {
+          const files = await FileSystemService.scanDirectory(dirHandle);
+          if (files.length > 0) {
+            await FileSystemService.batchImport(files, registry);
+            console.log(`[ArchitectureValidationPanel] Batch import of ${files.length} assets completed`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[ArchitectureValidationPanel] Import Error:', err);
+    }
+  };
+
+  const handleAssetDelete = (id: string) => {
+    if (confirm(`确定要删除资产 ${id} 吗？ (Delete this asset?)`)) {
+      if (manager) {
+        manager.getAssetRegistry().deleteAsset(id);
+      }
+    }
   };
 
   // ... Render ...
@@ -454,45 +496,206 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
         {/* === ASSETS === */}
         {activeTab === 'assets' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => document.getElementById('import_pfb')?.click()} className="col-span-2 py-3 bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 rounded font-bold hover:bg-indigo-900/50 block text-center">
-                <i className="fas fa-file-import mr-2"></i> 导入捆绑包 (Import Bundle .pfb)
+          <div className="space-y-6">
+            {/* 1. Asset Navigation Header (Tabs + Dynamic Import + View Switches) */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                {/* Categorized Tabs */}
+                <div className="flex-grow flex bg-gray-900/50 rounded-xl p-1 border border-gray-800 backdrop-blur-md">
+                  {(['all', 'models', 'textures', 'audio', 'environments'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveAssetTab(tab)}
+                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all duration-300 ${activeAssetTab === tab ? 'bg-cyan-600 text-white shadow-[0_0_15px_rgba(8,145,178,0.4)]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/40'}`}
+                    >
+                      {tab === 'all' ? '全部' : tab === 'models' ? '模型' : tab === 'audio' ? '音频' : tab === 'textures' ? '图片' : '环境'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* View Mode Switches */}
+                <div className="flex bg-gray-900/80 rounded-xl p-1 border border-gray-800">
+                  {(['grid', 'compact', 'list'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setAssetViewMode(mode)}
+                      className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${assetViewMode === mode ? 'text-cyan-400 bg-cyan-950/30' : 'text-gray-600 hover:text-gray-400'}`}
+                      title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} View`}
+                    >
+                      <i className={`fas ${mode === 'grid' ? 'fa-th-large' : mode === 'list' ? 'fa-list' : 'fa-th'} text-[10px]`}></i>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Master Class Dynamic Import Center */}
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+                <div className="relative flex items-center justify-between p-3 bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center">
+                      <i className={`fas ${activeAssetTab === 'all' ? 'fa-folder-open' :
+                        activeAssetTab === 'models' ? 'fa-cube' :
+                          activeAssetTab === 'textures' ? 'fa-image' :
+                            activeAssetTab === 'audio' ? 'fa-music' : 'fa-mountain'
+                        } mr-2 text-cyan-500`}></i>
+                      {activeAssetTab === 'all' ? '全息资产导入' : `${activeAssetTab === 'models' ? '模型' : activeAssetTab === 'textures' ? '图片' : activeAssetTab === 'audio' ? '音频' : '环境'}专项导入`}
+                    </span>
+                    <span className="text-[7px] text-gray-700 font-mono mt-0.5 opacity-60">DYNAMIC SMART CLASSIFICATION ACTIVATED</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {/* Batch Folder Import (Only for 'All') */}
+                    {activeAssetTab === 'all' && (
+                      <button
+                        onClick={() => handleBatchImport()}
+                        className="px-3 py-1.5 bg-indigo-900/20 border border-indigo-500/30 text-indigo-400 rounded-lg text-[9px] font-bold hover:bg-indigo-900/40 transition-all flex items-center"
+                      >
+                        <i className="fas fa-folder-plus mr-1.5"></i> 扫库
+                      </button>
+                    )}
+
+                    {/* Primary Import Button */}
+                    <label className="px-4 py-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg text-[9px] font-bold hover:bg-cyan-500/20 transition-all cursor-pointer flex items-center shadow-[0_0_10px_rgba(6,182,212,0.1)]">
+                      <i className="fas fa-plus-circle mr-1.5"></i> 导入
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept={
+                          activeAssetTab === 'all' ? '*' :
+                            activeAssetTab === 'models' ? '.glb,.gltf' :
+                              activeAssetTab === 'textures' ? '.png,.jpg,.jpeg,.webp' :
+                                activeAssetTab === 'audio' ? '.mp3,.wav,.ogg' : '.hdr'
+                        }
+                        onChange={(e) => {
+                          if (activeAssetTab === 'all') handleBatchImport(e); // Smart auto-classify
+                          else handleAssetImport(e, activeAssetTab);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Asset Registry Dashboard */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-[10px] text-gray-500 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-black uppercase tracking-[0.2em] leading-none text-gray-700">Registry</span>
+                  <div className="h-2 w-2 rounded-full bg-cyan-500/50 animate-pulse"></div>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[9px]">
+                  <span className="opacity-30">SNAPSHOT_SYNC_0.8s</span>
+                  <span className="bg-gray-900 px-2 py-0.5 rounded border border-gray-800 text-cyan-400">{stats.assetCount}</span>
+                </div>
+              </div>
+
+              <div className={`max-h-[480px] overflow-y-auto no-scrollbar pr-1 pb-10 transition-all duration-500 ${assetViewMode === 'grid' ? 'grid grid-cols-2 gap-3' :
+                assetViewMode === 'compact' ? 'grid grid-cols-4 gap-2' :
+                  'flex flex-col gap-1'
+                }`}>
+                {assetList
+                  .filter(a => activeAssetTab === 'all' || a.category === activeAssetTab)
+                  .map((asset, i) => (
+                    <div key={i} className={`group transition-all duration-300 ${assetViewMode === 'grid' ? 'bg-gray-900/40 border border-gray-800 rounded-2xl p-3 flex flex-col gap-2 hover:border-cyan-500/40 hover:bg-gray-800/50 hover:-translate-y-1 shadow-lg' :
+                      assetViewMode === 'compact' ? 'bg-gray-900/30 border border-gray-800/50 rounded-lg p-1 aspect-square hover:border-cyan-500/50 transition-all cursor-crosshair' :
+                        'bg-gray-900/20 hover:bg-gray-800/40 border border-gray-800/20 hover:border-cyan-900/30 rounded-lg px-3 py-2 flex items-center justify-between group'
+                      }`}>
+
+                      {/* Visual Content */}
+                      {(assetViewMode === 'grid' || assetViewMode === 'compact') && (
+                        <div className={`w-full bg-gray-950 rounded-xl flex items-center justify-center relative overflow-hidden ring-1 ring-gray-800/50 group-hover:ring-cyan-900/40 transition-all ${assetViewMode === 'grid' ? 'aspect-square' : 'h-full'
+                          }`}>
+                          {asset.thumbnail ? (
+                            <img src={asset.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" alt="" />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center opacity-10 group-hover:opacity-30 transition-opacity">
+                              <i className={`fas ${asset.category === 'models' ? 'fa-cube' :
+                                asset.category === 'audio' ? 'fa-music' :
+                                  asset.category === 'textures' ? 'fa-image' :
+                                    asset.category === 'environments' ? 'fa-mountain' : 'fa-box'
+                                } ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'}`}></i>
+                            </div>
+                          )}
+
+                          {assetViewMode === 'grid' && (
+                            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-gray-950/90 rounded-md text-[7px] text-cyan-400 font-bold uppercase tracking-tighter border border-cyan-500/20 whitespace-nowrap backdrop-blur-sm z-10 shadow-xl">
+                              {asset.category === 'environments' ? 'HDR' : asset.category.replace(/s$/, '').toUpperCase()}
+                            </div>
+                          )}
+
+                          {/* Floating Delete Mini Button */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleAssetDelete(asset.id); }}
+                            className="absolute bottom-1 right-1 w-5 h-5 bg-red-950/80 text-red-400 rounded-md flex items-center justify-center text-[7px] opacity-0 group-hover:opacity-100 hover:bg-red-900 transition-all z-20 border border-red-500/20"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Text Content - Grid */}
+                      {assetViewMode === 'grid' && (
+                        <div className="flex flex-col px-0.5">
+                          <span className="text-[10px] text-gray-400 font-bold truncate group-hover:text-white transition-colors" title={asset.name}>{asset.name}</span>
+                          <span className="text-[7px] text-gray-600 font-mono truncate uppercase mt-0.5 tracking-widest">{asset.id.split('_').pop()}</span>
+                        </div>
+                      )}
+
+                      {/* Text Content - List */}
+                      {assetViewMode === 'list' && (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded bg-gray-900 flex items-center justify-center text-cyan-700">
+                              <i className={`fas ${asset.category === 'models' ? 'fa-cube' :
+                                asset.category === 'audio' ? 'fa-music' :
+                                  asset.category === 'textures' ? 'fa-image' : 'fa-mountain'
+                                } text-[10px]`}></i>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-300 font-bold group-hover:text-cyan-400 transition-colors">{asset.name}</span>
+                              <span className="text-[7px] text-gray-600 font-mono uppercase">{asset.id}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-[7px] bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800 text-gray-500 uppercase font-bold tracking-tighter">{asset.category}</span>
+                            <button onClick={() => handleAssetDelete(asset.id)} className="text-[10px] text-gray-700 hover:text-red-500 transition-colors px-2 opacity-0 group-hover:opacity-100"><i className="fas fa-trash-alt"></i></button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+
+                {assetList.filter(a => activeAssetTab === 'all' || a.category === activeAssetTab).length === 0 && (
+                  <div className={`${assetViewMode === 'grid' ? 'col-span-2' : assetViewMode === 'compact' ? 'col-span-4' : ''} py-20 flex flex-col items-center justify-center text-gray-700 bg-gray-950/40 rounded-3xl border-2 border-dashed border-gray-900/50 backdrop-blur-sm`}>
+                    <div className="relative mb-4">
+                      <i className="fas fa-ghost text-4xl opacity-10"></i>
+                      <div className="absolute -top-1 -right-1 h-3 w-3 bg-cyan-500/20 rounded-full animate-ping"></div>
+                    </div>
+                    <span className="text-[10px] uppercase font-black tracking-[0.4em] opacity-30">Registry Empty</span>
+                    <span className="text-[8px] mt-2 opacity-10 italic">SYNC_STATUS: IDLE // SCANNING_FAIL</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 4. Global Scene Actions (Refined) */}
+            <div className="pt-6 border-t border-gray-900/50 grid grid-cols-2 gap-4">
+              <button
+                onClick={() => document.getElementById('import_pfb')?.click()}
+                className="group relative py-3 bg-indigo-950/20 border border-indigo-500/20 text-indigo-400 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-900/30 transition-all flex items-center justify-center overflow-hidden"
+              >
+                <div className="absolute inset-x-0 h-[1px] top-0 bg-indigo-400/20"></div>
+                <i className="fas fa-dna mr-2 group-hover:rotate-180 transition-transform duration-700"></i> 生态包导入 (.pfb)
+              </button>
+              <button
+                onClick={handleExportBundle}
+                className="group relative py-3 bg-gray-900/40 border border-gray-800 text-gray-500 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white hover:bg-gray-800/60 transition-all flex items-center justify-center"
+              >
+                <i className="fas fa-download mr-2 group-hover:translate-y-0.5 transition-transform"></i> 全量导出
               </button>
               <input type="file" id="import_pfb" accept=".pfb" className="hidden" onChange={handleImportBundle} />
-
-              <button onClick={handleExportBundle} className="col-span-2 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded hover:bg-gray-700">
-                <i className="fas fa-file-export mr-2"></i> 导出捆绑包 (Export Bundle)
-              </button>
-            </div>
-
-            <div className="border-t border-gray-800 pt-4">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">快速导入 (Quick Import)</h3>
-              <div className="space-y-2">
-                <label className="block w-full py-2 bg-gray-800 text-center rounded cursor-pointer hover:bg-gray-700 text-gray-400">
-                  <i className="fas fa-cube mr-2"></i> 导入模型 (Model .glb)
-                  <input type="file" className="hidden" accept=".glb,.gltf" onChange={(e) => handleAssetImport(e, 'models')} />
-                </label>
-                <label className="block w-full py-2 bg-gray-800 text-center rounded cursor-pointer hover:bg-gray-700 text-gray-400">
-                  <i className="fas fa-music mr-2"></i> 导入音频 (Audio .mp3)
-                  <input type="file" className="hidden" accept=".mp3,.wav,.ogg" onChange={(e) => handleAssetImport(e, 'audio')} />
-                </label>
-                <label className="block w-full py-2 bg-gray-800 text-center rounded cursor-pointer hover:bg-gray-700 text-gray-400">
-                  <i className="fas fa-image mr-2"></i> 导入环境 (HDR .hdr)
-                  <input type="file" className="hidden" accept=".hdr" onChange={(e) => handleAssetImport(e, 'environments')} />
-                </label>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-800 pt-4">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-3">资产注册表 (Registry) - {stats.assetCount}</h3>
-              <div className="max-h-48 overflow-y-auto bg-gray-900 rounded p-2 text-gray-500 font-mono text-[10px]">
-                {assetList.map((a, i) => (
-                  <div key={i} className="mb-1 truncate hover:text-white cursor-help" title={a?.id || 'Unknown'}>
-                    [{a?.metadata?.category || 'Unknown'}] {a?.metadata?.name || 'Untitled Asset'}
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
