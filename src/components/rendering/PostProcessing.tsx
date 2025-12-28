@@ -134,7 +134,7 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
       fxaaPassRef.current = null;
       console.log('[PostProcessing] EffectComposer disposed');
     };
-  }, [enabled, gl, scene, camera, size.width, size.height, bloomEnabled, smaaEnabled]);
+  }, [enabled, gl, scene, camera, bloomEnabled, smaaEnabled]); // 🔥 修复:移除 size 依赖，防止 Resize 时销毁重建
 
   // 更新 Bloom 参数
   useEffect(() => {

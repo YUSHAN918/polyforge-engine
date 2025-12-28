@@ -74,6 +74,7 @@ export interface SpawnVegetationPayload {
     type: EngineCommandType.SPAWN_VEGETATION;
     count: number;
     vegType: 'grass' | 'flower';
+    color?: string;
 }
 export interface ClearVegetationPayload { type: EngineCommandType.CLEAR_VEGETATION; }
 export interface SetGrassScalePayload { type: EngineCommandType.SET_GRASS_SCALE; scale: number; }

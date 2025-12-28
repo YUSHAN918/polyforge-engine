@@ -258,8 +258,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     setIsGenerating(true);
     // 5000 for grass, 500 for flowers
     const count = activeVegType === 'grass' ? 5000 : 500;
+    const color = activeVegType === 'grass' ? grassColor : flowerColor; // 🔥 Capture current color
     setTimeout(() => {
-      dispatch(EngineCommandType.SPAWN_VEGETATION, { count, vegType: activeVegType });
+      dispatch(EngineCommandType.SPAWN_VEGETATION, { count, vegType: activeVegType, color }); // ✅ Pass color
       setIsGenerating(false);
     }, 0);
   };
@@ -912,11 +913,11 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       {/* 3. Notification Toast */}
       {notification && (
         <div className={`absolute top-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full shadow-xl border backdrop-blur-md flex items-center gap-2 animate-slideDown z-50 ${notification.type === 'success' ? 'bg-green-900/80 border-green-500/50 text-green-300' :
-            notification.type === 'error' ? 'bg-red-900/80 border-red-500/50 text-red-300' :
-              'bg-blue-900/80 border-blue-500/50 text-blue-300'
+          notification.type === 'error' ? 'bg-red-900/80 border-red-500/50 text-red-300' :
+            'bg-blue-900/80 border-blue-500/50 text-blue-300'
           }`}>
           <i className={`fas ${notification.type === 'success' ? 'fa-check-circle' :
-              notification.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'
+            notification.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'
             }`}></i>
           <span className="text-[10px] font-bold">{notification.message}</span>
         </div>

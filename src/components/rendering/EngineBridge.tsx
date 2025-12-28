@@ -745,7 +745,12 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       )}
 
       {/* 🌙 环境光基底：完全由 WorldState.ambientColor 控制，不再硬编码 */}
-      {/* <ambientLight intensity={0.3} color="#ffffff" />  <-- 移除造成灰蒙蒙的元凶 */}
+      {/* 修复：添加半球光作为基础补光 (Fill Light)，防止阴影死黑，解决"数值阻碍感" */}
+      <hemisphereLight
+        color="#ebf4fa" // Sky Color
+        groundColor="#3f423e" // Ground Color
+        intensity={(worldState?.lightIntensity || 1.0) * 0.3} // 动态强度 (0.3 max)
+      />
 
       {/* 方向光（太阳） */}
       <directionalLight

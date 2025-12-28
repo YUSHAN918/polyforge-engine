@@ -188,7 +188,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       // --- Vegetation ---
       case EngineCommandType.SPAWN_VEGETATION:
-        this.spawnVegetation(command.count, command.vegType);
+        this.spawnVegetation(command.count, command.vegType, command.color);
         break;
       case EngineCommandType.CLEAR_VEGETATION:
         this.clearVegetation();
@@ -386,13 +386,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     });
   }
 
-  private spawnVegetation(count: number, type: 'grass' | 'flower') {
+  private spawnVegetation(count: number, type: 'grass' | 'flower', color?: string) {
     if (!this.terrainEntity) return;
 
     // Logic from original spawnFlowers/spawnGrass
     const density = type === 'grass' ? count : Math.min(count, 2000); // Cap flowers
 
-    console.log(`🌱 Spawning ${type} (count: ${density})...`);
+    console.log(`🌱 Spawning ${type} (count: ${density}, color: ${color})...`);
 
     // Use System to spawn logic
 
@@ -418,11 +418,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       const veg = entity?.getComponent<VegetationComponent>('Vegetation');
       if (veg) {
         // Validation specific overrides
-        if (type === 'flower') {
-          veg.config.baseColor = '#ff69b4'; // Default Pink
-          // 🔥 修复:不再硬编码 scale,使用 VegetationSystem 的全局缩放值
-          // veg.config.scale = 1.5; // ❌ 移除硬编码
+        if (color) {
+          veg.config.baseColor = color; // ✅ Apply user selected color immediately
+        } else if (type === 'flower') {
+          veg.config.baseColor = '#ff69b4'; // Default Pink fallback
         }
+
+        // Remove hardcoded scale if present in previous versions
+        // veg.config.scale = 1.5; 
+
         veg.markDirty();
       }
     }
