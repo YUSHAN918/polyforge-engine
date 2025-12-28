@@ -59,6 +59,12 @@ export class CameraComponent implements Component {
   public near: number = 0.1;
   public far: number = 1000;
 
+  // 视距备份与控制 (Dolly Loop)
+  public preFollowDistance: number = 100;
+
+  // 核心：控制目标（WASD 作用对象），与跟随目标（相机看向的对象）脱钩
+  public controlledEntityId: string | null = null;
+
   // 第三人称偏移（相对于目标）
   public offset: [number, number, number] = [0, 2, 5];  // [x, y, z]
 
@@ -139,6 +145,7 @@ export class CameraComponent implements Component {
       enabled: this.enabled,
       mode: this.mode,
       targetEntityId: this.targetEntityId,
+      controlledEntityId: this.controlledEntityId,
       firstPersonSocket: this.firstPersonSocket,
       fov: this.fov,
       near: this.near,
@@ -166,6 +173,7 @@ export class CameraComponent implements Component {
     this.enabled = data.enabled;
     this.mode = data.mode || 'orbit';
     this.targetEntityId = data.targetEntityId || null;
+    this.controlledEntityId = data.controlledEntityId || null;
     this.firstPersonSocket = data.firstPersonSocket || 'head';
     this.fov = data.fov || 60;
     this.near = data.near || 0.1;

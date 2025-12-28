@@ -449,12 +449,27 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     });
 
-    // 🔥 Auto-Link Camera if in Experience Mode
-    if (this.currentContext === ValidationContext.EXPERIENCE && this.cameraEntity) {
+    // 🔥 Auto-Link Camera: No longer restricted by context
+    if (this.cameraEntity) {
       const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
       if (cam) {
+        // 备份当前视距，用于 ESC 退出后还原
+        cam.preFollowDistance = cam.distance;
+
+        // 1. 设置目标实体 (同时设置跟随和控制)
         cam.targetEntityId = this.playerEntity.id;
-        console.log('📷 Camera linked to new player');
+        cam.controlledEntityId = this.playerEntity.id;
+
+        // 2. 自动拉近镜头 (Zoom-In)
+        cam.distance = 35;
+
+        // 3. 自动切换模式 (如果原本是 Orbit)
+        if (cam.mode === 'orbit') {
+          cam.mode = 'isometric';
+          console.log('🎥 Mode auto-switched to ISO for combat follow');
+        }
+
+        console.log(`📷 Camera linked & Zoomed-In (Distance: ${cam.distance}, Pre: ${cam.preFollowDistance})`);
       }
     }
 
@@ -467,8 +482,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Unlink Camera first
     if (this.cameraEntity) {
       const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
-      if (cam && cam.targetEntityId === this.playerEntity.id) {
-        cam.targetEntityId = null;
+      if (cam) {
+        if (cam.targetEntityId === this.playerEntity.id) {
+          cam.targetEntityId = null;
+        }
+        if (cam.controlledEntityId === this.playerEntity.id) {
+          cam.controlledEntityId = null;
+        }
+        // Restore distance on despawn
+        cam.distance = 100;
         // Maybe reset lookat?
       }
     }

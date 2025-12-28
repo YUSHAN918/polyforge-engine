@@ -99,8 +99,9 @@
 ---
 
 ## 历史进展与记录 (History & Records)
-- [2025-12-27] Phase 15: 创造与体验架构分离完成。重构 CameraSystem 逻辑分冶，实现 FPS 物理动力学驱动 (setLinearVelocity) 与 WASD 视口同步。修复编辑器 Space+左键平移 Bug。
-- [2025-12-27] Phase 16: 模块独立化完成。架构验证面板 (ArchitectureValidationPanel) 已重构为双态 (Creation/Experience) 模式，引入 Gameplay Archetype 系统与自适应控制器架构。核心逻辑已物理隔离，支持实时位移参数调优。
+- [2025-12-27] Phase 15.1: 创造与体验架构分离完成。重构 CameraSystem 逻辑分治，实现 FPS 物理动力学驱动 (setLinearVelocity) 与 WASD 视口同步。修复编辑器 Space+左键平移 Bug。
+- [2025-12-27] Phase 15.2: 模块独立化完成。架构验证面板 (ArchitectureValidationPanel) 已重构为双态 (Creation/Experience) 模式，引入 Gameplay Archetype 系统与自适应控制器架构。核心逻辑已物理隔离，支持实时位移参数调优。
+- [2025-12-28] Phase 15.3: 角色操控深度细化。纠正屏幕空间 W-UP 移动逻辑，实现 8 向标准化位移及垂直起飞反馈。修复角色删除逻辑与等距视角跟随稳定性。指令协议类型一致性深度加固。
 
 ## 第六部分：核心知识地图 (Knowledge Map)
 - **核心组件**：`WorldStateManager` (状态) -> `AssetRegistry` (资产) -> `BundleSystem` (打包)。
@@ -108,4 +109,4 @@
 
 ---
 **签署人**：制作人 & 山神
-**最后更新**：2025-12-26 (v1.3.0)
+**最后更新**：2025-12-28 (v1.3.0)

@@ -421,6 +421,9 @@ export class InputSystem implements System {
     actions.set('UNDO', { name: 'UNDO', keys: ['z'], modifiers: ['ctrl'] });
     actions.set('REDO', { name: 'REDO', keys: ['y'], modifiers: ['ctrl'] });
 
+    // 全局
+    actions.set('ESCAPE', { name: 'ESCAPE', keys: ['escape'] });
+
     return {
       name: 'game',
       actions,

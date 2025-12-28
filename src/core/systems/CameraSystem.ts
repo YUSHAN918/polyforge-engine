@@ -61,8 +61,21 @@ export class CameraSystem implements System {
   // 🌍 物理系统引用
   private physicsSystem: any = null;
 
+  // 🏛️ 实体管理器引用 (Required for target lookup across filtered lists)
+  private entityManager: any = null;
+
   // 🎥 R3F 相机引用（直接控制）
   private r3fCamera: any = null;
+
+  /**
+   * 系统初始化
+   */
+  public initialize(entityManager: any): void {
+    this.entityManager = entityManager;
+    console.log('🎥 CameraSystem: EntityManager reference linked');
+  }
+
+
 
   /**
    * 设置输入系统引用
@@ -143,9 +156,9 @@ export class CameraSystem implements System {
    * 更新目标状态（根据相机模式）
    */
   private updateTargetState(camera: CameraComponent, entities: Entity[], deltaTime: number): void {
-    // 查找跟随目标
-    const target = camera.targetEntityId
-      ? entities.find(e => e.id === camera.targetEntityId)
+    // 🔥 核心修复：从 EntityManager 全局查找目标，而不是从过滤后的 entities 数组查找
+    const target = (camera.targetEntityId && this.entityManager)
+      ? this.entityManager.getEntity(camera.targetEntityId)
       : null;
 
     // 默认 Pivot 为 Camera 的 pivotOffset (手动偏移)
@@ -190,6 +203,9 @@ export class CameraSystem implements System {
 
     const wheelDelta = this.inputSystem.wheelDelta;
     if (wheelDelta !== 0 && (camera.mode === 'orbit' || camera.mode === 'thirdPerson' || camera.mode === 'isometric' || camera.mode === 'sidescroll')) {
+      // 🔥 制作人：锁定逻辑。跟随目标时禁止手动缩放。
+      if (camera.targetEntityId) return;
+
       // 调整缩放速度：1.3.0 优化
       camera.distance += wheelDelta * 0.05;
       camera.distance = Math.max(camera.minDistance, Math.min(camera.maxDistance, camera.distance));
@@ -200,6 +216,9 @@ export class CameraSystem implements System {
    * [CREATION] 创造块控制器：仅处理 Orbit 逻辑
    */
   private handleCreationInputs(camera: CameraComponent, deltaTime: number): void {
+    // 如果正在跟随目标，则禁用手动 Panning 和旋转 (ISO 模式下通常固定，但也防止干扰)
+    if (camera.targetEntityId) return;
+
     const mouseDelta = this.inputSystem.mouseDelta;
     const pressedButtons = this.inputSystem.pressedButtons || new Set();
     const pressedKeys = this.inputSystem.pressedKeys || new Set();
@@ -248,10 +267,48 @@ export class CameraSystem implements System {
       }
     }
 
+    // 🔥 2. ESC 退出跟随 (Exit Follow & Dolly Out)
+    if (this.inputSystem.isActionPressed('ESCAPE')) {
+      if (camera.targetEntityId) {
+
+        // 🔥 关键优化：退出跟随前，将 Pivot 同步到当前目标位置
+        // 这样切回 Orbit 模式时，相机会继续看向角色当前位置，而不是跳回 (0,0,0)
+        if (this.entityManager) {
+          const targetEnt = this.entityManager.getEntity(camera.targetEntityId);
+          if (targetEnt) {
+            const t = targetEnt.getComponent('Transform');
+            if (t) {
+              camera.pivotOffset[0] = t.position[0];
+              camera.pivotOffset[1] = t.position[1];
+              camera.pivotOffset[2] = t.position[2];
+            }
+          }
+        }
+
+        camera.targetEntityId = null;
+
+        // 🔓 还原视距 (Dolly Out to Fixed 100 as requested)
+        camera.distance = 100;
+
+        // 切回自由观察模式 (Orbit)
+        camera.mode = 'orbit';
+
+        console.log(`🔓 Camera Released & Fixed Dolly Out to ${camera.distance}`);
+      }
+    }
+
     // 2. 统一角色控制逻辑 (Unified Character Control)
-    // 只要有目标实体，就允许控制（WASD），无论相机模式如何
-    if (camera.targetEntityId) {
-      this.updateCharacterControl(camera, deltaTime);
+    // 🔥 制作人：控制逻辑脱钩。只要有受控实体，无论相机是否跟随，WASD 始终有效。
+    const controlledId = camera.controlledEntityId || camera.targetEntityId;
+    if (controlledId) {
+      if (camera.targetEntityId) {
+        // 跟随状态下：强制归心，禁用手动平移
+        camera.pivotOffset[0] = 0;
+        camera.pivotOffset[1] = 0;
+        camera.pivotOffset[2] = 0;
+      }
+
+      this.updateCharacterControl(camera, controlledId, deltaTime);
     }
 
     // 3. 分发到特定相机行为控制器 (Camera Behavior Only)
@@ -269,8 +326,8 @@ export class CameraSystem implements System {
    * 角色控制器 (Character Control): 通用 WASD 物理驱动
    * 支持 FPS/TPS (基于 Yaw), Isometric (基于 Yaw), Sidescroll (基于 World X)
    */
-  private updateCharacterControl(camera: CameraComponent, deltaTime: number): void {
-    const targetEntity = camera.targetEntityId ? this.entityManager.getEntity(camera.targetEntityId) : null;
+  private updateCharacterControl(camera: CameraComponent, entityId: string, deltaTime: number): void {
+    const targetEntity = this.entityManager?.getEntity(entityId);
     if (!targetEntity) return;
 
     let dx = 0;
@@ -281,6 +338,7 @@ export class CameraSystem implements System {
       // 🔥 Sidescroll: 锁定为世界坐标 X 轴移动
       // A -> Left (-X), D -> Right (+X), W/S -> Ignored (or Z depth if needed)
       if (this.inputSystem.isActionPressed('MOVE_LEFT')) dx = -1;
+      if (this.inputSystem.isActionPressed('MOVE_RIGHT')) dx = 1;
     } else {
       // 🔥 FPS/TPS/Isometric: 基于相机 Yaw 的移动
       // 投影到地面 (Y=0) 的相机极坐标转换
@@ -336,7 +394,8 @@ export class CameraSystem implements System {
       // 非物理移动 (Fallback)
       const transform = (targetEntity as Entity).getComponent<TransformComponent>('Transform');
       if (transform) {
-        transform.position[2] += dz * speed;
+        transform.position[0] += dx * speed * deltaTime;
+        transform.position[2] += dz * speed * deltaTime;
         transform.markLocalDirty();
       }
     }
@@ -382,7 +441,6 @@ export class CameraSystem implements System {
   }
 
   // 注入依赖
-  private entityManager: any = null;
   public setEntityManager(em: any) { this.entityManager = em; }
   public setPhysicsSystem(ps: any) { this.physicsSystem = ps; }
 
@@ -395,7 +453,7 @@ export class CameraSystem implements System {
       : [0, 0, 0];
 
     // 🎮 处理输入 (Input Processing)
-    this.handleInputs(camera, deltaTime);
+    // this.handleInputs(camera, deltaTime); // Handled once at the beginning of update
 
     // 基础参数
     const distance = camera.distance;
@@ -429,7 +487,7 @@ export class CameraSystem implements System {
    */
   private updateFirstPersonMode(camera: CameraComponent, target: Entity | null, deltaTime: number): void {
     // 🎮 处理输入
-    this.handleInputs(camera, deltaTime);
+    // this.handleInputs(camera, deltaTime); // Handled once at the beginning of update
 
     if (!target) {
       this.targetState.position = [0, 1.7, 0];  // 默认高度
@@ -470,7 +528,7 @@ export class CameraSystem implements System {
    */
   private updateThirdPersonMode(camera: CameraComponent, target: Entity | null, deltaTime: number): void {
     // 🎮 处理输入
-    this.handleInputs(camera, deltaTime);
+    // this.handleInputs(camera, deltaTime); // Handled once at the beginning of update
 
     if (!target) {
       this.targetState.position = [0, 2, 5];
@@ -518,7 +576,7 @@ export class CameraSystem implements System {
    */
   private updateIsometricMode(camera: CameraComponent, target: Entity | null, deltaTime: number): void {
     // 🎮 处理输入 (只支持缩放)
-    this.handleInputs(camera, deltaTime);
+    // this.handleInputs(camera, deltaTime); // Handled once at the beginning of update
 
     const targetPos = target
       ? target.getComponent<TransformComponent>('Transform')?.getWorldPosition() || [0, 0, 0]
@@ -533,24 +591,30 @@ export class CameraSystem implements System {
     const pitchRad = pitch * Math.PI / 180;
     const yawRad = yaw * Math.PI / 180;
 
-    // 相机位置 (围绕目标点旋转)
-    const x = targetPos[0] + distance * Math.cos(pitchRad) * Math.sin(yawRad);
-    const y = targetPos[1] + distance * Math.sin(pitchRad);
-    const z = targetPos[2] + distance * Math.cos(pitchRad) * Math.cos(yawRad);
-
-    // 🔥 Pivot: 看向目标实体的中心
+    // 🔥 Pivot: 基准看向目标位置 (稍微抬高看向头部)
     const pivotX = targetPos[0];
-    const pivotY = targetPos[1] + 1.0; // 稍微抬高看向头部
+    const pivotY = targetPos[1] + 1.2; // 稍微抬高看向中心偏上
     const pivotZ = targetPos[2];
 
-    this.targetState.position = [
-      x + camera.pivotOffset[0],
-      y + camera.pivotOffset[1],
-      z + camera.pivotOffset[2]
-    ];
-    this.targetState.rotation = [-pitch, yaw, 0];
-    this.targetState.pivot = [pivotX, pivotY, pivotZ];
+    // 相机位置 (围绕目标点旋转)
+    const x = distance * Math.cos(pitchRad) * Math.sin(yawRad);
+    const y = distance * Math.sin(pitchRad);
+    const z = distance * Math.cos(pitchRad) * Math.cos(yawRad);
 
+    // 最终状态：将 pivotOffset 应用于整体 (跟随模式下为 0)
+    this.targetState.pivot = [
+      pivotX + camera.pivotOffset[0],
+      pivotY + camera.pivotOffset[1],
+      pivotZ + camera.pivotOffset[2]
+    ];
+
+    this.targetState.position = [
+      this.targetState.pivot[0] + x,
+      this.targetState.pivot[1] + y,
+      this.targetState.pivot[2] + z
+    ];
+
+    this.targetState.rotation = [-pitch, yaw, 0];
     // 锁定 Y 轴旋转
     if (camera.lockAxis === 'y') {
       this.targetState.rotation[1] = yaw;
