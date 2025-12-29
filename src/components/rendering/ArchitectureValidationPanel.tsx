@@ -142,6 +142,10 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       // 5. Pull Spawn Button State
       setSpawnButtonState(manager.getSpawnButtonState());
 
+      // 6. Pull Camera Mode (🔥 UI同步：确保UI始终反映真实相机状态)
+      const currentCamMode = manager.getCameraSystem().getMode();
+      setCameraMode(currentCamMode);
+
     }, 500); // 2Hz Sync
 
     return () => clearInterval(interval);

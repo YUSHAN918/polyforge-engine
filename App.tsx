@@ -12,6 +12,7 @@ import { VfxEditorPanel } from './components/VfxEditorPanel'; // NEW
 import { ArchitectureEditor } from './components/ArchitectureEditor/ArchitectureEditor'; // NEW
 import { ArchitectureValidationPanel } from './src/components/rendering/ArchitectureValidationPanel'; // NEW: 架构验证观测窗口 (影子引擎)
 import { ArchitectureValidationManager } from './src/core/ArchitectureValidationManager'; // NEW: 核心管理器 (影子引擎)
+import { EngineCommandType } from './src/core/EngineCommand'; // NEW: 引擎指令类型 (影子引擎)
 import { SettingsModal } from './components/SettingsModal'; // NEW
 import './i18n'; // 初始化国际化
 import i18n from 'i18next'; // 导入 i18n 实例
@@ -128,6 +129,14 @@ export const App: React.FC = () => {
             // 创建管理器
             const manager = new ArchitectureValidationManager();
             manager.start();
+
+            // 🔥 自动重置到创造模式（制作人要求：切回时始终重置，简单粗暴）
+            // 使用 setTimeout 确保管理器完全初始化后再执行重置
+            setTimeout(() => {
+                manager.dispatch({ type: EngineCommandType.SET_CAMERA_MODE, mode: 'orbit' });
+                console.log('✓ Auto-reset to Creation mode (orbit)');
+            }, 50);
+
             setArchValidationManager(manager);
 
             // 启动更新循环

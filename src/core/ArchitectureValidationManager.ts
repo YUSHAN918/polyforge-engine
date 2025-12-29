@@ -386,7 +386,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     console.log('Sweep 🧹 [ArchitectureValidationManager] Disposing Shadow Core...');
 
-    // 🔥 0. 强制保存：确保模块切换、关闭窗口前数据不丢失
+    // 🔥 0a. 清理非持久化实体（防止保存带有角色的脏状态）
+    if (this.playerEntity) {
+      this.despawnPlayerCharacter(); // 删除角色并解除绑定
+    }
+    this.entityManager.clearNonPersistent(); // 清理所有临时实体
+
+    // 🔥 0b. 强制保存：确保模块切换、关闭窗口前数据不丢失（现在是干净状态）
     if (this.storageManager) {
       this.storageManager.save();
     }
@@ -458,15 +464,18 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     if (mode === 'orbit') {
       this.currentContext = ValidationContext.CREATION;
 
-      // 🔥 核心隔离：切换回创造模式时，物理摧毁所有非持久化实体
+      // 🔥 完整清理：切换回创造模式时自动删除角色并解除绑定
+      if (this.playerEntity) {
+        this.despawnPlayerCharacter(); // 主动删除角色
+        // despawnPlayerCharacter 内部会调用 unbindCamera，已包含相机解绑
+      }
+
+      // 🔥 核心隔离：物理摧毁所有非持久化实体
       this.entityManager.clearNonPersistent();
-      this.playerEntity = null; // 确保引用被清空
+      // playerEntity 已在 despawnPlayerCharacter 中设为 null
 
       this.inputSystem.popContext(); // Ensure clean slate
       this.inputSystem.pushContext('orbit');
-
-      // Optional: Despawn player when going back to orbit? 
-      // User didn't ask, but it might be cleaner. Keeping it simple for now.
     } else {
       this.currentContext = ValidationContext.EXPERIENCE;
       this.inputSystem.popContext();
