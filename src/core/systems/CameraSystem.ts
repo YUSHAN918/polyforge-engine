@@ -71,10 +71,9 @@ export class CameraSystem implements System {
   // 🔥 缓存当前活跃相机引用 (For external query like getMode)
   private currentCameraComponent: any = null;
 
-  // 🛡️ Strategy Map
+  // 🛡️ Strategy Map & State Memo
   private strategies: Map<CameraMode, ICameraStrategy> = new Map();
-  private currentStrategy: ICameraStrategy | null = null;
-  private lastMode: CameraMode | null = null;
+  private cameraModeMap: Map<string, CameraMode> = new Map();
 
   constructor() {
     this.strategies.set('isometric', new IsometricStrategy());
@@ -132,7 +131,7 @@ export class CameraSystem implements System {
    * System 接口：实体移除回调
    */
   public onEntityRemoved(entity: Entity): void {
-    // 相机移除时清理
+    this.cameraModeMap.delete(entity.id);
   }
 
   /**
@@ -150,20 +149,24 @@ export class CameraSystem implements System {
 
       if (!camera || !transform || !camera.enabled) continue;
 
-      // 🔥 缓存当前活跃相机引用
+      // 🔥 缓存当前活跃相机引用 (供 UI 查询)
       this.currentCameraComponent = camera;
 
-      // 🔄 Strategy Switch
-      if (camera.mode !== this.lastMode) {
-        if (this.currentStrategy) this.currentStrategy.exit(camera);
-        this.currentStrategy = this.strategies.get(camera.mode) || this.strategies.get('orbit')!;
-        this.currentStrategy.enter(camera);
-        this.lastMode = camera.mode;
-        // console.log(`🎥 Switched to Strategy: ${camera.mode}`);
-      }
+      // 🔄 Per-Camera Strategy Switch
+      // 使用 cameraModeMap 记忆每个相机的模式，防止多相机干扰
+      const lastMode = this.cameraModeMap.get(entity.id);
+      const strategy = this.strategies.get(camera.mode) || this.strategies.get('orbit')!;
 
-      const strategy = this.currentStrategy;
-      if (!strategy) continue; // Should not happen
+      if (camera.mode !== lastMode) {
+        // Mode changed for this specific camera
+        if (lastMode) {
+          const prevStrategy = this.strategies.get(lastMode);
+          if (prevStrategy) prevStrategy.exit(camera);
+        }
+        strategy.enter(camera);
+        this.cameraModeMap.set(entity.id, camera.mode);
+        // console.log(`🎥 Camera ${entity.id} switched to: ${camera.mode}`);
+      }
 
       // 1. Handle Strategy Input (Camera Control)
       if (this.inputSystem) {
@@ -171,12 +174,8 @@ export class CameraSystem implements System {
       }
 
       // 2. Global Character Control (Physics)
-      // 🔥 ISO Mode is LOCKED to Legacy Control to prevent regressions
-      // 🔥 Other modes use the new Physics Control
       const controlledId = camera.controlledEntityId || camera.targetEntityId;
       if (controlledId) {
-        if (camera.targetEntityId) camera.pivotOffset.fill(0); // Center pivot if following
-
         if (camera.mode === 'isometric') {
           this.updateLegacyCharacterControl(camera, controlledId, deltaTime); // 🔒 LOCKED
         } else {
@@ -200,7 +199,8 @@ export class CameraSystem implements System {
       this.smoothUpdate(camera, transform, deltaTime);
     }
 
-    // 🔥 Fix: Reset frame data ONLY ONCE after ALL cameras are processed
+    // 🏁 Input Cycle Termination (Safety Anchor)
+    // 根据制作人规约，输入重置必须位于整个相机链条的最末端
     if (this.inputSystem) this.inputSystem.resetFrameData();
   }
 
@@ -269,17 +269,12 @@ export class CameraSystem implements System {
 
     const speed = camera.moveSpeed || 10.0;
 
-    // Physics Check
     const physics = (targetEntity as Entity).getComponent('Physics');
     if (physics && this.physicsSystem) {
+      const body = (this.physicsSystem as any).getRigidBody((targetEntity as Entity).id);
       let currentY = 0;
-      const sys = this.physicsSystem as any;
-      if (sys.bodyMap) {
-        const body = sys.bodyMap.get((targetEntity as Entity).id);
-        if (body) {
-          const v = body.linvel();
-          if (v) currentY = v.y;
-        }
+      if (body) {
+        currentY = body.linvel().y;
       }
       (this.physicsSystem as any).setEntityVelocity(
         (targetEntity as Entity).id,
@@ -313,14 +308,10 @@ export class CameraSystem implements System {
 
       // Physics
       if (this.physicsSystem) {
-        const sys = this.physicsSystem as any;
-        // Get Y...
+        const body = (this.physicsSystem as any).getRigidBody(targetEntity.id);
         let currentY = 0;
-        if (sys.bodyMap) {
-          const body = sys.bodyMap.get(targetEntity.id);
-          if (body) currentY = body.linvel().y;
-        }
-        sys.setEntityVelocity(targetEntity.id, [dx * speed, currentY, 0]); // Lock Z
+        if (body) currentY = body.linvel().y;
+        (this.physicsSystem as any).setEntityVelocity(targetEntity.id, [dx * speed, currentY, 0]); // Lock Z
       }
       return;
     }
@@ -358,13 +349,12 @@ export class CameraSystem implements System {
     const speed = camera.moveSpeed || 10.0;
 
     if (this.physicsSystem) {
-      const sys = this.physicsSystem as any;
+      const body = (this.physicsSystem as any).getRigidBody(targetEntity.id);
       let currentY = 0;
-      if (sys.bodyMap) {
-        const body = sys.bodyMap.get(targetEntity.id);
-        if (body) currentY = body.linvel().y;
+      if (body) {
+        currentY = body.linvel().y;
       }
-      sys.setEntityVelocity(
+      (this.physicsSystem as any).setEntityVelocity(
         targetEntity.id,
         [dx * speed, currentY, dz * speed]
       );
@@ -409,14 +399,23 @@ export class CameraSystem implements System {
         this.currentState.position[2]
       );
 
-      // Update: OrbitStrategy returns rotation derived from lookAt math logic.
-      // So setting rotation is correct.
-      this.r3fCamera.rotation.set(
-        THREE.MathUtils.degToRad(this.currentState.rotation[0]),
-        THREE.MathUtils.degToRad(this.currentState.rotation[1]),
-        THREE.MathUtils.degToRad(this.currentState.rotation[2]),
-        'YXZ'
-      );
+      // 🔄 LookAt vs Euler Decision
+      // Orbit, Isometric, ThirdPerson: 必须注视轴心点以保证地心引力般的稳固
+      if (camera.mode === 'orbit' || camera.mode === 'isometric' || camera.mode === 'thirdPerson') {
+        this.r3fCamera.lookAt(
+          this.currentState.pivot[0],
+          this.currentState.pivot[1],
+          this.currentState.pivot[2]
+        );
+      } else {
+        // FPS/Sidescroll/Generic: 使用欧拉角旋转
+        this.r3fCamera.rotation.set(
+          THREE.MathUtils.degToRad(this.currentState.rotation[0]),
+          THREE.MathUtils.degToRad(this.currentState.rotation[1]),
+          THREE.MathUtils.degToRad(this.currentState.rotation[2]),
+          'YXZ'
+        );
+      }
 
       // 🔥 强制更新 FOV
       this.r3fCamera.fov = this.currentState.fov;

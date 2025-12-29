@@ -5,6 +5,7 @@ import { InputSystem } from '../InputSystem';
 import { Entity } from '../../Entity';
 
 export class SidescrollStrategy implements ICameraStrategy {
+    public readonly name = 'sidescroll';
     public enter(camera: CameraComponent): void { }
     public exit(camera: CameraComponent): void { }
 

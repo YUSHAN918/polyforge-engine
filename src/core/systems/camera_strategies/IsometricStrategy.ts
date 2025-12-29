@@ -9,6 +9,7 @@ import { InputSystem } from '../InputSystem';
 import { Entity } from '../../Entity';
 
 export class IsometricStrategy implements ICameraStrategy {
+    public readonly name = 'isometric';
     public enter(camera: CameraComponent): void {
         // 强制参数归位 (ISO 标准参数)
         // 注意：不要覆盖 distance，保留用户上次缩放

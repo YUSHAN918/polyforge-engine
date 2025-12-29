@@ -7,6 +7,7 @@ import { InputSystem } from '../InputSystem';
  * 也可以看作是 "Camera Controller State Pattern"
  */
 export interface ICameraStrategy {
+    readonly name: string;
     /**
      * 进入该模式时调用 (初始化/重置)
      */

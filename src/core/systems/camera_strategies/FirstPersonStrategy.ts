@@ -5,6 +5,7 @@ import { InputSystem } from '../InputSystem';
 import { Entity } from '../../Entity';
 
 export class FirstPersonStrategy implements ICameraStrategy {
+    public readonly name = 'firstPerson';
     public enter(camera: CameraComponent): void { }
     public exit(camera: CameraComponent): void { }
 
