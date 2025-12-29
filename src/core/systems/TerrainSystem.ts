@@ -285,5 +285,18 @@ export class TerrainSystem implements System {
 
     console.log('[TerrainSystem] Random terrain generated');
   }
+
+  /**
+   * 清理地形系统资源（铁幕隔离）
+   */
+  public destroy(): void {
+    // 重置笔刷为安全初始态
+    this.brush = {
+      radius: 5,
+      strength: 1,
+      hardness: 0.5
+    };
+    console.log('🧹 [TerrainSystem] Brush state reset.');
+  }
 }
 

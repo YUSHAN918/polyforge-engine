@@ -376,12 +376,25 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.physicsSystem.destroy();
     }
 
-    // 4. 销毁音频上下文
+    // 🔥 4. 销毁地形与植被系统（清理 GPU 缓存与笔刷状态）
+    if (this.terrainSystem) {
+      this.terrainSystem.destroy();
+    }
+    if (this.vegetationSystem) {
+      this.vegetationSystem.destroy();
+    }
+
+    // 5. 销毁音频上下文
     if (this.audioSystem) {
       this.audioSystem.dispose();
     }
 
-    // 5. 清理实体集
+    // 🔥 6. 彻底关闭资产单例（释放 HDR 材质与模型句柄）
+    if (this.assetRegistry) {
+      this.assetRegistry.close();
+    }
+
+    // 7. 清理实体集
     this.entityManager.clear();
 
     console.log('✅ Shadow Core disposed successfully.');

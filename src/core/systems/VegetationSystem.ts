@@ -593,4 +593,14 @@ export class VegetationSystem implements System {
     }
     return Math.abs(hash);
   }
+
+  /**
+   * 清理植被系统资源（铁幕隔离）
+   */
+  public destroy(): void {
+    this.instanceCache.clear();
+    this.meshMap.clear();
+    this.dirtyEntities.clear();
+    console.log('🧹 [VegetationSystem] Caches and Mesh references cleared.');
+  }
 }
