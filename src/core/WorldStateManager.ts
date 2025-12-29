@@ -95,7 +95,7 @@ export class WorldStateManager {
       bloomThreshold: 0.85,    // 默认泛光阈值
       smaaEnabled: true,       // 默认开启抗锯齿
       toneMappingExposure: 1.0, // 默认曝光度
-      hdrAssetId: undefined     // 默认不指定，回退到自动选择
+      hdrAssetId: 'hdr_asset_1767259404480_zbm2b8a' // 默认天空环境 (blaubeuren_night_4k.hdr)
     };
   }
 

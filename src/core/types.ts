@@ -176,6 +176,7 @@ export interface SerializedEntity {
   }>;
   parentId?: string;
   socketName?: string; // 附加到父实体的哪个 socket
+  persistent?: boolean; // 是否持久化到存档
 }
 
 // ============================================================================

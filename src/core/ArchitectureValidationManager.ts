@@ -453,6 +453,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Update Context
     if (mode === 'orbit') {
       this.currentContext = ValidationContext.CREATION;
+
+      // 🔥 核心隔离：切换回创造模式时，物理摧毁所有非持久化实体
+      this.entityManager.clearNonPersistent();
+      this.playerEntity = null; // 确保引用被清空
+
       this.inputSystem.popContext(); // Ensure clean slate
       this.inputSystem.pushContext('orbit');
 
@@ -506,6 +511,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Case 1: Player does not exist -> Spawn & Bind
     const id = `Player_${Date.now()}`;
     const entity = this.entityManager.createEntity('Player', id);
+    entity.persistent = false; // 🔥 标记为非持久化：不存入存档，切回创造模式自动销毁
     this.playerEntity = entity;
 
     // 1. Transform
@@ -777,6 +783,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const id = `GravityCube_${Date.now()}`;
     // 🔥 复原：使用 GravityCube 作为名称，建立更强的业务关联
     const entity = this.entityManager.createEntity('GravityCube', id);
+    // 🔥 根据模式决定持久化：创造模式下持久化（场景搭建），体验模式下非持久化（物理测试）
+    entity.persistent = this.currentContext === ValidationContext.CREATION;
 
     // Transform
     const transform = new TransformComponent();

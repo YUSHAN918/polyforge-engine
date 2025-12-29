@@ -19,6 +19,7 @@ export class Entity implements IEntity {
   public children: Entity[];
   public sockets: Map<string, Socket>;
   public active: boolean;
+  public persistent: boolean; // 是否持久化到存档
 
   constructor(name: string = 'Entity', id?: string) {
     this.id = id || generateUID();
@@ -27,6 +28,7 @@ export class Entity implements IEntity {
     this.children = [];
     this.sockets = new Map();
     this.active = true;
+    this.persistent = true; // 默认所有实体都是持久化的
   }
 
   // ============================================================================
@@ -86,7 +88,7 @@ export class Entity implements IEntity {
       if (index !== -1) {
         this.parent.children.splice(index, 1);
       }
-      
+
       // 如果之前占用了 socket，清空它
       if (this.parentSocket && this.parent.sockets.has(this.parentSocket)) {
         const socket = this.parent.sockets.get(this.parentSocket)!;
@@ -204,7 +206,7 @@ export class Entity implements IEntity {
    */
   serialize(): SerializedEntity {
     const components = Array.from(this.components.values()).map(c => c.serialize());
-    
+
     const sockets = Array.from(this.sockets.values()).map(s => ({
       name: s.name,
       localTransform: s.localTransform,
@@ -215,6 +217,7 @@ export class Entity implements IEntity {
       id: this.id,
       name: this.name,
       active: this.active,
+      persistent: this.persistent,
       components,
       sockets,
     };
@@ -222,7 +225,7 @@ export class Entity implements IEntity {
     // 如果有父实体，记录父实体 ID
     if (this.parent) {
       data.parentId = this.parent.id;
-      
+
       // 查找附加到哪个 socket
       for (const [socketName, socket] of this.parent.sockets.entries()) {
         if (socket.occupied === this) {
@@ -241,6 +244,7 @@ export class Entity implements IEntity {
   static deserialize(data: SerializedEntity, componentRegistry: Map<string, new () => Component>): Entity {
     const entity = new Entity(data.name, data.id);
     entity.active = data.active;
+    entity.persistent = data.persistent !== undefined ? data.persistent : true;
 
     // 恢复 sockets
     for (const socketData of data.sockets) {

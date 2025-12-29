@@ -397,10 +397,23 @@ export class EntityManager {
   // ============================================================================
 
   /**
-   * 序列化所有实体
+   * 序列化所有实体（仅包括标记为持久化的实体）
    */
   serializeAll(): SerializedEntity[] {
-    return this.getAllEntities().map(e => e.serialize());
+    return this.getAllEntities()
+      .filter(e => e.persistent)
+      .map(e => e.serialize());
+  }
+
+  /**
+   * 清理所有非持久化实体（用于体验模式切换回创造模式）
+   */
+  clearNonPersistent(): void {
+    const nonPersistent = this.getAllEntities().filter(e => !e.persistent);
+    console.log(`🧹 [EntityManager] Purging ${nonPersistent.length} non-persistent entities...`);
+    for (const entity of nonPersistent) {
+      this.destroyEntity(entity.id);
+    }
   }
 
   /**
