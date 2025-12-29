@@ -93,8 +93,11 @@
 - **中键统一原则**：由于 Web 浏览器右键菜单的天然冲突，所有 3D 旋转交互必须统一映射到 **鼠标中键 (Button 1)**。严禁引入右键旋转，除非已实现可靠的 ContextMenu 全局锁。
 - **UI 绝对避让**：当鼠标处于 UI 面板上时，3D 层的输入拦截器（Pointer/Wheel）必须具备零延迟的“熔断”机制。
 
-### 4. 核心数学守恒
-- **相机变换**：球面坐标（Spherical）与直角坐标（Cartesian）的转换公式是引擎之魂。任何涉及 `CameraSystem` 的修改，必须反向校验 `TargetState` 的推导结果，严禁在逻辑中引入未经验证的几何偏移。
+### 5. 模块锁死与策略模式 (Module Locking & Strategy Pattern)
+- **隔离即生存**：对于已验证的核心逻辑（如上帝视角 ISO），必须使用 **策略模式 (Strategy Pattern)** 进行物理隔离。
+- **锁死协议 (Lockdown Protocol)**：
+    - 任何被标记为 `// 🔒 FROZEN` 的文件，**严禁修改**，除非制作人下达最高指令 "UNLOCK [Module Name]"。
+    - 在修改 `CameraSystem` 等核心调度器时，必须保证不破坏各策略接口的原子性。
 
 ---
 

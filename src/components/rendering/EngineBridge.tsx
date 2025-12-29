@@ -446,7 +446,14 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       inputSystem.pressedButtons.add(e.button);
 
       // 任何键按下都捕获指针，防止移出 Canvas 后丢失 Up 事件
-      canvas.setPointerCapture(e.pointerId);
+      // 🔥 Fix: Don't capture if already locked (PointerLock API conflicts with setPointerCapture)
+      if (document.pointerLockElement !== canvas) {
+        try {
+          canvas.setPointerCapture(e.pointerId);
+        } catch (err) {
+          // Ignore InvalidStateError (happens if pointer is invalid or race condition)
+        }
+      }
 
       // 只有中键(1)或右键(2)需要阻止默认行为（防止弹出菜单）
       // 左键(0)需要允许点击 UI（虽然这里是在 Canvas 上，但以防万一）
@@ -651,6 +658,24 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
     loadHDR();
   }, [scene, gl]);
+
+  // 🔥 FPS Mode: Pointer Lock Integration
+  useEffect(() => {
+    const canvas = gl.domElement;
+    if (!canvas) return;
+
+    const handleClick = () => {
+      if (!archValidationManager) return;
+      const camSys = archValidationManager.getCameraSystem();
+      // Only request lock if in First Person Mode
+      if (camSys && camSys.getMode() === 'firstPerson') {
+        canvas.requestPointerLock();
+      }
+    };
+
+    canvas.addEventListener('click', handleClick);
+    return () => canvas.removeEventListener('click', handleClick);
+  }, [gl, archValidationManager]);
 
   // 🔥 主渲染循环:神经合龙(ECS → R3F 相机强制同步)
   useFrame((state, delta) => {

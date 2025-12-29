@@ -1,3 +1,6 @@
+// 🔒 FROZEN: Legacy Demo - Read Only
+// This file demonstrates legacy direct usage of CameraSystem.
+// Do not modify unless keeping backward compatibility.
 /**
  * PolyForge v1.3.0 Camera Demo
  * Phase 10: 相机系统演示
@@ -14,6 +17,7 @@
  * - 演示第三人称、横版卷轴、等距视角等模式
  */
 
+import type { System, Entity } from './types';
 import { EntityManager } from './EntityManager';
 import { SystemManager } from './SystemManager';
 import { TransformComponent } from './components/TransformComponent';
@@ -194,6 +198,9 @@ export async function cameraDemo(): Promise<void> {
     pitch: -20,
     yaw: 0,
     smoothSpeed: 5.0,
+    pivotOffset: [0, 0, 0],
+    moveSpeed: 10.0,
+    forceMultiplier: 1.0
   });
 
   // 横版卷轴预设
@@ -208,6 +215,9 @@ export async function cameraDemo(): Promise<void> {
     yaw: 0,
     lockAxis: 'z',
     smoothSpeed: 3.0,
+    pivotOffset: [0, 0, 0],
+    moveSpeed: 10.0,
+    forceMultiplier: 1.0
   });
 
   // 等距视角预设（暗黑上帝视角）
@@ -222,6 +232,9 @@ export async function cameraDemo(): Promise<void> {
     yaw: 45,
     lockAxis: 'y',
     smoothSpeed: 4.0,
+    pivotOffset: [0, 0, 0],
+    moveSpeed: 10.0,
+    forceMultiplier: 1.0
   });
 
   // 第一人称预设
@@ -235,6 +248,9 @@ export async function cameraDemo(): Promise<void> {
     pitch: 0,
     yaw: 0,
     smoothSpeed: 8.0,
+    pivotOffset: [0, 0, 0],
+    moveSpeed: 10.0,
+    forceMultiplier: 1.0
   });
 
   console.log('✓ Preset snapshots created:');
@@ -332,7 +348,7 @@ export function switchCameraMode(mode: CameraMode): void {
     return;
   }
 
-  const camera = globalCameraEntity.getComponent<CameraComponent>('Camera');
+  const camera = (globalCameraEntity as Entity).getComponent<CameraComponent>('Camera');
   if (!camera) return;
 
   globalCameraSystem.switchMode(camera, mode);
@@ -354,10 +370,10 @@ export function applyCameraPreset(presetName: string): void {
     return;
   }
 
-  const camera = globalCameraEntity.getComponent<CameraComponent>('Camera');
+  const camera = (globalCameraEntity as Entity).getComponent<CameraComponent>('Camera');
   if (!camera) return;
 
-  globalCameraSystem.applyCameraSnapshot(camera, snapshot);
+  globalCameraSystem.applySnapshot(camera, snapshot);
   console.log(`📷 Applied preset: ${presetName}`);
 }
 
@@ -370,7 +386,7 @@ export function getCameraSnapshot(): CameraSnapshot | null {
     return null;
   }
 
-  const camera = globalCameraEntity.getComponent<CameraComponent>('Camera');
+  const camera = (globalCameraEntity as Entity).getComponent<CameraComponent>('Camera');
   if (!camera) return null;
 
   const snapshot = camera.getSnapshot();
@@ -389,7 +405,7 @@ export function moveCameraTarget(x: number, y: number, z: number): void {
     return;
   }
 
-  const transform = globalTargetEntity.getComponent<TransformComponent>('Transform');
+  const transform = (globalTargetEntity as Entity).getComponent<TransformComponent>('Transform');
   if (!transform) return;
 
   transform.position[0] = x;
@@ -401,7 +417,7 @@ export function moveCameraTarget(x: number, y: number, z: number): void {
   globalPhysicsSystem.syncTransformToPhysics(globalTargetEntity);
 
   // 重置速度
-  const rigidBody = globalPhysicsSystem.getRigidBody(globalTargetEntity.id);
+  const rigidBody = globalPhysicsSystem.getRigidBody((globalTargetEntity as Entity).id);
   if (rigidBody) {
     rigidBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
     rigidBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -419,7 +435,7 @@ export function rotateCameraView(pitch: number, yaw: number): void {
     return;
   }
 
-  const camera = globalCameraEntity.getComponent<CameraComponent>('Camera');
+  const camera = (globalCameraEntity as Entity).getComponent<CameraComponent>('Camera');
   if (!camera) return;
 
   camera.pitch = pitch;
@@ -437,7 +453,7 @@ export function setCameraDistance(distance: number): void {
     return;
   }
 
-  const camera = globalCameraEntity.getComponent<CameraComponent>('Camera');
+  const camera = (globalCameraEntity as Entity).getComponent<CameraComponent>('Camera');
   if (!camera) return;
 
   camera.distance = Math.max(camera.minDistance, Math.min(distance, camera.maxDistance));
@@ -454,9 +470,9 @@ export function showCameraStatus(): void {
     return;
   }
 
-  const camera = globalCameraEntity.getComponent<CameraComponent>('Camera');
-  const cameraTransform = globalCameraEntity.getComponent<TransformComponent>('Transform');
-  const targetTransform = globalTargetEntity.getComponent<TransformComponent>('Transform');
+  const camera = (globalCameraEntity as Entity).getComponent<CameraComponent>('Camera');
+  const cameraTransform = (globalCameraEntity as Entity).getComponent<TransformComponent>('Transform');
+  const targetTransform = (globalTargetEntity as Entity).getComponent<TransformComponent>('Transform');
 
   if (!camera || !cameraTransform || !targetTransform) return;
 
@@ -467,12 +483,12 @@ export function showCameraStatus(): void {
   console.log(`Pitch: ${camera.pitch.toFixed(1)}°`);
   console.log(`Yaw: ${camera.yaw.toFixed(1)}°`);
   console.log(`Smooth Speed: ${camera.smoothSpeed.toFixed(1)}`);
-  
+
   const cameraPos = cameraTransform.position;
   console.log(`\nCamera Position: [${cameraPos.map(v => v.toFixed(2)).join(', ')}]`);
-  
+
   const targetPos = targetTransform.position;
   console.log(`Target Position: [${targetPos.map(v => v.toFixed(2)).join(', ')}]`);
-  
+
   console.log('');
 }

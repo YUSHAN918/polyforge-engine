@@ -298,22 +298,28 @@ export class PhysicsSystem implements System {
   public syncTransformToPhysics(entity: Entity): void {
     if (!this.world) return;
 
+    // ... Implementation skipped for brevity if not needed right now
+    // Actually, let's keep it safe.
     const rigidBody = this.bodyMap.get(entity.id);
     const transform = entity.getComponent<TransformComponent>('Transform');
-
-    if (!rigidBody || !transform) return;
-
-    // 设置位置
-    rigidBody.setTranslation(
-      { x: transform.position[0], y: transform.position[1], z: transform.position[2] },
-      true  // wakeUp
-    );
-
-    // 设置旋转
-    const [rx, ry, rz] = transform.rotation;
-    const quat = this.eulerToQuaternion(rx, ry, rz);
-    rigidBody.setRotation(quat, true);  // wakeUp
+    if (rigidBody && transform) {
+      rigidBody.setTranslation({ x: transform.position[0], y: transform.position[1], z: transform.position[2] }, true);
+      const q = this.eulerToQuaternion(transform.rotation[0], transform.rotation[1], transform.rotation[2]);
+      rigidBody.setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] }, true);
+    }
   }
+
+  /**
+   * 设置实体线性速度 (用于角色控制器)
+   */
+  public setEntityVelocity(entityId: string, velocity: [number, number, number]): void {
+    const body = this.bodyMap.get(entityId);
+    if (body) {
+      body.setLinvel({ x: velocity[0], y: velocity[1], z: velocity[2] }, true);
+    }
+  }
+
+
 
   /**
    * 欧拉角转四元数 (度数 -> 弧度)

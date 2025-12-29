@@ -434,7 +434,43 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // 1. Transform
     const transform = new TransformComponent();
-    transform.position = [0, 5, 0]; // Drop from sky
+
+    // 🔥 Dynamic Spawn: Drop from Camera
+    // 🔥 Dynamic Spawn: Drop from Sky (Pivot-Aware)
+    let spawnPos: [number, number, number] = [0, 10, 0];
+    const terrainSys = this.systemManager.getSystem('TerrainSystem') as any;
+
+    if (this.cameraSystem) {
+      const camSys = this.cameraSystem as any;
+      const mode = camSys.getMode ? camSys.getMode() : 'orbit';
+
+      // Select Source Position
+      let targetX = 0;
+      let targetZ = 0;
+
+      // 在 Orbit/ISO 模式下，相机位置可能很远，必须使用 pivot (屏幕中心/目标点) 作为生成基准
+      if ((mode === 'orbit' || mode === 'isometric' || mode === 'sidescroll') && camSys.getCurrentPivot) {
+        const pivot = camSys.getCurrentPivot();
+        targetX = pivot[0];
+        targetZ = pivot[2];
+      } else if (camSys.getCurrentPosition) {
+        // FPS/TPS 模式下，可以使用相机位置（或者相机前方）
+        const camPos = camSys.getCurrentPosition();
+        targetX = camPos[0];
+        targetZ = camPos[2];
+      }
+
+      // Calculate Ground Height
+      let groundY = 0;
+      if (terrainSys && terrainSys.getHeightAt) {
+        groundY = terrainSys.getHeightAt(targetX, targetZ);
+      }
+
+      // Final Spawn Position (Ground + Height)
+      spawnPos = [targetX, groundY + 2, targetZ];
+    }
+
+    transform.position = spawnPos as [number, number, number];
     this.entityManager.addComponent(entity.id, transform);
 
     // 2. Physics (Dynamic Capsule)
