@@ -388,6 +388,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     }
   };
 
+  const handleAssetClick = (asset: any) => {
+    const cat = (asset.category || '').toLowerCase();
+    if (cat === 'environments' || cat === 'environment') {
+      dispatch(EngineCommandType.SET_HDR, { assetId: asset.id });
+      setNotification({ message: `已切换天空盒: ${asset.name}`, type: 'success' });
+    }
+    // 预留: 模型点击生成逻辑
+  };
+
   // ... Render ...
   if (!manager) {
     return <div className="w-96 h-full bg-gray-950 flex items-center justify-center text-gray-500 italic font-mono">
@@ -677,10 +686,12 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                     return cat === tab || cat.includes(tab);
                   })
                   .map((asset, i) => (
-                    <div key={i} className={`group transition-all duration-300 ${assetViewMode === 'grid' ? 'bg-gray-900/40 border border-gray-800 rounded-2xl p-3 flex flex-col gap-2 hover:border-cyan-500/40 hover:bg-gray-800/50 hover:-translate-y-1 shadow-lg' :
-                      assetViewMode === 'compact' ? 'bg-gray-900/30 border border-gray-800/50 rounded-lg p-1 aspect-square hover:border-cyan-500/50 transition-all cursor-crosshair' :
-                        'bg-gray-900/20 hover:bg-gray-800/40 border border-gray-800/20 hover:border-cyan-900/30 rounded-lg px-3 py-2 flex items-center justify-between group'
-                      }`}>
+                    <div key={i}
+                      onClick={() => handleAssetClick(asset)}
+                      className={`group transition-all duration-300 cursor-pointer ${assetViewMode === 'grid' ? 'bg-gray-900/40 border border-gray-800 rounded-2xl p-3 flex flex-col gap-2 hover:border-cyan-500/40 hover:bg-gray-800/50 hover:-translate-y-1 shadow-lg' :
+                        assetViewMode === 'compact' ? 'bg-gray-900/30 border border-gray-800/50 rounded-lg p-1 aspect-square hover:border-cyan-500/50 transition-all' :
+                          'bg-gray-900/20 hover:bg-gray-800/40 border border-gray-800/20 hover:border-cyan-900/30 rounded-lg px-3 py-2 flex items-center justify-between group'
+                        }`}>
 
                       {/* Visual Content */}
                       {(assetViewMode === 'grid' || assetViewMode === 'compact') && (

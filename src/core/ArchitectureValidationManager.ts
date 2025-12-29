@@ -65,6 +65,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private autoSaveInterval: number = 5000;
   private lastSaveTime: number = 0;
   private currentContext: ValidationContext = ValidationContext.CREATION;
+  private isDisposed: boolean = false;
 
   constructor() {
     console.log('🏗️ [ArchitectureValidationManager] Initializing Shadow Core...');
@@ -132,10 +133,21 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private tryRestoreOrInit() {
-    const savedState = this.storageManager.load();
-    if (savedState) {
-      this.restoreFromSnapshot(savedState);
-    } else {
+    try {
+      const savedState = this.storageManager.load();
+      if (savedState) {
+        this.restoreFromSnapshot(savedState);
+        // 🚨 检查恢复后的健康度（如果实体数为0，说明恢复了个寂寞，强制重置）
+        if (this.entityManager.getEntityCount() === 0) {
+          console.warn('⚠️ [Manager] Restore returned 0 entities, falling back to clean init.');
+          this.initializeScene();
+        }
+      } else {
+        this.initializeScene();
+      }
+    } catch (error) {
+      console.error('🔥 [Manager] Recovery failed, self-destructing and re-initializing:', error);
+      this.entityManager.clear();
       this.initializeScene();
     }
   }
@@ -157,29 +169,37 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     switch (command.type) {
       // --- Environment ---
       case EngineCommandType.SET_TIME_OF_DAY:
-        // Set time but DO NOT auto-update lighting yet to prevent override
-        // logic moved to check 'autoUpdateLighting' flag if needed, 
-        // but currently we just set state.
         this.worldStateManager.setTimeOfDay(command.hour);
+        this.storageManager.save();
         break;
       case EngineCommandType.SET_LIGHT_INTENSITY:
         this.worldStateManager.setLightIntensity(command.intensity);
+        this.storageManager.save();
         break;
       case EngineCommandType.SET_BLOOM_STRENGTH:
         this.worldStateManager.setBloomStrength(command.strength);
+        this.storageManager.save();
         break;
       case EngineCommandType.SET_BLOOM_THRESHOLD:
         this.worldStateManager.setBloomThreshold(command.threshold);
+        this.storageManager.save();
         break;
       case EngineCommandType.SET_TONE_MAPPING_EXPOSURE:
         this.worldStateManager.setToneMappingExposure(command.exposure);
+        this.storageManager.save();
         break;
       case EngineCommandType.SET_SMAA_ENABLED:
         this.worldStateManager.setSMAAEnabled(command.enabled);
+        this.storageManager.save();
         break;
       case EngineCommandType.SET_GRAVITY:
-        this.worldStateManager.setGravity(command.value);
-        this.physicsSystem.setGravity(0, command.value, 0); // Sync Physics
+        this.worldStateManager.setGravity((command as any).value);
+        this.physicsSystem.setGravity(0, (command as any).value, 0);
+        this.storageManager.save();
+        break;
+      case EngineCommandType.SET_HDR:
+        this.worldStateManager.setHDR((command as any).assetId);
+        this.storageManager.save();
         break;
 
       // --- Camera ---
@@ -361,7 +381,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
    * 彻底清理影子引擎所有资源，防止“僵尸系统”劫持输入信号。
    */
   public dispose(): void {
-    console.log('🧹 [ArchitectureValidationManager] Disposing Shadow Core...');
+    if (this.isDisposed) return;
+    this.isDisposed = true;
+
+    console.log('Sweep 🧹 [ArchitectureValidationManager] Disposing Shadow Core...');
+
+    // 🔥 0. 强制保存：确保模块切换、关闭窗口前数据不丢失
+    if (this.storageManager) {
+      this.storageManager.save();
+    }
 
     // 1. 停止时钟
     this.clock.pause();
@@ -805,6 +833,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // --- Scene Logic ---
 
   public update(): void {
+    if (this.isDisposed) return;
     this.systemManager.updateManual(1 / 60); // 🔥 Fixed: usage of updateManual as per Stability Strike
 
     // Auto Save
@@ -868,16 +897,27 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Re-link core refs
     this.terrainEntity = this.entityManager.getEntity('ValidationTerrain') || this.entityManager.getEntitiesWithComponents(['Terrain'])[0] || null;
     this.cameraEntity = this.entityManager.getEntity('GodCamera') || this.entityManager.getEntitiesWithComponents(['Camera'])[0] || null;
+    this.playerEntity = this.entityManager.getEntitiesWithComponents(['CharacterController'])[0] || null;
 
-    // Re-init Physics bodies
+    // 🔥 Re-init Physics bodies (redundant due to deserializeAll but kept for safety)
     this.entityManager.getEntitiesWithComponents(['Physics']).forEach(e => this.physicsSystem.onEntityAdded(e));
 
-    // 🔥 Force Upgrade: Fix persisting 1.2.x state where maxDistance was 20
+    // 🔥 Force Camera Alignment: Prevent "Sky Freeze"
     if (this.cameraEntity) {
       const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
-      if (cam && cam.maxDistance < 200) {
-        cam.maxDistance = 200;
-        console.log('🔄 [Manager] Upgraded camera maxDistance to 200 for persisted state');
+      if (cam) {
+        // Fix persisting 1.2.x state where maxDistance was 20
+        if (cam.maxDistance < 200) cam.maxDistance = 200;
+
+        // Ensure camera mode is valid
+        if (!cam.mode) cam.mode = 'isometric';
+
+        // If we have a player, re-bind to it for visual continuity
+        if (this.playerEntity) {
+          this.bindCamera(cam, this.playerEntity);
+        }
+
+        console.log('🔄 [Manager] Camera re-aligned and tracking re-linked.');
       }
     }
   }

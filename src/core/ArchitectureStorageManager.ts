@@ -32,8 +32,7 @@ export class ArchitectureStorageManager {
      */
     save(): boolean {
         try {
-            const rootEntities = this.entityManager.getRootEntities();
-            const serializedEntities = rootEntities.map(entity => entity.serialize());
+            const serializedEntities = this.entityManager.serializeAll();
             const worldState = this.worldStateManager.getState();
 
             const snapshot: SceneSnapshot = {
@@ -44,10 +43,14 @@ export class ArchitectureStorageManager {
 
             const json = JSON.stringify(snapshot);
             localStorage.setItem(this.STORAGE_KEY, json);
-            // console.log(`💾 Architecture state saved (${json.length} bytes)`);
+            console.log(`💾 [Storage] Architecture state saved: ${json.length} bytes, ${snapshot.entities.length} entities, HDR: ${worldState.hdrAssetId || 'auto'}`);
             return true;
-        } catch (error) {
-            console.error('❌ Failed to save architecture state:', error);
+        } catch (error: any) {
+            if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.error('❌ [Storage] LocalStorage Quota Exceeded! The scene is too large.');
+            } else {
+                console.error('❌ [Storage] Failed to save architecture state:', error);
+            }
             return false;
         }
     }

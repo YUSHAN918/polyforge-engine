@@ -437,6 +437,17 @@ export class EntityManager {
         this.hierarchyRoot.push(entity);
       }
     }
+
+    // 🔥 第三遍：通知所有系统（打通影子引擎神经网络）
+    if (this.systemManager) {
+      for (const entity of entityMap.values()) {
+        this.systemManager.notifyEntityAdded(entity);
+        // 通知组件初始状态
+        for (const componentType of entity.components.keys()) {
+          this.systemManager.notifyComponentChanged(entity, componentType, true);
+        }
+      }
+    }
   }
 
   // ============================================================================

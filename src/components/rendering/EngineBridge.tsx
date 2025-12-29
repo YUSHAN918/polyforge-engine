@@ -573,57 +573,74 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     const loadHDR = async () => {
       const assetRegistry = getAssetRegistry();
 
-      // ✅ 健壮性检查：确保 AssetRegistry 已初始化
+      // ✅ 健壮性检查：确保 WorldState 与 AssetRegistry 已就绪
+      if (!worldState) {
+        console.log('[EngineBridge] Skipping loadHDR: worldState not ready');
+        return;
+      }
+
       if (!assetRegistry['initialized']) {
-        console.log('[EngineBridge] Initializing AssetRegistry...');
+        console.log('[EngineBridge] Initializing AssetRegistry before loadHDR...');
         await assetRegistry.initialize();
       }
 
-      // 查询第一个 HDR 资产
-      const hdrAssets = await assetRegistry.queryAssets({ type: AssetType.HDR });
+      let hdrAsset = null;
+      const targetId = worldState?.hdrAssetId;
+      console.log(`[EngineBridge] loadHDR check: targetId=${targetId || 'undefined'}, worldStateReady=${!!worldState}`);
 
-      if (hdrAssets.length === 0) {
-        console.log('[EngineBridge] No HDR assets in registry - attempting local fallback...');
-
-        // 🔥 Local First: 强制尝试加载本地资源 (Potsdamer Platz)
-        // 这一步是为了确保在没有任何用户上传资源时，依然能提供高质量的真实天空
-        try {
-          const { HDRLoader } = await import('three/addons/loaders/HDRLoader.js');
-          const hdrLoader = new HDRLoader();
-          const localHdrPath = '/assets/env/kloofendal_48d_partly_cloudy_puresky_1k.hdr';
-
-          hdrLoader.load(localHdrPath, (texture) => {
-            const pmremGenerator = new THREE.PMREMGenerator(gl);
-            pmremGenerator.compileEquirectangularShader();
-            const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-
-            scene.environment = envMap;
-            scene.background = envMap;
-            setHdrEnvMap(envMap);
-            console.log('✓ [LocalFirst] Fallback HDR loaded successfully');
-
-            texture.dispose();
-            pmremGenerator.dispose();
-          }, undefined, (err) => {
-            console.warn('❌ [LocalFirst] Failed to load local HDR fallback:', err);
-            setHdrEnvMap(null);
-          });
-          return;
-        } catch (e) {
-          console.error('❌ [LocalFirst] Critical failure in HDR fallback logic:', e);
-          setHdrEnvMap(null);
-          return;
-        }
+      if (targetId) {
+        // 1. 尝试加载指定的 HDR
+        hdrAsset = await assetRegistry.getMetadata(targetId);
       }
 
-      console.log(`[EngineBridge] Loading HDR: ${hdrAssets[0].name}`);
-      const hdrAsset = hdrAssets[0];
+      if (!hdrAsset) {
+        // 2. 自动匹配逻辑：查询所有 HDR
+        const hdrAssets = await assetRegistry.queryAssets({ type: AssetType.HDR });
+
+        if (hdrAssets.length === 0) {
+          console.log('[EngineBridge] No HDR assets in registry - attempting local fallback...');
+
+          // 🔥 Local First: 强制尝试加载本地资源 (Kloofendal)
+          try {
+            const { HDRLoader } = await import('three/addons/loaders/HDRLoader.js');
+            const hdrLoader = new HDRLoader();
+            const localHdrPath = '/assets/env/kloofendal_48d_partly_cloudy_puresky_1k.hdr';
+
+            hdrLoader.load(localHdrPath, (texture) => {
+              const pmremGenerator = new THREE.PMREMGenerator(gl);
+              pmremGenerator.compileEquirectangularShader();
+              const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+              scene.environment = envMap;
+              scene.background = envMap;
+              setHdrEnvMap(envMap);
+              console.log('✓ [LocalFirst] Fallback HDR loaded successfully');
+
+              texture.dispose();
+              pmremGenerator.dispose();
+            }, undefined, (err) => {
+              console.warn('❌ [LocalFirst] Failed to load local HDR fallback:', err);
+              setHdrEnvMap(null);
+            });
+            return;
+          } catch (e) {
+            console.error('❌ [LocalFirst] Critical failure in HDR fallback logic:', e);
+            setHdrEnvMap(null);
+            return;
+          }
+        }
+
+        // 3. 智能回退：优先寻找 kloofendal，否则取第一个
+        hdrAsset = hdrAssets.find(a => a.name.toLowerCase().includes('kloofendal')) || hdrAssets[0];
+      }
+
+      console.log(`[EngineBridge] Loading HDR: ${hdrAsset.name} (ID: ${hdrAsset.id})`);
 
       // 获取 HDR 资产的 Blob 数据
       const blob = await assetRegistry.getAsset(hdrAsset.id);
 
       if (!blob) {
-        console.warn('[EngineBridge] HDR asset not found - using procedural sky');
+        console.warn('[EngineBridge] HDR asset data not found - using procedural sky');
         setHdrEnvMap(null);
         return;
       }
@@ -631,25 +648,19 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
       // 使用 HDRLoader 加载 HDR
       const { HDRLoader } = await import('three/addons/loaders/HDRLoader.js');
       const hdrLoader = new HDRLoader();
-
       const url = URL.createObjectURL(blob);
 
       hdrLoader.load(url, (texture) => {
-        // 使用 PMREMGenerator 预处理纹理
         const pmremGenerator = new THREE.PMREMGenerator(gl);
         pmremGenerator.compileEquirectangularShader();
-
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
 
         setHdrEnvMap(envMap);
-
-        // 应用到场景
         scene.environment = envMap;
         scene.background = envMap;
 
-        console.log('[EngineBridge] HDR environment applied');
+        console.log(`[EngineBridge] HDR environment applied: ${hdrAsset!.name}`);
 
-        // 清理
         texture.dispose();
         pmremGenerator.dispose();
         URL.revokeObjectURL(url);
@@ -657,7 +668,7 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     };
 
     loadHDR();
-  }, [scene, gl]);
+  }, [scene, gl, worldState?.hdrAssetId]);
 
   // 🔥 FPS Mode: Pointer Lock Integration
   useEffect(() => {

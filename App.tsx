@@ -146,13 +146,6 @@ export const App: React.FC = () => {
                 setArchValidationManager(null);
                 console.log('✓ Architecture Validation Manager cleaned up');
             };
-        } else {
-            // 清理管理器
-            if (archValidationManager) {
-                archValidationManager.dispose(); // 🔥 关键修复：手动切换模式时也触发销毁
-                setArchValidationManager(null);
-                console.log('✓ Architecture Validation Manager cleaned up (mode changed)');
-            }
         }
     }, [mode]);
 

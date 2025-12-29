@@ -16,6 +16,7 @@ export enum EngineCommandType {
     SET_BLOOM_STRENGTH = 'SET_BLOOM_STRENGTH',
     SET_BLOOM_THRESHOLD = 'SET_BLOOM_THRESHOLD',
     SET_GRAVITY = 'SET_GRAVITY',
+    SET_HDR = 'SET_HDR',
 
     // Camera & Render
     SET_CAMERA_MODE = 'SET_CAMERA_MODE',
@@ -65,6 +66,7 @@ export interface SetLightPayload { type: EngineCommandType.SET_LIGHT_INTENSITY; 
 export interface SetBloomStrengthPayload { type: EngineCommandType.SET_BLOOM_STRENGTH; strength: number; }
 export interface SetBloomThresholdPayload { type: EngineCommandType.SET_BLOOM_THRESHOLD; threshold: number; }
 export interface SetGravityPayload { type: EngineCommandType.SET_GRAVITY; value: number; }
+export interface SetHdrPayload { type: EngineCommandType.SET_HDR; assetId: string | undefined; }
 
 export interface SetCameraModePayload { type: EngineCommandType.SET_CAMERA_MODE; mode: CameraMode; }
 export interface SetFovPayload { type: EngineCommandType.SET_CAMERA_FOV; fov: number; }
@@ -118,6 +120,7 @@ export type EngineCommand =
     | SetBloomStrengthPayload
     | SetBloomThresholdPayload
     | SetGravityPayload
+    | SetHdrPayload
     | SetCameraModePayload
     | SetFovPayload
     | SetSmaaPayload

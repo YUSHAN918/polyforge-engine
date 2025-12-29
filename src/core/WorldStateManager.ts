@@ -44,6 +44,7 @@ export interface WorldState {
   bloomThreshold: number;    // 泛光阈值 0-1
   smaaEnabled: boolean;      // 抗锯齿开关
   toneMappingExposure: number; // 色调映射曝光度
+  hdrAssetId?: string;       // 🔥 环境贴图资产 ID
 }
 
 /**
@@ -93,7 +94,8 @@ export class WorldStateManager {
       bloomStrength: 0.5,      // 默认泛光强度
       bloomThreshold: 0.85,    // 默认泛光阈值
       smaaEnabled: true,       // 默认开启抗锯齿
-      toneMappingExposure: 1.0 // 默认曝光度
+      toneMappingExposure: 1.0, // 默认曝光度
+      hdrAssetId: undefined     // 默认不指定，回退到自动选择
     };
   }
 
@@ -397,6 +399,14 @@ export class WorldStateManager {
    */
   setToneMappingExposure(exposure: number): void {
     this.setState({ toneMappingExposure: Math.max(0, Math.min(5, exposure)) });
+  }
+
+  /**
+   * 设置环境贴图资产 ID
+   */
+  setHDR(assetId: string | undefined): void {
+    this.setState({ hdrAssetId: assetId });
+    console.log(`🌍 Environment HDR locked to: ${assetId || 'auto'}`);
   }
 
   /**
