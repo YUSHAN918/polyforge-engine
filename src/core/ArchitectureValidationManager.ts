@@ -448,6 +448,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         c.pitch = 0;
         c.pivotOffset = [0, 0, 0];
       }
+      // 🔥 统一体验模式初始镜头高度（与删除角色后的高度保持一致）
+      if (mode === 'isometric') {
+        c.distance = 100;
+      }
     });
 
     // Update Context

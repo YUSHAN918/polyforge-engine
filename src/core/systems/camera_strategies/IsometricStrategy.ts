@@ -93,8 +93,15 @@ export class IsometricStrategy implements ICameraStrategy {
 
     /**
      * 移植自 updateStrategyController
+     * 🔥 已禁用：制作人要求无角色时 WASD 坚决无法使用
+     * 原因：移动 pivot 会导致角色生成位置错误
      */
     private updateStrategyController(camera: CameraComponent, inputSystem: InputSystem, deltaTime: number): void {
+        // 🚫 DISABLED: 无角色时禁止 WASD 移动镜头
+        // 之前的逻辑允许无角色时用 WASD 移动 pivot，导致角色生成位置偏离
+        // 制作人要求：没有角色时，WASD 坚决不能移动镜头
+
+        /*
         // 🔥 Legacy Fallback: Enable Camera WASD if NO Character is being controlled
         if (!camera.controlledEntityId && !camera.targetEntityId) {
             let dx = 0;
@@ -118,5 +125,6 @@ export class IsometricStrategy implements ICameraStrategy {
             camera.pivotOffset[0] += dx * panSpeed;
             camera.pivotOffset[2] += dz * panSpeed;
         }
+        */
     }
 }

@@ -174,7 +174,8 @@ export class CameraSystem implements System {
       }
 
       // 2. Global Character Control (Physics)
-      const controlledId = camera.controlledEntityId || camera.targetEntityId;
+      // 🔥 仅当明确有被控制实体时才处理 WASD 移动（避免无角色时的输入污染）
+      const controlledId = camera.controlledEntityId;
       if (controlledId) {
         if (camera.mode === 'isometric') {
           this.updateLegacyCharacterControl(camera, controlledId, deltaTime); // 🔒 LOCKED
