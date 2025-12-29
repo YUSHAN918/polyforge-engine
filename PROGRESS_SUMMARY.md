@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
-**最后更新**: 2025-12-28  
-**当前版本**: v1.3.0  
-**整体进度**: 15/17 阶段完成 (88.2%)
+**最后更新**: 2025-12-29  
+**当前版本**: v1.3.1  
+**整体进度**: 16/17 阶段完成 (94.1%)
 
 ---
 
@@ -25,12 +25,13 @@
 
 ## 📊 阶段完成状态
 
-### 🎯 最新战果（2025-12-28）
+### 🎯 最新战果（2025-12-29）
 
-- ✅ **稳定性回归** - 回退至 "创造模式大修复成功" 版本，消除不稳定因素
-- ✅ **环境净化** - 修复 TS 编译错误 (`VegetationVisual`) 与 CSS 警告
-- ✅ **基础加固** - 修复 `.vscode` 配置损坏问题
-- ⚠️ **特性回滚** - 之前的 UX 优化与物理视觉调整已随回档撤销（需重新排期）
+- ✅ **体验模式优化完成** - 禁用无角色WASD移动，统一上帝视角镜头高度
+- ✅ **UI状态同步闭环** - 建立500ms轮询机制，UI始终反映真实相机状态
+- ✅ **模块切换自动重置** - 切回架构验证时自动重置到创造模式
+- ✅ **状态污染修复** - dispose清理非持久化实体后再保存，防止相机锁死
+- ✅ **交互逻辑隔离** - 双模式（创造/体验）完全物理隔离，零污染
 
 | 阶段 | 名称 | 状态 | 完成日期 | 任务清单 | 交付文档 |
 |------|------|------|----------|----------|----------|
@@ -52,9 +53,11 @@
 | Phase 13.0 | 架构全量可视化 (Visibility) | ✅ 完成 | 2025-12-26 | [📋 任务](./docs/tasks/tasks_v1.3_final.md) | 线框可视化与控制面板实装 |
 | Phase 13.1-3 | Standalone Bundle (预研) | ✅ 完成 | 2025-12-25 | [📋 任务](./docs/tasks/tasks_v1.3_final.md) | 打包系统核心逻辑已验证 |
 | Phase 14 | Architecture Validation View | ✅ 完成 | 2025-12-26 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-14-architecture-validation-view-架构验证观测窗口-) | 含 14.6 强化补丁 |
-| Phase 15 | MOD 扩展系统 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-15-mod-扩展系统-) | - |
-| Phase 16 | React 19 + R3F | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-16-react-19--r3f-优化-) | - |
-| Phase 17 | 最终集成优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-17-最终集成优化-) | - |
+| Phase 15 | 体验模式深化 | ✅ 完成 | 2025-12-29 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-15-character-control--gameplay-experience-角色与操控体验-) | 角色控制与相机优化 (15.1-15.4) |
+| Phase 17 | 体验模式交互完善 | ✅ 完成 | 2025-12-29 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-17-experience-mode-polish--ui-state-sync) | UI状态同步与模块清理 |
+| Phase 16 | MOD 扩展系统 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-16-mod-扩展系统-) | - |
+| Phase 18 | 最终集成优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-18-最终集成优化-) | - |
+| Phase 19 | React 19 + R3F 优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-19-react-19--r3f-优化-) | - |
 
 ---
 
@@ -204,12 +207,20 @@
 - ✅ **API 对齐 (12-28)** - 补全 `IArchitectureFacade` 缺失的 Getter
 - ✅ **UI 本地化 (12-28)** - 观测窗口全中文界面实装
 
-### ✅ Phase 15: Character & Camera Mechanics 角色与相机机制重构
-- ✅ **相机三态逻辑 (Tri-State Layout)** - Spawn (生成) -> Unbind (释放/God View) -> Bind (锁定/Combat View)
+### ✅ Phase 15: 体验模式深化与交互完善
+**Phase 15.1-15.4: 角色与相机机制重构**
+- ✅ **相机三态逻辑 (Tri-State Layout)** - Spawn (生成) → Unbind (释放/God View) → Bind (锁定/Combat View)
 - ✅ **万能控制 (Universal Control)** - WASD 始终控制角色，无论相机处于何种模式
 - ✅ **上帝视角铁律 (Strict ISO)** - ISO 模式严禁旋转，解绑后变为可平移的上帝视角
 - ✅ **物理同步修复 (Physics Sync)** - 修复 PhysicsSystem 脏标记缺失导致的镜头跟随失效
 - ✅ **交互校正** - 修正旋转反向、移除右键冲突、优化 FPS/TPS 逻辑
+
+**Phase 17: 体验模式交互完善与UI状态同步**
+- ✅ **输入污染清理** - 禁用无角色时的WASD移动（双重修复：CameraSystem + IsometricStrategy）
+- ✅ **镜头高度统一** - 上帝视角初始高度统一为100，与角色删除后保持一致
+- ✅ **UI自动同步** - 500ms轮询相机模式，UI始终反映真实状态
+- ✅ **模块切换重置** - App层自动重置 + Manager层清理，双重保险
+- ✅ **状态持久化修复** - dispose前清理非持久化实体，防止脏状态保存
 
 ---
 
