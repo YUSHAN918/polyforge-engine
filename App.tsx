@@ -23,7 +23,7 @@ import * as THREE from 'three'; // Import THREE for vector math
 
 // 功能开关：检查 AI 助手是否启用
 const isAiEnabled = () => {
-    return import.meta.env.VITE_ENABLE_AI === 'true';
+    return (import.meta as any).env?.VITE_ENABLE_AI === 'true';
 };
 
 const DEFAULT_MAP_CONFIG: MapConfig = {
@@ -142,12 +142,14 @@ export const App: React.FC = () => {
             // 清理函数
             return () => {
                 cancelAnimationFrame(loopId);
+                manager.dispose(); // 🔥 关键修复：显式销毁旧系统，拔除监听器
                 setArchValidationManager(null);
                 console.log('✓ Architecture Validation Manager cleaned up');
             };
         } else {
             // 清理管理器
             if (archValidationManager) {
+                archValidationManager.dispose(); // 🔥 关键修复：手动切换模式时也触发销毁
                 setArchValidationManager(null);
                 console.log('✓ Architecture Validation Manager cleaned up (mode changed)');
             }
@@ -1079,9 +1081,9 @@ export const App: React.FC = () => {
                 if (newConfig) {
                     setAnimConfig(prev => {
                         const next = { ...prev };
-                        if (newConfig[category]) {
+                        if ((newConfig as any)[category]) {
                             // @ts-ignore
-                            next[category] = { ...next[category], ...newConfig[category] };
+                            next[category as any] = { ...next[category as any], ...(newConfig as any)[category] };
                         }
                         return next;
                     });
@@ -1333,7 +1335,7 @@ export const App: React.FC = () => {
                         selectedVfxEmitterId={selectedVfxEmitterId}
                         onVfxEmitterUpdate={currentVfxAssetId ? (emitterId, updates) => handleVfxEmitterUpdate(currentVfxAssetId, emitterId, updates) : undefined}
                         // NEW: Architecture Validation Manager
-                        archValidationManager={archValidationManager}
+                        archValidationManager={archValidationManager || undefined}
 
                     />
                     {mode === AppMode.GAMEPLAY && (
@@ -1460,7 +1462,7 @@ export const App: React.FC = () => {
                 )}
                 {mode === AppMode.MODEL_WORKSHOP && (
                     <ModelWorkshopPanel
-                        initialData={workshopInitialData}
+                        initialData={workshopInitialData as any}
                         primitives={workshopPrimitives} setPrimitives={setWorkshopPrimitives} selectedPrimId={selectedWorkshopPrimId} setSelectedPrimId={setSelectedWorkshopPrimId}
                         onSave={saveCustomModel} onExit={handleWorkshopExit} transformMode={transformMode} setTransformMode={setTransformMode} workshopRefType={workshopRefType} setWorkshopRefType={setWorkshopRefType} isSnapping={isSnapping} setIsSnapping={setIsSnapping} onUndo={handleWorkshopUndo} onDuplicate={handleWorkshopDuplicate} onHistorySave={handleHistorySave}
                         setReferenceOpacity={setReferenceOpacity} referenceOpacity={referenceOpacity}

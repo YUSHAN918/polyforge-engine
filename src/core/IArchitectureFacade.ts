@@ -30,6 +30,11 @@ export interface ValidationStats {
 
 export interface IArchitectureFacade {
     /**
+     * 启动/初始化
+     */
+    start(): void;
+
+    /**
      * 核心交互入口：分发指令
      */
     dispatch(command: EngineCommand): Promise<void>;

@@ -77,31 +77,36 @@ export class InputSystem implements System {
     if (typeof window === 'undefined') return;
 
     // 键盘事件
-    window.addEventListener('keydown', this.handleKeyDown.bind(this));
-    window.addEventListener('keyup', this.handleKeyUp.bind(this));
+    window.addEventListener('keydown', this.handleKeyDown);
+    window.addEventListener('keyup', this.handleKeyUp);
 
     // 鼠标事件
-    window.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    window.addEventListener('mouseup', this.handleMouseUp.bind(this));
-    window.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    window.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+    window.addEventListener('mousedown', this.handleMouseDown);
+    window.addEventListener('mouseup', this.handleMouseUp);
+    window.addEventListener('mousemove', this.handleMouseMove);
+    window.addEventListener('wheel', this.handleWheel, { passive: false });
 
     // 🎯 右键菜单拦截：只在 Canvas 上拦截
-    window.addEventListener('contextmenu', (e) => {
-      const target = e.target as HTMLElement;
-      const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
-
-      // 只在 Canvas 上拦截右键菜单
-      if (isCanvas) {
-        e.preventDefault();
-      }
-    });
+    window.addEventListener('contextmenu', this.handleContextMenu);
   }
+
+  /**
+   * 处理右键菜单
+   */
+  private handleContextMenu = (e: MouseEvent): void => {
+    const target = e.target as HTMLElement;
+    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+
+    // 只在 Canvas 上拦截右键菜单
+    if (isCanvas) {
+      e.preventDefault();
+    }
+  };
 
   /**
    * 处理键盘按下事件
    */
-  private handleKeyDown(event: KeyboardEvent): void {
+  private handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
     this.pressedKeys.add(key);
 
@@ -110,7 +115,7 @@ export class InputSystem implements System {
       if (this.matchesAction(action, key, event)) {
         // 阻止默认行为（如 Ctrl+Z 的浏览器撤销）
         event.preventDefault();
-        event.stopImmediatePropagation(); // 🔥 防止事件继续冒泡或被其他监听器捕获
+        // ⚡ 移除 stopImmediatePropagation 以支持多实例共存（依赖正确的 destroy 清理）
 
         // 触发回调
         if (action.callback) {
@@ -125,20 +130,20 @@ export class InputSystem implements System {
         }
       }
     }
-  }
+  };
 
   /**
    * 处理键盘释放事件
    */
-  private handleKeyUp(event: KeyboardEvent): void {
+  private handleKeyUp = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
     this.pressedKeys.delete(key);
-  }
+  };
 
   /**
    * 处理鼠标按下事件
    */
-  private handleMouseDown(event: MouseEvent): void {
+  private handleMouseDown = (event: MouseEvent): void => {
     // 🔥 过滤逻辑：如果在 Canvas 上，由 EngineBridge 接管，这里不处理
     // 否则会导致双重事件
     const target = event.target as HTMLElement;
@@ -152,8 +157,6 @@ export class InputSystem implements System {
       this.isDragging = true;
     }
 
-    // console.log('[InputSystem] Global MouseDown:', event.button, 'Buttons:', Array.from(this.pressedButtons));
-
     // 检查是否有匹配的动作
     for (const [, action] of this.currentPreset.actions) {
       if (action.mouseButtons?.includes(event.button)) {
@@ -164,26 +167,24 @@ export class InputSystem implements System {
         }
       }
     }
-  }
+  };
 
   /**
    * 处理鼠标释放事件
    */
-  private handleMouseUp(event: MouseEvent): void {
+  private handleMouseUp = (event: MouseEvent): void => {
     const target = event.target as HTMLElement;
     const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
     if (isCanvas) return;
 
     this.pressedButtons.delete(event.button);
     this.isDragging = false;
-
-    // console.log('[InputSystem] Global MouseUp:', event.button, 'Buttons:', Array.from(this.pressedButtons));
-  }
+  };
 
   /**
    * 处理鼠标移动事件
    */
-  private handleMouseMove(event: MouseEvent): void {
+  private handleMouseMove = (event: MouseEvent): void => {
     const target = event.target as HTMLElement;
     const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
     if (isCanvas) return;
@@ -207,13 +208,13 @@ export class InputSystem implements System {
 
     this.mousePosition.x = newX;
     this.mousePosition.y = newY;
-  }
+  };
 
   /**
    * 处理滚轮事件
    * 🎯 输入隔离逻辑：只在 Canvas 上拦截，UI 面板保持原生滚动
    */
-  private handleWheel(event: WheelEvent): void {
+  private handleWheel = (event: WheelEvent): void => {
     // 🚫 检查事件目标：如果是 UI 面板内部，立即放行
     const target = event.target as HTMLElement;
 
@@ -229,11 +230,10 @@ export class InputSystem implements System {
 
     if (isCanvas) {
       event.preventDefault();
-      // 累积 wheelDelta，或者直接覆盖（取决于帧率同步）
-      // 由于 update 是按帧调用的，这里累积比较安全，并在 resetFrameData 中清除
+      // 累积 wheelDelta
       this.wheelDelta += event.deltaY;
     }
-  }
+  };
 
   /**
    * 检查动作是否匹配
@@ -487,12 +487,17 @@ export class InputSystem implements System {
   public destroy(): void {
     if (typeof window === 'undefined') return;
 
-    window.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    window.removeEventListener('keyup', this.handleKeyUp.bind(this));
-    window.removeEventListener('mousedown', this.handleMouseDown.bind(this));
-    window.removeEventListener('mouseup', this.handleMouseUp.bind(this));
-    window.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-    window.removeEventListener('wheel', this.handleWheel.bind(this));
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('mousedown', this.handleMouseDown);
+    window.removeEventListener('mouseup', this.handleMouseUp);
+    window.removeEventListener('mousemove', this.handleMouseMove);
+    window.removeEventListener('wheel', this.handleWheel);
+    window.removeEventListener('contextmenu', this.handleContextMenu);
+
+    this.pressedKeys.clear();
+    this.pressedButtons.clear();
+    console.log('🧹 InputSystem listeners thoroughly removed');
   }
 
   /**

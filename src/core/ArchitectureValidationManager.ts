@@ -122,6 +122,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.tryRestoreOrInit();
   }
 
+  /**
+   * 启动影子引擎子系统。
+   */
+  public start(): void {
+    console.log('⚡ [ArchitectureValidationManager] Starting Shadow Core Systems...');
+    this.clock.start();
+    this.inputSystem.pushContext('orbit');
+  }
+
   private tryRestoreOrInit() {
     const savedState = this.storageManager.load();
     if (savedState) {
@@ -348,8 +357,34 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return this.physicsSystem.getDebugBuffers();
   }
 
+  /**
+   * 彻底清理影子引擎所有资源，防止“僵尸系统”劫持输入信号。
+   */
   public dispose(): void {
+    console.log('🧹 [ArchitectureValidationManager] Disposing Shadow Core...');
+
+    // 1. 停止时钟
     this.clock.pause();
+
+    // 2. 销毁输入系统（拔除全局监听器）
+    if (this.inputSystem) {
+      this.inputSystem.destroy();
+    }
+
+    // 3. 销毁物理世界（释放 WASD 内存）
+    if (this.physicsSystem) {
+      this.physicsSystem.destroy();
+    }
+
+    // 4. 销毁音频上下文
+    if (this.audioSystem) {
+      this.audioSystem.dispose();
+    }
+
+    // 5. 清理实体集
+    this.entityManager.clear();
+
+    console.log('✅ Shadow Core disposed successfully.');
   }
 
   // ===================================================================================
@@ -764,11 +799,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.storageManager.save();
       this.lastSaveTime = Date.now();
     }
-  }
-
-  public start(): void {
-    this.clock.start();
-    this.inputSystem.pushContext('orbit');
   }
 
   public setInputElement(domElement: HTMLElement) {
