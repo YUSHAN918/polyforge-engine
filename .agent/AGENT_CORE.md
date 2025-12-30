@@ -121,6 +121,10 @@
 - [2025-12-28] Phase 15.4: 相机与控制终极解耦。实现 Camera Tri-State (Spawn/Unbind/Bind) 交互闭环；修复物理与视觉同步的脏标记缺失 Bug，实现丝滑跟随；确立 Strict-ISO 上帝视角铁律（严禁旋转）；修正 TPS/FPS 旋转操作反向问题。
 - [2025-12-29] Phase 16: 记忆持久化与环境安全加固。攻克模块切换导致的“存档覆盖”竞态 Bug，部署 `isDisposed` 逻辑锁与环境指令“即发即存”机制。实现 HDR 序列化 ID 锁定与同步加载守卫，确保视觉基线永痕留存。
 - [2025-12-29] Phase 17: 体验模式交互完善与UI状态同步。禁用无角色时的WASD移动（修复 CameraSystem 与 IsometricStrategy 双重输入污染）；统一上帝视角初始镜头高度为100；建立UI自动同步机制（500ms轮询相机模式）；实现模块切换自动重置（离开时清理+保存干净状态，进入时自动重置到创造模式）；修复dispose保存脏状态导致的相机锁死Bug。
+- [2025-12-30] Phase 18: 视觉特化与工业级阴影架构 (Creation Polishing)。修复三大痛点：
+    1. **植被投影 (Vegetation Shadow)**: 定制深度材质 (CustomDepthMaterial)，解决缩放、风动与投影不同步问题。
+    2. **Orbit 电影级变焦 (Cinematic Zoom)**: 禁用自适应阻尼，消除滚轮缩放的瞬移感，实现物理惯性推拉。
+    3. **动态阴影跟随 (Dynamic Shadow Focus)**: 实现 CSM (Cascade 0) 核心机制，让太阳阴影始终吸附相机焦点，支持无限大地图的高精度投影，解决边缘切分问题。
 
 ## 第六部分：核心知识地图 (Knowledge Map)
 - **核心组件**：`WorldStateManager` (状态) -> `AssetRegistry` (资产) -> `BundleSystem` (打包)。
@@ -128,4 +132,4 @@
 
 ---
 **签署人**：制作人 & 山神
-**最后更新**：2025-12-29 (v1.3.1)
+**最后更新**：2025-12-30 (v1.3.2)
