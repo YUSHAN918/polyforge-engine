@@ -30,6 +30,7 @@ import { ArchitectureStorageManager } from './ArchitectureStorageManager';
 import { BundleSystem } from './bundling/BundleSystem';
 import { IArchitectureFacade, ValidationStats } from './IArchitectureFacade';
 import { EngineCommand, EngineCommandType } from './EngineCommand';
+import { eventBus } from './EventBus';
 
 export enum ValidationContext {
   CREATION = 'CREATION',
@@ -693,6 +694,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     this.entityManager.destroyEntity(this.playerEntity.id);
     this.playerEntity = null;
+
+    // 🔥 UI Sync: Reset Flight Mode State
+    // Physics component is gone, so state is effectively off. Notify UI.
+    eventBus.emit('gameplay:flight_mode:reset');
+
     console.log('👋 Despawning Player Character');
   }
 

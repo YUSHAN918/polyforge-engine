@@ -103,7 +103,8 @@ export class CameraPresetManager {
                 pitch: 0,
                 yaw: 0,
                 distance: 25, // 拉远距离，模拟全景
-                fov: 30       // 降低 FOV，减少透视畸变 (类 2D 效果)
+                fov: 30,      // 降低 FOV，减少透视畸变 (类 2D 效果)
+                smoothSpeed: 20 // 🔥 High speed tracking for sidescroll action
             }
         });
     }

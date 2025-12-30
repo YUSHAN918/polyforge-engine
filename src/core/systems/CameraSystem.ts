@@ -343,6 +343,9 @@ export class CameraSystem implements System {
       if (this.inputSystem.isActionPressed('MOVE_LEFT')) dx = -1;
       if (this.inputSystem.isActionPressed('MOVE_RIGHT')) dx = 1;
 
+      // DEBUG: Verify input
+      // if (dx !== 0) console.log(`[Sidescroll] Input: ${dx}`);
+
       const speed = camera.moveSpeed || 15.0;
 
       // Physics
@@ -350,6 +353,8 @@ export class CameraSystem implements System {
         const body = (this.physicsSystem as any).getRigidBody(targetEntity.id);
         let currentY = 0;
         if (body) currentY = body.linvel().y;
+
+        // 🔥 Apply velocity
         (this.physicsSystem as any).setEntityVelocity(targetEntity.id, [dx * speed, currentY, 0]); // Lock Z
       }
       return;

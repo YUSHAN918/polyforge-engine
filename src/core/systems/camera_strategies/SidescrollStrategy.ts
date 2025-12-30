@@ -15,9 +15,9 @@ export class SidescrollStrategy implements ICameraStrategy {
     }
 
     public handleInput(camera: CameraComponent, inputSystem: InputSystem, deltaTime: number): void {
-        const moveSpeed = (camera.moveSpeed || 15.0) * deltaTime;
-        if (inputSystem.isActionPressed('MOVE_LEFT')) camera.pivotOffset[0] -= moveSpeed;
-        if (inputSystem.isActionPressed('MOVE_RIGHT')) camera.pivotOffset[0] += moveSpeed;
+        // 🚫 NO-OP: Do not move camera pivot manually. 
+        // Let CameraSystem.updateCharacterControl handle WASD for the character.
+        // The camera will naturally follow the character.
     }
 
     public updateTarget(camera: CameraComponent, target: Entity | null, deltaTime: number): { position: [number, number, number]; rotation: [number, number, number]; pivot: [number, number, number]; fov: number; } {

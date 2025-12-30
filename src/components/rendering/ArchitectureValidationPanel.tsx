@@ -228,6 +228,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     return () => window.removeEventListener('click', handleCanvasClick);
   }, [activeTab, manager]);
 
+  // Sync Flight Mode UI State
+  useEffect(() => {
+    const handleFlightReset = () => setFlightMode(false);
+    eventBus.on('gameplay:flight_mode:reset', handleFlightReset);
+    return () => eventBus.off('gameplay:flight_mode:reset', handleFlightReset);
+  }, []);
+
   // FPS Loop
   useEffect(() => {
     const updateFPS = () => {
