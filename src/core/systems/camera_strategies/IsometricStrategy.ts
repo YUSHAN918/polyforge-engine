@@ -20,7 +20,10 @@ export class IsometricStrategy implements ICameraStrategy {
     }
 
     public exit(camera: CameraComponent): void {
-        // 清理工作
+        // 清理工作：归零平移偏移，防止残留到下一个模式
+        camera.pivotOffset[0] = 0;
+        camera.pivotOffset[1] = 0;
+        camera.pivotOffset[2] = 0;
     }
 
     public handleInput(camera: CameraComponent, inputSystem: InputSystem, deltaTime: number): void {

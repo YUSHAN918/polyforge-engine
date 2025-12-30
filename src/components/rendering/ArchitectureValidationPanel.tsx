@@ -9,8 +9,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ValidationContext } from '../../core/ArchitectureValidationManager';
 import { IArchitectureFacade } from '../../core/IArchitectureFacade'; // Use Interface
 import { EngineCommandType } from '../../core/EngineCommand';
-import { CameraMode } from '../../core/components/CameraComponent';
+import { CameraMode, CameraComponent } from '../../core/components/CameraComponent';
 import { FileSystemService } from '../../core/assets/FileSystemService';
+import { eventBus } from '../../core/EventBus';
 
 interface ArchitectureValidationPanelProps {
   manager: IArchitectureFacade | null; // Strict typing
@@ -57,6 +58,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [physicsDebugEnabled, setPhysicsDebugEnabled] = useState(false);
   const [audioDebugEnabled, setAudioDebugEnabled] = useState(false);
 
+  // 🔥 Camera Presets
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+
   // 🔥 Spawn Button State (Spawn -> Bind -> Unbind)
   const [spawnButtonState, setSpawnButtonState] = useState<'Spawn' | 'Bind' | 'Unbind'>('Spawn');
   const [timeOfDay, setTimeOfDay] = useState(12);
@@ -95,6 +99,40 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       return () => clearTimeout(timer);
     }
   }, [notification]);
+  // --- Event Listeners ---
+  useEffect(() => {
+    const onPresetChanged = () => {
+      // Force immediate update from system state
+      if (manager && manager.getCameraSystem()) {
+        const entities = manager.getEntityManager().getEntitiesWithComponents(['Camera']);
+        const cam = entities[0]?.getComponent<CameraComponent>('Camera');
+        if (cam) {
+          setActivePreset(cam.activePreset);
+          setCameraMode(cam.mode);
+        }
+      }
+    };
+
+    const onPresetFallback = () => {
+      // Force UI update when fallback happens (e.g. player deleted)
+      onPresetChanged();
+    };
+
+    const onError = (evt: any) => {
+      // TODO: Show Toast
+      console.warn('Camera Preset Error:', evt);
+    };
+
+    eventBus.on('camera:preset:changed', onPresetChanged);
+    eventBus.on('camera:preset:fallback', onPresetFallback);
+    eventBus.on('camera:preset:error', onError);
+
+    return () => {
+      eventBus.off('camera:preset:changed', onPresetChanged);
+      eventBus.off('camera:preset:fallback', onPresetFallback);
+      eventBus.off('camera:preset:error', onError);
+    };
+  }, [manager]); // Re-bind if manager changes (usually once)
 
   const fpsRef = useRef<HTMLSpanElement>(null);
   const lastTimeRef = useRef(performance.now());
@@ -143,13 +181,52 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       setSpawnButtonState(manager.getSpawnButtonState());
 
       // 6. Pull Camera Mode (🔥 UI同步：确保UI始终反映真实相机状态)
-      const currentCamMode = manager.getCameraSystem().getMode();
+      const camSystem = manager.getCameraSystem();
+      const currentCamMode = camSystem.getMode();
       setCameraMode(currentCamMode);
+
+      // 7. Pull Camera Preset (🔒 健壮性：需传入 camera 参数，并检查 null)
+      try {
+        const cameraEntity = manager.getEntityManager().getEntitiesWithComponents(['Camera'])[0];
+        const cameraComp = cameraEntity?.getComponent<CameraComponent>('Camera');
+        if (cameraComp && camSystem.presetManager) {
+          const currentPreset = camSystem.presetManager.getActivePresetId(cameraComp);
+          setActivePreset(currentPreset);
+        }
+      } catch (e) {
+        // Silent fail - preset system may not be fully initialized
+      }
 
     }, 500); // 2Hz Sync
 
-    return () => clearInterval(interval);
+
   }, [manager]);
+
+  // 8. Handle Pointer Lock (FPS/TPS) - Dedicated Effect to avoid closure stale state
+  useEffect(() => {
+    const handleCanvasClick = (e: MouseEvent) => {
+      // 🚫 Filter out clicks on UI elements (Button, Input, etc)
+      const target = e.target as HTMLElement;
+      const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
+
+      // Strict Check: Only Experience Tab && Only Click on Canvas
+      if (activeTab !== 'experience' || !isCanvas) return;
+
+      if (manager) {
+        const cam = manager.getEntityManager().getEntitiesWithComponents(['Camera'])[0]?.getComponent<CameraComponent>('Camera');
+        if (cam && (cam.mode === 'firstPerson' || cam.mode === 'thirdPerson')) {
+          const canvas = document.querySelector('canvas');
+          if (canvas && document.pointerLockElement !== canvas) {
+            canvas.requestPointerLock();
+            console.log('🔒 Pointer Lock Requested');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('click', handleCanvasClick);
+    return () => window.removeEventListener('click', handleCanvasClick);
+  }, [activeTab, manager]);
 
   // FPS Loop
   useEffect(() => {
@@ -211,16 +288,41 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   };
 
   // Camera
-  const handleCameraModeChange = (mode: CameraMode) => {
-    setCameraMode(mode);
-    dispatch(EngineCommandType.SET_CAMERA_MODE, { mode });
-
-    if (mode === 'orbit') setActiveTab('world');
-    else setActiveTab('experience');
+  // 🔒 仅用于切换到创造模式 (Orbit)
+  const handleOrbitModeSwitch = () => {
+    setCameraMode('orbit');
+    dispatch(EngineCommandType.SET_CAMERA_MODE, { mode: 'orbit' });
+    setActiveTab('world');
   };
+
   const handleContextSwitch = (ctx: string) => {
-    if (ctx === ValidationContext.CREATION) handleCameraModeChange('orbit');
-    else handleCameraModeChange('isometric');
+    if (ctx === ValidationContext.CREATION) {
+      // 🔒 创造模式：切换到 Orbit
+      handleOrbitModeSwitch();
+    } else {
+      // 🆕 体验模式：先切换上下文，再应用预设
+      // 1. Gatekeeper: 使用 SET_CAMERA_MODE 触发后端 Context 切换 (Creation -> Experience)
+      setCameraMode('isometric');
+      dispatch(EngineCommandType.SET_CAMERA_MODE, { mode: 'isometric' });
+
+      // 2. Apply Preset: 在正确的上下文中应用预设
+      // 由于 dispatch 是按序执行的，这里随即发送预设指令是安全的
+      handlePresetChange('iso');
+
+      setActiveTab('experience');
+    }
+  };
+
+  // 🆕 体验模式：使用预设系统切换相机
+  const handlePresetChange = (presetId: string) => {
+    if (!manager) return;
+
+    // Dispatch command to apply preset
+    // Note: The Manager will handle the logic via CameraSystem.presetManager
+    dispatch(EngineCommandType.APPLY_CAMERA_PRESET, { presetId });
+
+    // UI selection optimization (optimistic update)
+    setActivePreset(presetId);
   };
   const handleFovChange = (val: number) => {
     setFov(val);
@@ -819,18 +921,32 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         {activeTab === 'experience' && (
           <div className="space-y-6">
             <section className="space-y-3">
-              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">相机模式 (Camera Mode)</h3>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">相机预设 (Camera Presets)</h3>
               <div className="grid grid-cols-2 gap-2">
-                {(['firstPerson', 'thirdPerson', 'isometric', 'sidescroll'] as CameraMode[]).map(m => {
-                  const names: Record<string, string> = {
-                    firstPerson: '第一人称 (FPS)',
-                    thirdPerson: '第三人称 (TPS)',
-                    isometric: '上帝视角 (ISO)',
-                    sidescroll: '横板卷轴 (Side)' // 🔥 Restored Side-Scroller
-                  };
+                {manager?.getCameraSystem().presetManager?.getAllPresets().map(p => {
+                  // Check if preset requires target and if target exists
+                  const requiresTarget = p.bindTarget;
+                  const hasTarget = !!manager?.getEntityManager().getAllEntities().find(e => e.name === 'Player');
+                  const isDisabled = requiresTarget && !hasTarget;
+
                   return (
-                    <button key={m} onClick={() => handleCameraModeChange(m)} className={`py-4 rounded border font-bold text-[10px] ${cameraMode === m ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}>
-                      {names[m] || m}
+                    <button
+                      key={p.id}
+                      disabled={isDisabled}
+                      title={isDisabled ? "需先生成角色 (Spawn Character First)" : p.description}
+                      onClick={() => handlePresetChange(p.id)}
+                      className={`py-3 rounded border font-bold text-[9px] uppercase flex flex-col items-center gap-1 transition-all ${activePreset === p.id
+                        ? 'bg-cyan-600 text-white border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                        : isDisabled
+                          ? 'bg-gray-900 text-gray-700 border-gray-800 cursor-not-allowed opacity-50'
+                          : 'bg-gray-800 text-gray-500 border-gray-700 hover:bg-gray-750 hover:text-gray-300'}`}
+                    >
+                      {/* Icon Mapping based on ID */}
+                      <i className={`fas ${p.id === 'iso' ? 'fa-cube' :
+                        p.id === 'fps' ? 'fa-eye' :
+                          p.id === 'tps' ? 'fa-user' :
+                            'fa-arrows-alt-h'} text-[10px]`}></i>
+                      {p.displayName}
                     </button>
                   );
                 })}

@@ -104,6 +104,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // 4. Wiring
     this.cameraSystem.setInputSystem(this.inputSystem);
     this.cameraSystem.setEntityManager(this.entityManager);
+    this.cameraSystem.setArchitectureManager(this); // 🆕 注入 Manager 以支持预设系统
     this.cameraSystem.setPhysicsSystem(this.physicsSystem);
     this.inputSystem.setCommandManager(this.commandManager);
 
@@ -205,6 +206,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       // --- Camera ---
       case EngineCommandType.SET_CAMERA_MODE:
         this.setCameraMode(command.mode);
+        break;
+      case EngineCommandType.APPLY_CAMERA_PRESET:
+        if (this.cameraEntity) {
+          const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+          if (cam && this.cameraSystem.presetManager) {
+            this.cameraSystem.presetManager.applyPreset(cam, (command as any).presetId);
+          }
+        }
         break;
       case EngineCommandType.SET_CAMERA_FOV:
         this.updateCameraComponent(c => c.fov = command.fov);
@@ -392,7 +401,19 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     }
     this.entityManager.clearNonPersistent(); // 清理所有临时实体
 
-    // 🔥 0b. 强制保存：确保模块切换、关闭窗口前数据不丢失（现在是干净状态）
+    // 🆕 0b. 相机模式重置 (批准条件1)
+    // 确保体验模式的状态不会残留到下次启动
+    if (this.cameraEntity) {
+      const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+      if (cam && (this.currentContext === ValidationContext.EXPERIENCE || cam.mode !== 'orbit')) {
+        console.log('🔄 [Manager] Resetting camera to Orbit for clean disposal.');
+        cam.mode = 'orbit';
+        cam.activePreset = null;
+        cam.targetEntityId = null;
+      }
+    }
+
+    // 🔥 0c. 强制保存：确保模块切换、关闭窗口前数据不丢失（现在是干净状态）
     if (this.storageManager) {
       this.storageManager.save();
     }
@@ -657,15 +678,16 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     if (this.cameraEntity) {
       const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
       if (cam) {
-        if (cam.targetEntityId === this.playerEntity.id) {
+        // 🔥 Use Standard Fallback to ensure EventBus and UI sync
+        if (this.cameraSystem.presetManager) {
+          this.cameraSystem.presetManager.fallbackToSafePreset(cam);
+        } else {
+          // Manual Fallback (Backup)
           cam.targetEntityId = null;
-        }
-        if (cam.controlledEntityId === this.playerEntity.id) {
           cam.controlledEntityId = null;
+          cam.distance = 100;
+          cam.mode = 'isometric';
         }
-        // Restore distance on despawn
-        cam.distance = 100;
-        // Maybe reset lookat?
       }
     }
 

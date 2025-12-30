@@ -422,7 +422,15 @@ export class InputSystem implements System {
     actions.set('REDO', { name: 'REDO', keys: ['y'], modifiers: ['ctrl'] });
 
     // 全局
-    actions.set('ESCAPE', { name: 'ESCAPE', keys: ['escape'] });
+    actions.set('ESCAPE', {
+      name: 'ESCAPE',
+      keys: ['escape'],
+      callback: () => {
+        if (typeof document !== 'undefined' && document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+      }
+    });
 
     return {
       name: 'game',

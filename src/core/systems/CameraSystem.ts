@@ -19,6 +19,8 @@ import { OrbitStrategy } from './camera_strategies/OrbitStrategy';
 import { FirstPersonStrategy } from './camera_strategies/FirstPersonStrategy';
 import { ThirdPersonStrategy } from './camera_strategies/ThirdPersonStrategy';
 import { SidescrollStrategy } from './camera_strategies/SidescrollStrategy';
+import { CameraPresetManager } from './CameraPresetManager';
+import { ArchitectureValidationManager, ValidationContext } from '../ArchitectureValidationManager';
 
 /**
  * 相机状态（用于平滑过渡）
@@ -39,6 +41,9 @@ export class CameraSystem implements System {
   public readonly priority = 150;  // 在物理系统之后
   public enabled = true;
   public readonly requiredComponents = ['Camera', 'Transform'];
+
+  // 🆕 预设管理器
+  public presetManager: CameraPresetManager | null = null;
 
   // 当前相机状态（用于平滑插值）
   private currentState: CameraState = {
@@ -65,6 +70,9 @@ export class CameraSystem implements System {
   // 🏛️ 实体管理器引用 (Required for target lookup across filtered lists)
   private entityManager: any = null;
 
+  // 🆕 架构管理器引用
+  private manager: ArchitectureValidationManager | null = null;
+
   // 🎥 R3F 相机引用（直接控制）
   private r3fCamera: any = null;
 
@@ -89,6 +97,24 @@ export class CameraSystem implements System {
   public initialize(entityManager: any): void {
     this.entityManager = entityManager;
     console.log('🎥 CameraSystem: EntityManager reference linked');
+  }
+
+  /**
+   * 设置架构管理器引用并初始化预设系统
+   */
+  public setArchitectureManager(manager: ArchitectureValidationManager): void {
+    this.manager = manager;
+    if (this.entityManager) {
+      this.presetManager = new CameraPresetManager(this, this.entityManager, manager);
+      console.log('🎥 CameraSystem: CameraPresetManager initialized');
+    }
+  }
+
+  /**
+   * 获取指定的相机策略
+   */
+  public getStrategy(mode: CameraMode): ICameraStrategy | undefined {
+    return this.strategies.get(mode);
   }
 
   /**
@@ -185,9 +211,21 @@ export class CameraSystem implements System {
       }
 
       // 3. Update Target State
-      const targetEntity = (camera.targetEntityId && this.entityManager)
+      let targetEntity = (camera.targetEntityId && this.entityManager)
         ? this.entityManager.getEntity(camera.targetEntityId)
         : null;
+
+      // 🆕 角色删除自动回退检测 (Task 1.5)
+      if (camera.targetEntityId && !targetEntity) {
+        if (this.manager?.getContext() === ValidationContext.EXPERIENCE && camera.mode !== 'orbit') {
+          // 体验模式：触发回退
+          console.log(`[CameraSystem] Target entity ${camera.targetEntityId} lost. Falling back...`);
+          this.presetManager?.fallbackToSafePreset(camera);
+        } else {
+          // 创造模式：静默清理
+          camera.targetEntityId = null;
+        }
+      }
 
       const result = strategy.updateTarget(camera, targetEntity, deltaTime);
 

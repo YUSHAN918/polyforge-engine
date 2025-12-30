@@ -7,7 +7,12 @@ import { Entity } from '../../Entity';
 export class FirstPersonStrategy implements ICameraStrategy {
     public readonly name = 'firstPerson';
     public enter(camera: CameraComponent): void { }
-    public exit(camera: CameraComponent): void { }
+    public exit(camera: CameraComponent): void {
+        // 清理工作：归零平移偏移
+        camera.pivotOffset[0] = 0;
+        camera.pivotOffset[1] = 0;
+        camera.pivotOffset[2] = 0;
+    }
 
     public handleInput(camera: CameraComponent, inputSystem: InputSystem, deltaTime: number): void {
         const mouseDelta = inputSystem.mouseDelta;

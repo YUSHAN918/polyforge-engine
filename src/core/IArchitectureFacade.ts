@@ -12,6 +12,7 @@ import { CommandManager } from './CommandManager';
 import { ArchitectureStorageManager } from './ArchitectureStorageManager';
 import { AssetRegistry } from './assets/AssetRegistry';
 import { WorldState } from './WorldStateManager';
+import { EntityManager } from './EntityManager';
 
 import { InputSystem } from './systems/InputSystem';
 
@@ -91,4 +92,5 @@ export interface IArchitectureFacade {
     getTerrainSystem(): TerrainSystem;
     getVegetationSystem(): VegetationSystem;
     getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null;
+    getEntityManager(): EntityManager;
 }

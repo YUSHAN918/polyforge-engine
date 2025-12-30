@@ -25,6 +25,7 @@ export enum EngineCommandType {
     SET_TONE_MAPPING_EXPOSURE = 'SET_TONE_MAPPING_EXPOSURE',
     SET_MOVE_SPEED = 'SET_MOVE_SPEED',
     SET_FORCE_MULTIPLIER = 'SET_FORCE_MULTIPLIER',
+    APPLY_CAMERA_PRESET = 'APPLY_CAMERA_PRESET',
 
     // Vegetation
     SPAWN_VEGETATION = 'SPAWN_VEGETATION', // Unified command
@@ -74,6 +75,7 @@ export interface SetSmaaPayload { type: EngineCommandType.SET_SMAA_ENABLED; enab
 export interface SetExposurePayload { type: EngineCommandType.SET_TONE_MAPPING_EXPOSURE; exposure: number; }
 export interface SetMoveSpeedPayload { type: EngineCommandType.SET_MOVE_SPEED; speed: number; }
 export interface SetForceMultiplierPayload { type: EngineCommandType.SET_FORCE_MULTIPLIER; multiplier: number; }
+export interface ApplyCameraPresetPayload { type: EngineCommandType.APPLY_CAMERA_PRESET; presetId: string; }
 
 export interface SpawnVegetationPayload {
     type: EngineCommandType.SPAWN_VEGETATION;
@@ -127,6 +129,7 @@ export type EngineCommand =
     | SetExposurePayload
     | SetMoveSpeedPayload
     | SetForceMultiplierPayload
+    | ApplyCameraPresetPayload
     | SpawnVegetationPayload
     | ClearVegetationPayload
     | SetGrassScalePayload
