@@ -404,7 +404,28 @@ export class CameraSystem implements System {
    * 平滑更新相机状态
    */
   private smoothUpdate(camera: CameraComponent, transform: TransformComponent, deltaTime: number): void {
-    const t = Math.min(1, (camera.smoothSpeed || 10.0) * deltaTime);
+    // 🔥 FPS Hard-Lock (Instant)
+    // First-person view must be 1:1 sync with body, no smoothing allowed for position.
+    let t = Math.min(1, (camera.smoothSpeed || 10.0) * deltaTime);
+
+    if (camera.mode === 'firstPerson') {
+      t = 1.0;
+    } else {
+      // 🚀 Adaptive Damping (Catch-up mechanism)
+      // If lag is too large (high speed), increase t to prevent leaving screen
+      const dx = this.targetState.position[0] - this.currentState.position[0];
+      const dy = this.targetState.position[1] - this.currentState.position[1];
+      const dz = this.targetState.position[2] - this.currentState.position[2];
+      const sqDist = dx * dx + dy * dy + dz * dz;
+
+      // Threshold: 0.25 (0.5m) -> Accelerate
+      if (sqDist > 0.25) {
+        // Logarithmic boost: larger error = faster Lerp
+        // Max t can go up to 0.8 or 1.0
+        const boost = Math.min(1.0, sqDist * 0.1);
+        t = Math.max(t, 0.1 + boost);
+      }
+    }
 
     // 位置插值
     this.currentState.position[0] = this.lerp(this.currentState.position[0], this.targetState.position[0], t);
@@ -417,6 +438,7 @@ export class CameraSystem implements System {
     this.currentState.rotation[2] = this.lerp(this.currentState.rotation[2], this.targetState.rotation[2], t);
 
     // 🔥 Pivot 插值 (消除平移时的旋转抖动)
+    // Pivot should match Position sync logic
     this.currentState.pivot[0] = this.lerp(this.currentState.pivot[0], this.targetState.pivot[0], t);
     this.currentState.pivot[1] = this.lerp(this.currentState.pivot[1], this.targetState.pivot[1], t);
     this.currentState.pivot[2] = this.lerp(this.currentState.pivot[2], this.targetState.pivot[2], t);
