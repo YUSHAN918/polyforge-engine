@@ -21,7 +21,6 @@ interface VegetationVisualProps {
 
 export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.0 }: VegetationVisualProps) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
   // 🔥 优化更新：使用 ref 跟踪注册状态，避免重复注册
   const isRegisteredRef = useRef(false);
@@ -89,6 +88,64 @@ export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.
     return mat;
   }, []);
 
+  // 🔥 1.5 深度材质注入：确保阴影与主材质形状一致（包含缩放和风场）
+  const customDepthMaterial = useMemo(() => {
+    const mat = new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking,
+      alphaTest: 0.5, // 必须与主材质一致
+    });
+
+    mat.onBeforeCompile = (shader) => {
+      // 注入 Uniforms
+      shader.uniforms.time = { value: 0 };
+      shader.uniforms.windStrength = { value: 0.1 };
+      shader.uniforms.uGlobalScale = { value: 1.0 };
+
+      // 注入顶点着色器逻辑
+      shader.vertexShader = `
+        uniform float time;
+        uniform float windStrength;
+        uniform float uGlobalScale;
+      ` + shader.vertexShader;
+
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `
+        #include <begin_vertex>
+        
+        // 1. 应用全局缩放 (GPU 瞬时计算)
+        transformed *= uGlobalScale;
+
+        // 2. 计算世界坐标用于风场
+        #ifdef USE_INSTANCING
+          vec4 worldInstancePos = instanceMatrix * vec4(transformed, 1.0);
+        #else
+          vec4 worldInstancePos = vec4(transformed, 1.0);
+        #endif
+        vec4 vLocalWorldPos = modelMatrix * worldInstancePos;
+        
+        // 3. 基于世界坐标采样
+        float h = position.y; 
+        float windPhase = time * 2.0 + vLocalWorldPos.x * 0.5 + vLocalWorldPos.z * 0.3;
+        float windOffset = sin(windPhase) * windStrength * h;
+
+        // 4. 应用风场
+        vec3 worldWindDir = vec3(1.0, 0.0, 0.0);
+        #ifdef USE_INSTANCING
+           vec3 localWindDir = worldWindDir * mat3(instanceMatrix); 
+        #else
+           vec3 localWindDir = worldWindDir;
+        #endif
+
+        transformed += localWindDir * windOffset; 
+        `
+      );
+
+      mat.userData.shader = shader;
+    };
+    return mat;
+  }, []);
+
   // 2. 句柄注册（ECS 智系统模式）
   // 🔥 优化更新：使用 ref 跟踪注册状态，避免重复注册
   useEffect(() => {
@@ -101,6 +158,7 @@ export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.
 
   // 4. 实时渲染循环：每帧从 ECS 获取最新状态同步至 GPU Uniform
   useFrame((state) => {
+    // 同步主材质 Uniform
     if (customMaterial.userData.shader) {
       const shader = customMaterial.userData.shader;
       shader.uniforms.time.value = state.clock.elapsedTime;
@@ -134,6 +192,17 @@ export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.
         customMaterial.emissiveIntensity = 0.3 * lightIntensity;
       }
     }
+
+    // 🔥 同步深度材质 Uniform (确保影子同步)
+    if (customDepthMaterial.userData.shader) {
+      const shader = customDepthMaterial.userData.shader;
+      shader.uniforms.time.value = state.clock.elapsedTime;
+      const veg = entity?.getComponent<VegetationComponent>('Vegetation');
+      if (veg) {
+        shader.uniforms.windStrength.value = veg.config.windStrength || 0.1;
+        shader.uniforms.uGlobalScale.value = veg.config.scale || 1.0;
+      }
+    }
   });
 
   return (
@@ -144,6 +213,7 @@ export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.
       frustumCulled={true} // 🔥 性能关键：开启视锥剔除，配合 System 层的包围球计算
       castShadow
       receiveShadow
+      customDepthMaterial={customDepthMaterial} // ✅ 注入自定义深度材质
     />
   );
 };

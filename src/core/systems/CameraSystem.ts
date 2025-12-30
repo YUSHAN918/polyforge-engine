@@ -424,7 +424,8 @@ export class CameraSystem implements System {
       const sqDist = dx * dx + dy * dy + dz * dz;
 
       // Threshold: 0.25 (0.5m) -> Accelerate
-      if (sqDist > 0.25) {
+      // 🔥 修复：Orbit 模式下禁用"追赶"机制，保证电影级平滑阻尼（防止滚轮缩放时瞬移）
+      if (sqDist > 0.25 && camera.mode !== 'orbit') {
         // Logarithmic boost: larger error = faster Lerp
         // Max t can go up to 0.8 or 1.0
         const boost = Math.min(1.0, sqDist * 0.1);

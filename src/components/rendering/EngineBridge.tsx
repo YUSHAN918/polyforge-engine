@@ -710,15 +710,37 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     // 🔥 修复:每帧根据最新时间计算太阳位置,防止阴影分界线
     const time = worldState.timeOfDay || 12;
     const sunAngle = ((time - 6) / 12) * Math.PI;
-    const sunX = Math.cos(sunAngle) * 20;
-    const sunY = Math.sin(sunAngle) * 20;
+    const sunOffsetRadius = 50; // 🔥 太阳距离焦点的距离 (需足够远以容纳视锥体)
+    const sunX = Math.cos(sunAngle) * sunOffsetRadius;
+    const sunY = Math.sin(sunAngle) * sunOffsetRadius;
+    const sunZ = 20; // 稍微偏移 Z 轴防止正午垂直阴影难看
 
-    sunLightRef.current.position.set(sunX, Math.max(sunY, 1), 10);
-    setSunPosition([sunX, sunY, 10]); // 🔥 修复:更新 state 供 Sky 组件使用
+    // 🎥 获取相机当前焦点 (Pivot) - 实现“影随人动” (Shadow Follows Camera)
+    // 这是开放世界游戏的标准做法 (Cascaded Shadow Maps 的简化版)
+    let pivot: [number, number, number] = [0, 0, 0];
+    if (archValidationManager) {
+      const camSys = archValidationManager.getCameraSystem();
+      if (camSys) {
+        pivot = camSys.getCurrentPivot();
+      }
+    }
+
+    // 1. 太阳位置 = 相对偏移 + 焦点位置
+    sunLightRef.current.position.set(
+      sunX + pivot[0],
+      Math.max(sunY, 5) + pivot[1], // 保持最小高度防止地下太阳
+      sunZ + pivot[2]
+    );
+
+    // 2. 太阳目标 = 焦点位置 (确保光线始终指向玩家视野中心)
+    sunLightRef.current.target.position.set(pivot[0], pivot[1], pivot[2]);
+    sunLightRef.current.target.updateMatrixWorld(); // 必不可少：通知 Three.js 更新目标矩阵
+
+    setSunPosition([sunX, sunY, sunZ]);
 
     // 🔥 环境自适应联动：让 HDR 环境光随昼夜变化
     // 三分律：中午(12:00)最亮，黄昏(18:00)变橘，深夜(0:00)漆黑
-    const normalizedHeight = Math.max(0, sunY / 20); // 0 (地平线) to 1 (正午)
+    const normalizedHeight = Math.max(0, sunY / sunOffsetRadius); // 0 (地平线) to 1 (正午)
 
     // 🌙 夜色平滑公式：更深邃的夜晚，使用指数级衰减
     const nightFactor = Math.pow(normalizedHeight, 2.0);
@@ -798,10 +820,13 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         shadow-mapSize-width={4096}
         shadow-mapSize-height={4096}
         shadow-camera-far={100}
+        // 🔥 修复：扩大影子视锥体覆盖标准 100x100 地形，防止边缘或日落时影子被切断
         shadow-camera-left={-50}
         shadow-camera-right={50}
         shadow-camera-top={50}
         shadow-camera-bottom={-50}
+        // 🔥 修复：微调 Bias 防止波纹（Shadow Acne）和彼得潘效应（悬浮）
+        shadow-bias={-0.0005}
       />
 
       {/* 渲染所有根实体 */}
