@@ -112,12 +112,21 @@
   - [ ] 1.6.4 实现向后兼容处理（migrateOldCameraData）
   - _需求：3.1, 3.2, 3.3, 3.4, 9.4, 9.6_
 
-- [ ] 1.7 集成到 CameraSystem（1h）
+- [ ] 1.7 集成到 CameraSystem（1.5h）
   - [ ] 1.7.1 在 CameraSystem 中创建 CameraPresetManager 实例
+    - 传入 cameraSystem, entityManager, manager（ArchitectureValidationManager）三个参数
   - [ ] 1.7.2 暴露 presetManager 公开属性（用于 UI 访问）
   - [ ] 1.7.3 在 CameraSystem.update() 中添加自动回退检测
-  - [ ] 1.7.4 确保 Strategy 切换时调用 exit() 和 enter()
-  - _需求：1.1, 2.3_
+  - 🔴 **批准条件1**：[ ] 1.7.4 在 ArchitectureValidationManager.dispose() 中添加预设清理逻辑
+    - 检查：如果 currentContext === 'EXPERIENCE' 或 camera.mode !== 'orbit'
+    - 清理：`camera.mode = 'orbit'; camera.activePreset = null;`
+    - 保存：调用 saveState() 保存干净状态
+    - 说明：确保体验模式切回时自动重置到创造模式
+  - 🔴 **批准条件3**：[ ] 1.7.5 测试模块切换闭环
+    - 创造模式 → 切离 → 切回 → 验证状态保留（地形、相机等）
+    - 体验模式 → 切离 → 切回 → 验证自动重置到创造模式
+  - [ ] 1.7.6 确保 Strategy 切换时调用 exit() 和 enter()
+  - _需求：1.1, 2.3, 关键：保护12月29日的架构成果_
 
 - [ ] 1.8 添加 EventBus 事件（0.5h）
   - [ ] 1.8.1 定义事件类型
@@ -401,23 +410,27 @@
   - [ ] 4.2.3 添加错误处理（捕获异常）
   - _需求：6.2_
 
-- [ ] 4.3 实现状态同步（1h）
-  - [ ] 4.3.1 添加 useState 管理 activePreset
-  - [ ] 4.3.2 实现 500ms 轮询机制
+- [ ] 4.3 实现状态同步（500ms 轮询 + EventBus）（1h）
+  - 🔴 **批准条件2**：[ ] 4.3.1 复用现有 500ms 轮询（不创建新 interval）
+    - 定位到 ArchitectureValidationPanel.tsx 的现有轮询（Line 107-152）
+    - 在现有 setInterval 内部添加预设状态同步代码
+    - 严禁创建新的 interval，必须复用现有机制
+  - [ ] 4.3.2 在现有轮询中添加 activePreset 同步
     ```tsx
-    useEffect(() => {
-      const interval = setInterval(() => {
-        const camera = cameraSystem.getMainCamera();
-        setActivePreset(camera.activePreset);
-      }, 500);
-      return () => clearInterval(interval);
-    }, []);
+    // 在现有的 setInterval 内部添加（Line ~146 附近）
+    const camera = manager.getCameraComponent();
+    if (camera) {
+      setActivePreset(camera.activePreset);
+    }
     ```
-  - [ ] 4.3.3 监听 EventBus 事件（camera:preset:changed）
-    - 立即更新 UI（无需等待轮询）
-  - [ ] 4.3.4 监听 EventBus 事件（camera:preset:fallback）
-    - 自动更新 UI 显示
-  - _需求：6.5, 6.6_
+  - [ ] 4.3.3 监听 EventBus 事件（可选优化）
+    - camera:preset:changed → 立即更新 UI
+    - camera:preset:error → 显示错误提示
+    - camera:preset:fallback → 自动更新显示
+  - [ ] 4.3.4 验证 UI 与 ECS 状态 100% 同步
+    - 在控制台手动修改 camera.activePreset
+    - 验证 UI 在 500ms 内自动更新
+  - _需求：6.5, 6.6, 关键：不破坏现有 500ms 轮询_
 
 - [ ] 4.4 实现错误提示（0.5h）
   - [ ] 4.4.1 监听 EventBus 事件（camera:preset:error）
