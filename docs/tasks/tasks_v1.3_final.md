@@ -308,7 +308,7 @@
   - 更新用户指南
   - _需求: 17.2_
 
-## Phase 19: Camera Preset System 相机预设系统 ✅/⏳
+## Phase 19: Camera Preset System 相机预设系统 ✅
 
 - [x] 19.1 核心策略重构与自由度释放 ✅
   - [x] 重构 CameraStrategy 解除硬编码 (Isometric/Sidescroll)
@@ -327,11 +327,12 @@
   - [x] 统一 ISO 初始高度与回退高度为 100
   - _完成日期: 2025-12-31_
 
-- [ ] 19.4 防穿墙机制实现 ⏳
-  - [ ] 在 CameraSystem 中实现 Raycast 碰撞检测
-  - [ ] 实现场景几何体（地形+实体）自动过滤
-  - [ ] 支持平滑推拉逻辑 (Spring Arm Like)
-  - [ ] 暴露 `enableCollision` 开关
+- [x] 19.4 防穿墙机制与重心对齐 (Precision RE) ✅
+  - [x] **API 鲁棒性**: 回归位置参数签名，修复 TPS 穿地检测失败 Bug
+  - [x] **防入体机制**: 实现 **0.15m** 碰撞过滤阈值，平衡防缩头与地表探测
+  - [x] **物理渲染对齐**: 角色刚体总高校准为 2.0m，实现双向 1:1 同步
+  - [x] **隔离执行**: 确保 `enableCollision` 仅在 TPS 模式下触发
+  - _完成日期: 2025-12-31_
 
 ## Phase 20: React 19 + R3F 优化 ⏳
 
