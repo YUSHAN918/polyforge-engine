@@ -35,36 +35,36 @@
 
 ---
 
-## 阶段 2.5：机制修复与优化 (验收反馈) � 进行中
-
-**目标**：解决用户在手动验收中发现的交互、视角跟随和回退机制问题。
-
-### 任务清单
-
-- [ ] 2.5.1 **TPS 视角跟随修复**
-  - [ ] 分析 ThirdPersonStrategy.updateTarget 逻辑
-  - [ ] 修复 offset 计算错误（应使用球面坐标 distance + pitch + yaw）
-  - [ ] 验证：角色移动时，相机应紧随其后
-
-- [ ] 2.5.2 **侧轴 (Sidescroll) 视角修正**
-  - [ ] 修正 SidescrollStrategy 的旋转逻辑（强制 [0, 0, 0]）
-  - [ ] 确保 distance 正确应用到 Z 轴
-  - [ ] 修正：防止受到 inputSystem.resetFrameData 之前的残留输入影响
-
-- [ ] 2.5.3 **FPS 自动回退修复**
-  - [ ] 调试 CameraSystem.update 中的回退检测逻辑
-  - [ ] 确保 deleteEntity 后下一帧立即触发 fallback
-  - [ ] 验证 UI 能够响应 activePreset: 'fps' -> 'iso' 的变化
-
-- [ ] 2.5.4 **UI 交互优化 (无角色状态)**
-  - [ ] 修改 ArchitectureValidationPanel
-  - [ ] 获取当前是否在控制角色 (hasTarget)
-  - [ ] 如果无角色，禁用 bindTarget=true 的预设按钮 (FPS/TPS/Sidescroll)
-  - [ ] 添加 title/tooltip 提示 "需生成角色"
-
-- [ ] 2.5.5 **ISO 视角一致性**
-  - [ ] 统一 CameraPresetManager 中 ISO 预设参数与 fallbackToSafePreset 的参数
-  - [ ] 确保删除角色后回退的 ISO 视角与初始 ISO 视角一致
+## 阶段 2.5：机制修复与优化 (验收反馈) ✅ 已完成
+ 
+ **目标**：解决用户在手动验收中发现的交互、视角跟随和回退机制问题。
+ 
+ ### 任务清单
+ 
+ - [x] 2.5.1 **TPS 视角跟随修复**
+   - [x] 分析 ThirdPersonStrategy.updateTarget 逻辑
+   - [x] 修复 offset 计算错误（应使用球面坐标 distance + pitch + yaw）
+   - [x] 验证：角色移动时，相机应紧随其后
+ 
+ - [x] 2.5.2 **侧轴 (Sidescroll) 视角修正**
+   - [x] 修正 SidescrollStrategy 的旋转逻辑（强制 [0, 0, 0]）
+   - [x] 确保 distance 正确应用到 Z 轴
+   - [x] 修正：防止受到 inputSystem.resetFrameData 之前的残留输入影响
+ 
+ - [x] 2.5.3 **FPS 自动回退修复**
+   - [x] 调试 CameraSystem.update 中的回退检测逻辑
+   - [x] 确保 deleteEntity 后下一帧立即触发 fallback
+   - [x] 验证 UI 能够响应 activePreset: 'fps' -> 'iso' 的变化
+ 
+ - [x] 2.5.4 **UI 交互优化 (无角色状态)**
+   - [x] 修改 ArchitectureValidationPanel
+   - [x] 获取当前是否在控制角色 (hasTarget)
+   - [x] 如果无角色，禁用 bindTarget=true 的预设按钮 (FPS/TPS/Sidescroll)
+   - [x] 添加 title/tooltip 提示 "需生成角色"
+ 
+ - [x] 2.5.5 **ISO 视角一致性**
+   - [x] 统一 CameraPresetManager 中 ISO 预设参数与 fallbackToSafePreset 的参数
+   - [x] 确保删除角色后回退的 ISO 视角与初始 ISO 视角一致
 
 ---
 
