@@ -45,6 +45,12 @@ export interface WorldState {
   smaaEnabled: boolean;      // 抗锯齿开关
   toneMappingExposure: number; // 色调映射曝光度
   hdrAssetId?: string;       // 🔥 环境贴图资产 ID
+  shadowBias: number;        // 🔥 阴影偏移 (解决悬浮/彼得潘)
+  shadowNormalBias: number;  // 🔥 阴影法线偏移 (解决波纹)
+  shadowOpacity: number;     // 🔥 阴影不透明度 (0-1, 物理上映射为补光强度)
+  shadowRadius: number;      // 🔥 阴影模糊半径 (PCSS)
+  shadowColor: string;       // 🔥 阴影颜色倾向 (补光色)
+  shadowDistance: number;    // 🔥 阴影覆盖距离 (-1: Auto ASA, >0: Manual)
 }
 
 /**
@@ -95,7 +101,13 @@ export class WorldStateManager {
       bloomThreshold: 0.85,    // 默认泛光阈值
       smaaEnabled: true,       // 默认开启抗锯齿
       toneMappingExposure: 1.0, // 默认曝光度
-      hdrAssetId: 'hdr_asset_1767259404480_zbm2b8a' // 默认天空环境 (blaubeuren_night_4k.hdr)
+      hdrAssetId: 'hdr_asset_1767259404480_zbm2b8a', // 默认天空环境 (blaubeuren_night_4k.hdr)
+      shadowBias: -0.00002,    // 默认极小负偏移
+      shadowNormalBias: 0,     // 默认零法线偏移
+      shadowOpacity: 0.8,      // 默认较深阴影 (0.8不透明度 -> 0.2补光)
+      shadowRadius: 1,         // 默认轻微柔化
+      shadowColor: '#3f423e',  // 默认冷灰暗部
+      shadowDistance: -1       // 默认自动 ASA 托管
     };
   }
 
@@ -407,6 +419,36 @@ export class WorldStateManager {
   setHDR(assetId: string | undefined): void {
     this.setState({ hdrAssetId: assetId });
     console.log(`🌍 Environment HDR locked to: ${assetId || 'auto'}`);
+  }
+
+  /**
+   * 设置阴影偏移 (Bias)
+   */
+  setShadowBias(bias: number): void {
+    this.setState({ shadowBias: bias });
+  }
+
+  /**
+   * 设置阴影法线偏移 (NormalBias)
+   */
+  setShadowNormalBias(bias: number): void {
+    this.setState({ shadowNormalBias: bias });
+  }
+
+  setShadowOpacity(opacity: number): void {
+    this.setState({ shadowOpacity: Math.max(0, Math.min(1, opacity)) });
+  }
+
+  setShadowRadius(radius: number): void {
+    this.setState({ shadowRadius: Math.max(0, radius) });
+  }
+
+  setShadowColor(color: string): void {
+    this.setState({ shadowColor: color });
+  }
+
+  setShadowDistance(distance: number): void {
+    this.setState({ shadowDistance: distance });
   }
 
   /**

@@ -38,6 +38,7 @@ export class PhysicsSystem implements System {
   private colliderMap: Map<string, Collider> = new Map(); // entityId -> Collider
   private initialized = false;
   private gravity: [number, number, number] = [0, -9.81, 0];  // 默认重力
+  private clock: any | null = null;
 
   /**
    * 设置实体管理器引用 (用于初始化时的 Catch-up)
@@ -49,12 +50,14 @@ export class PhysicsSystem implements System {
   /**
    * 初始化物理引擎
    * @param entityManager 注入实体管理器（由 SystemManager 自动传入）
+   * @param clock 注入时钟系统
    */
-  public async initialize(entityManager?: any): Promise<void> {
+  public async initialize(entityManager?: any, clock?: any): Promise<void> {
     if (this.initialized) return;
 
-    // 🔥 确保持有引用，用于捕捉既存实体
+    // 🔥 确保持有引用
     if (entityManager) this.entityManager = entityManager;
+    if (clock) this.clock = clock;
 
     try {
       // 动态导入 Rapier（WASM 模块）
@@ -255,8 +258,32 @@ export class PhysicsSystem implements System {
     // 步进物理模拟
     this.world.step();
 
+    // 🔥 KillZ: 坠落回收 (每间隔一定帧数检查一次，平衡性能)
+    if (this.clock && this.clock.getFrameCount() % 30 === 0) {
+      this.checkKillZ(entities);
+    }
+
     // 同步物理状态到 Transform
     this.syncPhysicsToTransform(entities);
+  }
+
+  /**
+   * 检查坠落死区并回收实体
+   */
+  private checkKillZ(entities: Entity[]): void {
+    const KILL_Z = -50; // 虚空深度阈值
+    for (const entity of entities) {
+      const body = this.bodyMap.get(entity.id);
+      // 只检查动态刚体，且排除受控角色（角色由角色逻辑处理，或给更高的阈值）
+      if (body && body.isDynamic() && body.translation().y < KILL_Z) {
+        if (entity.name?.includes('Player')) continue; // 保护玩家
+
+        console.log(`♻️ [PhysicsSystem] KillZ triggered: Purging entity ${entity.id} (${entity.name})`);
+        if (this.entityManager) {
+          this.entityManager.destroyEntity(entity.id);
+        }
+      }
+    }
   }
 
   /**

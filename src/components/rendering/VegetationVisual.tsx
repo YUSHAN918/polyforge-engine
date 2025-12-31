@@ -93,6 +93,7 @@ export const VegetationVisual = ({ entity, vegetationSystem, lightIntensity = 1.
     const mat = new THREE.MeshDepthMaterial({
       depthPacking: THREE.RGBADepthPacking,
       alphaTest: 0.5, // 必须与主材质一致
+      side: THREE.DoubleSide, // 🔥 关键：确保薄片正反都能产生投影
     });
 
     mat.onBeforeCompile = (shader) => {

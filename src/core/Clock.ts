@@ -26,6 +26,9 @@ export class Clock {
   /** 是否已启动 */
   private _started: boolean = false;
 
+  /** 帧计数器 */
+  private _frameCount: number = 0;
+
   /** TimeScale 变化回调列表 */
   private _timeScaleCallbacks: Array<(timeScale: number) => void> = [];
 
@@ -72,7 +75,20 @@ export class Clock {
     // 更新总运行时间（使用缩放后的时间）
     this._elapsedTime += this._deltaTime;
 
+    // 增加帧计数
+    this._frameCount++;
+
     return this._deltaTime;
+  }
+
+  /**
+   * 手动步进时钟（用于固定步进或测试）
+   * @param deltaTime 手动指定的增量时间
+   */
+  tickManual(deltaTime: number): void {
+    this._deltaTime = deltaTime;
+    this._elapsedTime += deltaTime;
+    this._frameCount++;
   }
 
   /**
@@ -82,6 +98,7 @@ export class Clock {
     this._elapsedTime = 0;
     this._lastTime = performance.now();
     this._deltaTime = 0;
+    this._frameCount = 0;
     console.log('⏰ Clock reset');
   }
 
@@ -196,6 +213,13 @@ export class Clock {
    */
   getDeltaTime(): number {
     return this._deltaTime;
+  }
+
+  /**
+   * 获取总帧数
+   */
+  getFrameCount(): number {
+    return this._frameCount;
   }
 
   /**

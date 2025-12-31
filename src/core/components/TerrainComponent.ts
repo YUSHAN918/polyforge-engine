@@ -150,6 +150,28 @@ export class TerrainComponent implements Component {
   }
 
   /**
+   * 动态调整地形物理尺寸
+   * 保持现有分段数不变，即“拉伸”模式
+   */
+  public resize(width: number, depth: number): void {
+    if (width <= 0 || depth <= 0) return;
+
+    this.config.width = width;
+    this.config.depth = depth;
+
+    // 标记为全量脏，触发网格重建
+    this.isDirty = true;
+    this.dirtyRegion = {
+      minX: 0,
+      maxX: this.config.widthSegments,
+      minZ: 0,
+      maxZ: this.config.depthSegments,
+    };
+
+    console.log(`🗺️ [TerrainComponent] Size updated: ${width}x${depth}`);
+  }
+
+  /**
    * 静态反序列化方法（用于创建新实例）
    */
   static deserialize(data: any): TerrainComponent {

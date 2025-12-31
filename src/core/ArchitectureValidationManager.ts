@@ -235,6 +235,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         this.updateCameraComponent(c => c.distance = command.distance);
         break;
 
+      case EngineCommandType.SET_TERRAIN_SIZE:
+        this.setTerrainSize(command.width, command.depth);
+        break;
+
       // --- Vegetation ---
       case EngineCommandType.SPAWN_VEGETATION:
         this.spawnVegetation(command.count, command.vegType, command.color);
@@ -342,8 +346,32 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       vegetationCount: vegCount,
       terrainVertices: this.terrainEntity?.getComponent<TerrainComponent>('Terrain')?.heightData.length || 0,
       physicsInitialized: this.physicsSystem.getStats().initialized,
-      physicsBodies: this.physicsSystem.getStats().totalBodies
+      physicsBodies: this.physicsSystem.getStats().totalBodies,
     };
+  }
+
+  public setShadowBias(bias: number): void {
+    this.worldStateManager.setShadowBias(bias);
+  }
+
+  public setShadowNormalBias(bias: number): void {
+    this.worldStateManager.setShadowNormalBias(bias);
+  }
+
+  public setShadowOpacity(opacity: number): void {
+    this.worldStateManager.setShadowOpacity(opacity);
+  }
+
+  public setShadowRadius(radius: number): void {
+    this.worldStateManager.setShadowRadius(radius);
+  }
+
+  public setShadowColor(color: string): void {
+    this.worldStateManager.setShadowColor(color);
+  }
+
+  public setShadowDistance(distance: number): void {
+    this.worldStateManager.setShadowDistance(distance);
   }
 
   public getContext(): string {
@@ -766,6 +794,40 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     }
     console.log(`✈️ Flight Mode: ${enabled ? 'ON' : 'OFF'}`);
+  }
+
+  private setTerrainSize(width: number, depth: number) {
+    const terrainEntity = this.entityManager.getEntitiesWithComponents(['Terrain'])[0];
+    if (terrainEntity) {
+      const terrain = terrainEntity.getComponent<TerrainComponent>('Terrain');
+      const physics = terrainEntity.getComponent<PhysicsComponent>('Physics');
+      const visual = terrainEntity.getComponent<VisualComponent>('Visual');
+
+      if (terrain) terrain.resize(width, depth);
+
+      // 1. 同步视觉参数 (Args 改变会触发 R3F 重新构造 Geometry)
+      if (visual && visual.geometry.type === 'plane') {
+        visual.geometry.parameters.width = width;
+        visual.geometry.parameters.height = depth; // Plane 使用 width/height 作为 XZ 对应
+      }
+
+      // 2. 同步物理碰撞体 (Static 刚体需重建以更新 Shape)
+      if (physics) {
+        physics.setCollider('box', [width, 2, depth], [0, -1, 0]);
+        // 🔥 强制物理系统重载此实体
+        this.physicsSystem.onEntityRemoved(terrainEntity);
+        this.physicsSystem.onEntityAdded(terrainEntity);
+      }
+
+      // 3. 强制标记所有植被实体为脏，触发重新分布 (防止扩容后出现空地)
+      const vegEntities = this.entityManager.getEntitiesWithComponents(['Vegetation']);
+      vegEntities.forEach(entity => {
+        const veg = entity.getComponent<VegetationComponent>('Vegetation');
+        if (veg) veg.isDirty = true;
+      });
+
+      console.log(`🌍 [ArchitectureValidationManager] Global Resize: ${width}x${depth}`);
+    }
   }
 
   private updateVegetationConfig(updater: (config: any) => boolean) {

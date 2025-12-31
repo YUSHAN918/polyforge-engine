@@ -13,7 +13,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, Sky } from '@react-three/drei'; // 🔥 增加 Sky 支持
+import { PerspectiveCamera, Sky } from '@react-three/drei';
 import * as THREE from 'three';
 import { EntityManager } from '../../core/EntityManager';
 import { Entity } from '../../core/Entity';
@@ -710,13 +710,12 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     // 🔥 修复:每帧根据最新时间计算太阳位置,防止阴影分界线
     const time = worldState.timeOfDay || 12;
     const sunAngle = ((time - 6) / 12) * Math.PI;
-    const sunOffsetRadius = 50; // 🔥 太阳距离焦点的距离 (需足够远以容纳视锥体)
+    const sunOffsetRadius = 300; // 🔥 太阳距离焦点的距离 (从 50 提升至 300，确保大场景下光线更接近平行光)
     const sunX = Math.cos(sunAngle) * sunOffsetRadius;
     const sunY = Math.sin(sunAngle) * sunOffsetRadius;
-    const sunZ = 20; // 稍微偏移 Z 轴防止正午垂直阴影难看
+    const sunZ = 50; // 稍微偏移 Z 轴
 
     // 🎥 获取相机当前焦点 (Pivot) - 实现“影随人动” (Shadow Follows Camera)
-    // 这是开放世界游戏的标准做法 (Cascaded Shadow Maps 的简化版)
     let pivot: [number, number, number] = [0, 0, 0];
     if (archValidationManager) {
       const camSys = archValidationManager.getCameraSystem();
@@ -728,38 +727,100 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     // 1. 太阳位置 = 相对偏移 + 焦点位置
     sunLightRef.current.position.set(
       sunX + pivot[0],
-      Math.max(sunY, 5) + pivot[1], // 保持最小高度防止地下太阳
+      Math.max(sunY, 1) + pivot[1],
       sunZ + pivot[2]
     );
 
     // 2. 太阳目标 = 焦点位置 (确保光线始终指向玩家视野中心)
     sunLightRef.current.target.position.set(pivot[0], pivot[1], pivot[2]);
-    sunLightRef.current.target.updateMatrixWorld(); // 必不可少：通知 Three.js 更新目标矩阵
+    sunLightRef.current.target.updateMatrixWorld();
 
     setSunPosition([sunX, sunY, sunZ]);
 
-    // 🔥 环境自适应联动：让 HDR 环境光随昼夜变化
-    // 三分律：中午(12:00)最亮，黄昏(18:00)变橘，深夜(0:00)漆黑
-    const normalizedHeight = Math.max(0, sunY / sunOffsetRadius); // 0 (地平线) to 1 (正午)
+    // 🔥 环境自适应联动
+    const normalizedHeight = Math.max(0, sunY / sunOffsetRadius);
+    const nightFactor = Math.pow(normalizedHeight, 1.5); // 稍微调平过渡
 
-    // 🌙 夜色平滑公式：更深邃的夜晚，使用指数级衰减
-    const nightFactor = Math.pow(normalizedHeight, 2.0);
+    // 🔥 Shadow Opacity Logic: 
+    // Opacity controls how much Ambient/Env light fills the shadows.
+    // Opacity 1.0 (Max) -> EnvIntensity 0.0 (Pitch Black Shadows)
+    // Opacity 0.0 (Min) -> EnvIntensity 1.0 (Full Ambient)
+    const opacityInv = 1.0 - (worldState.shadowOpacity ?? 0.8);
 
-    // 1. 设置环境光强度 (IBL 影响)
-    // 极低亮度 0.005 几乎看不见但保留微弱轮廓
-    scene.environmentIntensity = 0.005 + nightFactor * 0.995;
+    // IBL 与背景同步 (恢复为纯粹的时间/高度联动，不与 ShadowOpacity 耦合)
+    scene.environmentIntensity = 0.05 + nightFactor * 0.95;
+    scene.backgroundIntensity = 0.05 + nightFactor * 0.95;
 
-    // 2. 设置天空盒亮度
-    scene.backgroundIntensity = 0.002 + nightFactor * 0.998;
-
-    // 🌅 更新太阳光强度 (塞尔达式光影联动)
+    // 🌅 更新太阳光强度
     const baseIntensity = worldState.lightIntensity || 1.0;
-    // 强度映射：提升 8 倍，并在夜晚迅速关闭
     sunLightRef.current.intensity = baseIntensity * 8.0 * nightFactor;
 
-    // 更新光照颜色
+    // 🔥 Native Shadow Blur:
+    // Reverted boost as per user request (feature ineffective on native PCF).
+    if (worldState.shadowRadius !== undefined) {
+      sunLightRef.current.shadow.radius = worldState.shadowRadius;
+    }
+
+    // 🔥 ASA (Adaptive Shadow Adapter) 核心逻辑：影随距变
+    if (sunLightRef.current && state.camera) {
+      const shadowCam = sunLightRef.current.shadow.camera as THREE.OrthographicCamera;
+
+      const camPos = state.camera.position;
+      const pivotV3 = new THREE.Vector3(...pivot);
+      const dist = camPos.distanceTo(pivotV3);
+
+      // 🎥 动态范围计算 (ASA + Manual Override)：
+      // 如果用户设置了 shadowDistance > 0，则强制使用该值；否则走 ASA 自动逻辑
+      let adaptiveSize = 0;
+      if (worldState.shadowDistance && worldState.shadowDistance > 0) {
+        adaptiveSize = worldState.shadowDistance;
+      } else {
+        adaptiveSize = Math.max(150, Math.min(600, dist * 1.5));
+      }
+      const halfSize = adaptiveSize / 2;
+
+      // 2. 应用参数
+      if (Math.abs(shadowCam.left - (-halfSize)) > 2.0) {
+        shadowCam.left = -halfSize;
+        shadowCam.right = halfSize;
+        shadowCam.top = halfSize;
+        shadowCam.bottom = -halfSize;
+
+        // 🔥 极大提升精度：缩减 Far 面，从 3000 降回 1000
+        // 这将提高深度贴图在 1 像素内能表达的单位长度精度
+        shadowCam.near = 1;
+        shadowCam.far = 1000;
+        shadowCam.updateProjectionMatrix();
+
+        // 🔥 修复“消失”与“重心脱离”：
+        // 1. 设置极小的 Bias。针对 1000m range，0.1m 对应的深度值约为 0.0001
+        // 所以 Bias 必须显著小于 0.0001 才能保证小草影子的存在
+        // 🔥 Now controlled by UI
+        sunLightRef.current.shadow.bias = worldState.shadowBias ?? -0.00002;
+
+        // 2. 彻底移除 normalBias (设为 0)
+        // normalBias 会沿法线平移，这对超薄的单面草丛会造成惨不忍睹的影子位移
+        // 🔥 Now controlled by UI
+        sunLightRef.current.shadow.normalBias = worldState.shadowNormalBias ?? 0;
+      } else {
+        // 🔥 实时响应 UI 调整 (即便投影矩阵不需要更新，Bias 也需要更新)
+        // 这是一个优化路径，确保滑块拖动时阴影实时变化，不需要等待相机移动
+        if (worldState.shadowBias !== undefined) {
+          sunLightRef.current.shadow.bias = worldState.shadowBias;
+        }
+        if (worldState.shadowNormalBias !== undefined) {
+          sunLightRef.current.shadow.normalBias = worldState.shadowNormalBias;
+        }
+      }
+    }
+
+    // 更新光照颜色与软阴影半径
     if (worldState.directionalColor) {
       sunLightRef.current.color.set(worldState.directionalColor);
+    }
+    // 🔥 PCSS 半径控制
+    if (worldState.shadowRadius !== undefined) {
+      sunLightRef.current.shadow.radius = worldState.shadowRadius;
     }
 
     // Environment sync complete
@@ -777,6 +838,9 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
   return (
     <>
+      {/* 🔥 Reverting to Native Shadows for clean, noise-free rendering */}
+      {/* <SoftShadows /> removed to eliminate "black dots" artifacts */}
+
       {/* 🔥 核物理隔离：独立相机（强制接管 R3F 上下文） */}
       <PerspectiveCamera
         ref={shadowCameraRef} // 🔥 绑定 ref，让 CameraSystem 能直接操控
@@ -804,10 +868,14 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
       {/* 🌙 环境光基底：完全由 WorldState.ambientColor 控制，不再硬编码 */}
       {/* 修复：添加半球光作为基础补光 (Fill Light)，防止阴影死黑，解决"数值阻碍感" */}
+      {/* 🔥 Shadow Opacity Logic: Opacity 1.0 => Ambient 0; Opacity 0.0 => Ambient Base */}
+      {/* 🔥 Shadow Color Logic: Opacity controls Intensity; Color controls GroundColor */}
       <hemisphereLight
-        color="#ebf4fa" // Sky Color
-        groundColor="#3f423e" // Ground Color
-        intensity={(worldState?.lightIntensity || 1.0) * 0.3} // 动态强度 (0.3 max)
+        color="#ebf4fa" // Sky Color (Keep cool)
+        groundColor={worldState?.shadowColor || "#3f423e"} // 🔥 Shadow Tint (Ground Color)
+        // 🔥 Boost Intensity to 5.0 (was 3.5) so it competes with HDR Sun (8.0)
+        // This allows "Opacity" slider to actually lighten the shadows by adding fill light.
+        intensity={(worldState?.lightIntensity || 1.0) * 5.0 * (1.0 - (worldState?.shadowOpacity ?? 0.8))}
       />
 
       {/* 方向光（太阳） */}
@@ -819,15 +887,16 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
         castShadow
         shadow-mapSize-width={4096}
         shadow-mapSize-height={4096}
-        shadow-camera-far={100}
-        // 🔥 修复：扩大影子视锥体覆盖标准 100x100 地形，防止边缘或日落时影子被切断
-        shadow-camera-left={-50}
-        shadow-camera-right={50}
-        shadow-camera-top={50}
-        shadow-camera-bottom={-50}
-        // 🔥 修复：微调 Bias 防止波纹（Shadow Acne）和彼得潘效应（悬浮）
+        shadow-camera-far={1000} // 🔥 增加远裁剪面，适配大场景
+        // 🔥 修复：默认视锥体设置为 150x150，足以覆盖常规视野
+        shadow-camera-left={-75}
+        shadow-camera-right={75}
+        shadow-camera-top={75}
+        shadow-camera-bottom={-75}
         shadow-bias={-0.0005}
       />
+      {/* 🔥 关键修复：显式将目标添加到场景，否则 target.position 更新将无效 */}
+      {sunLightRef.current && <primitive object={sunLightRef.current.target} />}
 
       {/* 渲染所有根实体 */}
       {rootEntities.map((entity) => (

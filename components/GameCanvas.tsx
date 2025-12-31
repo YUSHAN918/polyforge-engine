@@ -1058,7 +1058,7 @@ const GameCanvasComponent: React.FC<GameCanvasProps> = ({
     return (
         <div className="relative w-full h-full bg-gray-900">
             <Canvas
-                shadows
+                shadows="soft" // 🔥 Enforce PCFSoftShadowMap explicitly
                 className="bg-gray-900"
                 onPointerMissed={onBackgroundClick}
                 gl={{

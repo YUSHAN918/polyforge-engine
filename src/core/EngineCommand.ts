@@ -42,6 +42,7 @@ export enum EngineCommandType {
     CREATE_MOUNTAIN = 'CREATE_MOUNTAIN',
     CREATE_VALLEY = 'CREATE_VALLEY',
     FLATTEN_TERRAIN = 'FLATTEN_TERRAIN',
+    SET_TERRAIN_SIZE = 'SET_TERRAIN_SIZE',
 
     // Physics & Gameplay
     SPAWN_PHYSICS_BOX = 'SPAWN_PHYSICS_BOX',
@@ -98,6 +99,7 @@ export interface SetFlowerColorPayload { type: EngineCommandType.SET_FLOWER_COLO
 export interface CreateMountainPayload { type: EngineCommandType.CREATE_MOUNTAIN; }
 export interface CreateValleyPayload { type: EngineCommandType.CREATE_VALLEY; }
 export interface FlattenTerrainPayload { type: EngineCommandType.FLATTEN_TERRAIN; }
+export interface SetTerrainSizePayload { type: EngineCommandType.SET_TERRAIN_SIZE; width: number; depth: number; }
 
 export interface SpawnPhysicsBoxPayload { type: EngineCommandType.SPAWN_PHYSICS_BOX; }
 export interface SpawnCharacterPayload { type: EngineCommandType.SPAWN_CHARACTER; }
@@ -160,4 +162,5 @@ export type EngineCommand =
     | SaveScenePayload
     | ResetScenePayload
     | ExportBundlePayload
-    | ImportBundlePayload;
+    | ImportBundlePayload
+    | SetTerrainSizePayload;

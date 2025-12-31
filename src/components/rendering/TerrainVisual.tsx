@@ -73,22 +73,36 @@ export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSys
     };
   }, [terrain]);
 
-  // 监听 isDirty 标记，更新顶点高度
+  // 监听 isDirty 标记，更新顶点高度和平面尺寸
   useFrame(() => {
     if (!terrain.isDirty || !geometryRef.current) return;
 
     const geometry = geometryRef.current;
     const positions = geometry.attributes.position.array as Float32Array;
-    const { widthSegments, depthSegments } = terrain.config;
+    const { widthSegments, depthSegments, width, depth } = terrain.config;
 
-    // 直接拷贝高度数据到 Y 轴分量
+    // 计算步长和起始点
+    const halfWidth = width / 2;
+    const halfDepth = depth / 2;
+    const segWidth = width / widthSegments;
+    const segDepth = depth / depthSegments;
+
+    // 更新顶点数据
     for (let z = 0; z <= depthSegments; z++) {
       for (let x = 0; x <= widthSegments; x++) {
         const vertexIndex = z * (widthSegments + 1) + x;
         const height = terrain.getHeight(x, z);
 
+        // 1. 更新 X 分量 (跨度延展)
+        positions[vertexIndex * 3 + 0] = x * segWidth - halfWidth;
+
+        // 2. 更新 Y 分量 (高度)
         // PlaneGeometry 旋转后，Y 轴是高度
         positions[vertexIndex * 3 + 1] = height;
+
+        // 3. 更新 Z 分量 (跨度延展)
+        // PlaneGeometry 的 Z 在局部空间是 -Y (旋转前)
+        positions[vertexIndex * 3 + 2] = z * segDepth - halfDepth;
       }
     }
 
@@ -97,6 +111,10 @@ export const TerrainVisual: React.FC<TerrainVisualProps> = ({ entity, terrainSys
 
     // 重算法线（确保光影正确）
     geometry.computeVertexNormals();
+
+    // 🔥 重要：重算包围盒与包围球，防止扩容后的地形被视锥体剔除
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
 
     // 清除脏标记
     terrain.clearDirty();

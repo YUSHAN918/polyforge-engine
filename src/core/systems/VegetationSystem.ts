@@ -274,7 +274,7 @@ export class VegetationSystem implements System {
       const finalZ = z + jitterZ;
 
       // 获取地形高度
-      const y = this.getTerrainHeightAt(terrain, finalX, finalZ);
+      const y = this.getTerrainHeightAt(terrain, finalX, finalZ) - 0.05; // 🔥 深度加固：下沉 5cm 确保扎根感，消除插值误差导致的虚空感
 
       // 随机旋转
       const rotation = rng() * Math.PI * 2;

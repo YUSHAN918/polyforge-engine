@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ValidationContext } from '../../core/ArchitectureValidationManager';
 import { IArchitectureFacade } from '../../core/IArchitectureFacade'; // Use Interface
 import { EngineCommandType } from '../../core/EngineCommand';
+import { TerrainComponent } from '../../core/components/TerrainComponent';
 import { CameraMode, CameraComponent } from '../../core/components/CameraComponent';
 import { FileSystemService } from '../../core/assets/FileSystemService';
 import { eventBus } from '../../core/EventBus';
@@ -57,6 +58,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [bloomThreshold, setBloomThreshold] = useState(0.85);
   const [physicsDebugEnabled, setPhysicsDebugEnabled] = useState(false);
   const [audioDebugEnabled, setAudioDebugEnabled] = useState(false);
+  // 🔥 Shadow Tuning State
+  const [shadowBias, setShadowBias] = useState(-0.00002);
+  const [shadowNormalBias, setShadowNormalBias] = useState(0);
+  const [shadowOpacity, setShadowOpacity] = useState(0.8);
+  const [shadowRadius, setShadowRadius] = useState(1);
+  const [shadowColor, setShadowColor] = useState('#3f423e');
+  const [shadowDistance, setShadowDistance] = useState(-1);
 
   // 🔥 Camera Presets
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -84,6 +92,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [activeVegType, setActiveVegType] = useState<'grass' | 'flower'>('grass');
   const [gravityY, setGravityY] = useState(-9.8);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [terrainWidth, setTerrainWidth] = useState(50);
+  const [terrainDepth, setTerrainDepth] = useState(50);
 
   // Asset Controls
   const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'models' | 'audio' | 'environments' | 'textures'>('all');
@@ -178,6 +188,20 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       setExposure(state.toneMappingExposure);
       setPhysicsDebugEnabled(state.physicsDebugEnabled);
       setAudioDebugEnabled(state.audioDebugEnabled);
+      setShadowBias(state.shadowBias);
+      setShadowNormalBias(state.shadowNormalBias);
+      setShadowOpacity(state.shadowOpacity ?? 0.8);
+      setShadowRadius(state.shadowRadius ?? 1);
+      setShadowColor(state.shadowColor ?? '#3f423e');
+      setShadowDistance(state.shadowDistance ?? -1);
+
+      // 3.5 Pull Terrain State (🔥 UI同步)
+      const terrainEntity = manager.getEntityManager().getEntitiesWithComponents(['Terrain'])[0];
+      const terrainComp = terrainEntity?.getComponent<TerrainComponent>('Terrain');
+      if (terrainComp) {
+        setTerrainWidth(terrainComp.config.width);
+        setTerrainDepth(terrainComp.config.depth);
+      }
 
       // 4. Pull Context
       setCurrentContext(manager.getContext());
@@ -305,6 +329,31 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const handleAudioDebugChange = (val: boolean) => {
     setAudioDebugEnabled(val);
     dispatch(EngineCommandType.TOGGLE_AUDIO_DEBUG, { enabled: val });
+  };
+  const handleShadowBiasChange = (val: number) => {
+    setShadowBias(val);
+    if (manager) manager.setShadowBias(val);
+  };
+  const handleShadowNormalBiasChange = (val: number) => {
+    setShadowNormalBias(val);
+    if (manager) manager.setShadowNormalBias(val);
+  };
+  const handleShadowOpacityChange = (val: number) => {
+    setShadowOpacity(val);
+    if (manager) manager.setShadowOpacity(val);
+  };
+  const handleShadowRadiusChange = (val: number) => {
+    setShadowRadius(val);
+    if (manager) manager.setShadowRadius(val);
+  };
+  const handleShadowColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setShadowColor(val);
+    if (manager) manager.setShadowColor(val);
+  };
+  const handleShadowDistanceChange = (val: number) => {
+    setShadowDistance(val);
+    if (manager) manager.setShadowDistance(val);
   };
 
   // Camera
@@ -591,8 +640,37 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={handleCreateMountain} disabled={isGenerating} className="py-3 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"><i className="fas fa-chevron-up mr-2"></i> 隆起 (Raise)</button>
                 <button onClick={handleCreateValley} disabled={isGenerating} className="py-3 bg-gray-800 text-gray-300 rounded border border-gray-700 hover:bg-gray-700"><i className="fas fa-chevron-down mr-2"></i> 凹陷 (Lower)</button>
-                <button onClick={handleFlattenTerrain} disabled={isGenerating} className="col-span-2 py-2 bg-gray-800 text-gray-400 text-[10px] rounded border border-gray-700 hover:bg-gray-700">平整地形 (Flatten)</button>
               </div>
+
+              {/* Terrain Dimensions */}
+              <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between">
+                    <span>宽度 (Width)</span>
+                    <span className="text-cyan-400 font-mono">{terrainWidth}m</span>
+                  </label>
+                  <input
+                    type="range" min="10" max="500" step="10"
+                    value={terrainWidth}
+                    onChange={(e) => dispatch(EngineCommandType.SET_TERRAIN_SIZE, { width: parseFloat(e.target.value), depth: terrainDepth })}
+                    className="w-full accent-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between">
+                    <span>深度 (Depth)</span>
+                    <span className="text-cyan-400 font-mono">{terrainDepth}m</span>
+                  </label>
+                  <input
+                    type="range" min="10" max="500" step="10"
+                    value={terrainDepth}
+                    onChange={(e) => dispatch(EngineCommandType.SET_TERRAIN_SIZE, { width: terrainWidth, depth: parseFloat(e.target.value) })}
+                    className="w-full accent-orange-500"
+                  />
+                </div>
+              </div>
+
+              <button onClick={handleFlattenTerrain} disabled={isGenerating} className="w-full py-2 bg-gray-800 text-gray-400 text-[10px] rounded border border-gray-700 hover:bg-gray-700">平整地形 (Flatten)</button>
             </section>
 
             <section className="space-y-3">
@@ -662,6 +740,49 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 <div>
                   <label className="text-gray-500 block mb-1">光照强度 (Sun Intensity)</label>
                   <input type="range" min="0" max="5" step="0.1" value={sunIntensity} onChange={(e) => handleSunIntensityChange(parseFloat(e.target.value))} className="w-full accent-yellow-500" />
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><i className="fas fa-ghost text-purple-500 mr-2"></i> 阴影调优 (Shadow Tuning)</h3>
+              <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 space-y-4">
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between">
+                    <span>覆盖范围 (Range)</span>
+                    <span className="text-purple-400 font-mono text-[9px]">{shadowDistance <= 0 ? 'AUTO (ASA)' : `${shadowDistance}m`}</span>
+                  </label>
+                  <input
+                    type="range" min="-100" max="2000" step="100" // -100 to 0 is Auto Zone
+                    value={shadowDistance < 0 ? -100 : shadowDistance}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      handleShadowDistanceChange(v <= 0 ? -1 : v);
+                    }}
+                    className="w-full accent-purple-500"
+                  />
+                  <div className="text-[8px] text-gray-600 mt-1">拉到最左开启自适应 (Auto)，向右强制扩大范围</div>
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between"><span>偏移 (Bias)</span> <span className="text-purple-400 font-mono text-[9px]">{shadowBias.toFixed(6)}</span></label>
+                  <input type="range" min="-0.001" max="0.001" step="0.00001" value={shadowBias} onChange={(e) => handleShadowBiasChange(parseFloat(e.target.value))} className="w-full accent-purple-500" />
+                  <div className="text-[8px] text-gray-600 mt-1">解决悬浮 (Too High) 或 波纹 (Too Low)</div>
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between"><span>法线偏移 (Normal Bias)</span> <span className="text-purple-400 font-mono text-[9px]">{shadowNormalBias.toFixed(4)}</span></label>
+                  <input type="range" min="0" max="0.2" step="0.001" value={shadowNormalBias} onChange={(e) => handleShadowNormalBiasChange(parseFloat(e.target.value))} className="w-full accent-purple-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between"><span>不透明度 (Opacity)</span> <span className="text-purple-400 font-mono text-[9px]">{Math.round(shadowOpacity * 100)}%</span></label>
+                  <input type="range" min="0" max="1" step="0.05" value={shadowOpacity} onChange={(e) => handleShadowOpacityChange(parseFloat(e.target.value))} className="w-full accent-purple-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1 flex justify-between"><span>模糊 (Blur Radius)</span> <span className="text-purple-400 font-mono text-[9px]">{shadowRadius}</span></label>
+                  <input type="range" min="0" max="10" step="0.5" value={shadowRadius} onChange={(e) => handleShadowRadiusChange(parseFloat(e.target.value))} className="w-full accent-purple-500" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">颜色倾向 (Tint)</span>
+                  <input type="color" value={shadowColor} onChange={handleShadowColorChange} className="w-8 h-4 rounded cursor-pointer border-none" />
                 </div>
               </div>
             </section>

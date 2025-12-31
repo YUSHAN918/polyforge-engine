@@ -189,6 +189,9 @@ export class SystemManager {
    * @deprecated 建议使用 update() 让 Clock 自动管理时间
    */
   updateManual(deltaTime: number): void {
+    // 步进时钟（同步帧计数与总时间）
+    this.clock.tickManual(deltaTime);
+
     // 确保系统已排序
     if (!this.sorted) {
       this.sortSystems();

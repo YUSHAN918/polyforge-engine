@@ -97,5 +97,38 @@ export interface IArchitectureFacade {
     /**
      * 获取飞行模式状态
      */
+    /**
+     * 获取飞行模式状态
+     */
     isFlightModeEnabled(): boolean;
+
+    /**
+     * 设置阴影偏置
+     */
+    setShadowBias(bias: number): void;
+
+    /**
+     * 设置阴影法线偏置
+     */
+    setShadowNormalBias(bias: number): void;
+
+    /**
+     * 设置阴影不透明度 (0-1)
+     */
+    setShadowOpacity(opacity: number): void;
+
+    /**
+     * 设置阴影模糊半径
+     */
+    setShadowRadius(radius: number): void;
+
+    /**
+     * 设置阴影颜色 (补光色)
+     */
+    setShadowColor(color: string): void;
+
+    /**
+     * 设置阴影覆盖距离 (手动 override ASA)
+     */
+    setShadowDistance(distance: number): void;
 }
