@@ -13,7 +13,7 @@ export type BodyType = 'static' | 'dynamic' | 'kinematic';
 /**
  * 碰撞体形状
  */
-export type ColliderShape = 'box' | 'sphere' | 'capsule' | 'cylinder' | 'cone' | 'mesh';
+export type ColliderShape = 'box' | 'sphere' | 'capsule' | 'cylinder' | 'cone' | 'mesh' | 'heightfield';
 
 /**
  * 碰撞体配置

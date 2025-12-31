@@ -21,6 +21,7 @@ export class TransformComponent implements Component {
   // 本地变换
   public position: [number, number, number];
   public rotation: [number, number, number]; // Euler angles (degrees)
+  public quaternion?: [number, number, number, number]; // Precise rotation [x, y, z, w]
   public scale: [number, number, number];
 
   // 矩阵缓存

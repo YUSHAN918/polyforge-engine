@@ -59,8 +59,8 @@ export class CameraPresetManager {
             snapshot: {
                 pitch: 45,
                 yaw: 45,
-                distance: 15,
-                fov: 75
+                distance: 50,
+                fov: 60
             },
             description: '类暗黑视角，支持观察与跟随双模态'
         });
@@ -89,7 +89,8 @@ export class CameraPresetManager {
                 pitch: 20, // 正值保证相机在上方
                 yaw: 0,
                 distance: 6, // 稍微拉近一点更紧凑
-                fov: 75
+                fov: 75,
+                enableCollision: true
             }
         });
 

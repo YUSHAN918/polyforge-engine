@@ -234,6 +234,9 @@ export class CameraSystem implements System {
       this.targetState.pivot = result.pivot;
       this.targetState.fov = result.fov;
 
+      // 🛑 Phase 19.4 Camera Collision
+      this.applyCollision(camera);
+
       // 4. Smooth Update & Apply
       this.smoothUpdate(camera, transform, deltaTime);
     }
@@ -426,10 +429,21 @@ export class CameraSystem implements System {
       // Threshold: 0.25 (0.5m) -> Accelerate
       // 🔥 修复：Orbit 模式下禁用"追赶"机制，保证电影级平滑阻尼（防止滚轮缩放时瞬移）
       if (sqDist > 0.25 && camera.mode !== 'orbit') {
-        // Logarithmic boost: larger error = faster Lerp
-        // Max t can go up to 0.8 or 1.0
         const boost = Math.min(1.0, sqDist * 0.1);
         t = Math.max(t, 0.1 + boost);
+      }
+
+      // 🛑 Phase 19.4: Snap-in Logic (Anti-Clipping)
+      // If we are pushing IN (shortening distance due to collision), snap faster!
+      // Check if target is SIGNIFICANTLY closer to pivot than current
+      if (camera.enableCollision) {
+        const curDistSq = this.distSq(this.currentState.position, this.currentState.pivot);
+        const tarDistSq = this.distSq(this.targetState.position, this.targetState.pivot);
+
+        // If Target is closer (Collision compressed it) AND difference is notable
+        if (tarDistSq < curDistSq - 1.0) { // 1.0m buffer
+          t = Math.max(t, 0.5); // Force at least 0.5 lerp speed (Snap-in)
+        }
       }
     }
 
@@ -577,4 +591,62 @@ export class CameraSystem implements System {
   }
 
 
+  /**
+   * 应用相机碰撞检测 (防止穿墙)
+   * Phase 19.4 Impl
+   */
+  private applyCollision(camera: CameraComponent): void {
+    if (!camera.enableCollision || !this.physicsSystem) return;
+
+    // 1. Raycast params
+    const start = this.targetState.pivot;
+    const end = this.targetState.position;
+
+    // Vector from Pivot to Camera
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const dz = end[2] - start[2];
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (dist < 0.1) return; // Too close
+
+    const dir = { x: dx / dist, y: dy / dist, z: dz / dist };
+
+    // 2. Cast Ray
+    // Use targetEntityId to ignore self (prevent head/body occlusion)
+    const ignoreId = camera.targetEntityId || undefined;
+
+    // castCameraRay(origin, direction, maxToi, ignoreEntityId)
+    // We cast the ray exactly the length of the desired distance
+    const result = (this.physicsSystem as any).castCameraRay(
+      { x: start[0], y: start[1], z: start[2] },
+      dir,
+      dist,
+      ignoreId
+    );
+
+    if (result.hit) {
+      // 3. Collision Response
+      // Pull back slightly to avoid clipping into the wall (margin)
+      const margin = camera.collisionRadius || 0.2;
+      const hitDist = result.toi;
+
+      // Clamp distance (min 0.2 to avoid being inside head)
+      const safeDist = Math.max(0.2, hitDist - margin);
+
+      // Re-calculate position
+      this.targetState.position[0] = start[0] + dir.x * safeDist;
+      this.targetState.position[1] = start[1] + dir.y * safeDist;
+      this.targetState.position[2] = start[2] + dir.z * safeDist;
+    }
+  }
+  /**
+   * Helper: Squared Distance
+   */
+  private distSq(a: [number, number, number], b: [number, number, number]): number {
+    const dx = a[0] - b[0];
+    const dy = a[1] - b[1];
+    const dz = a[2] - b[2];
+    return dx * dx + dy * dy + dz * dz;
+  }
 }

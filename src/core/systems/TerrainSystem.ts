@@ -190,6 +190,27 @@ export class TerrainSystem implements System {
   }
 
   /**
+   * 获取世界坐标下的地形高度（带插值）
+   */
+  public getHeightAtWorld(x: number, z: number): number {
+    const terrainEntities = this.entityManager.getEntitiesWithComponents(['Terrain']);
+    if (terrainEntities.length === 0) return 0;
+
+    const terrain = terrainEntities[0].getComponent<TerrainComponent>('Terrain');
+    if (!terrain) return 0;
+
+    const { gridX, gridZ } = this.worldToGrid(terrain, new THREE.Vector3(x, 0, z));
+
+    // 边界检查
+    if (gridX < 0 || gridX > terrain.config.widthSegments ||
+      gridZ < 0 || gridZ > terrain.config.depthSegments) {
+      return 0;
+    }
+
+    return this.interpolateHeight(terrain, gridX, gridZ);
+  }
+
+  /**
    * 插值获取指定网格坐标的高度（双线性插值）
    */
   private interpolateHeight(terrain: TerrainComponent, gridX: number, gridZ: number): number {

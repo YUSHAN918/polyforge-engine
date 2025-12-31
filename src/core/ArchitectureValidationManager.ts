@@ -515,7 +515,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
       // 🔥 统一体验模式初始镜头高度（与删除角色后的高度保持一致）
       if (mode === 'isometric') {
-        c.distance = 100;
+        c.distance = 50; // Match Preset
+      }
+
+      // Force disable collision for Orbit (Editor Mode)
+      if (mode === 'orbit') {
+        c.enableCollision = false;
+        // Optional: Ensure not too close if coming from FPS
+        if (c.distance < 2) c.distance = 10;
       }
     });
 
@@ -535,6 +542,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       this.inputSystem.popContext(); // Ensure clean slate
       this.inputSystem.pushContext('orbit');
+
+      // 🔥 Reset Camera Pivot to Origin if it was tracking a deleted entity?
+      // Not necessarily, but if stuck, we might want to. 
+      // User complaint: "Stuck". Often caused by Pivot being inside an object or invalid.
+      // Let's reset Pivot to [0,0,0] for safety when returning to Creation Mode.
+      if (this.cameraEntity) {
+        const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
+        if (cam) cam.pivotOffset = [0, 0, 0];
+      }
     } else {
       this.currentContext = ValidationContext.EXPERIENCE;
       this.inputSystem.popContext();
@@ -614,14 +630,39 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         targetZ = camPos[2];
       }
 
-      // Calculate Ground Height
+      // --- START: SMARTSPAWN (Commercial Engine Ground Snap) ---
       let groundY = 0;
-      if (terrainSys && terrainSys.getHeightAt) {
-        groundY = terrainSys.getHeightAt(targetX, targetZ);
+      let foundGround = false;
+
+      // 1. Primary: Physics Raycast (Optimal - hits terrain, buildings, etc.)
+      if (this.physicsSystem) {
+        const hitResult = this.physicsSystem.castRay(
+          { x: targetX, y: 100, z: targetZ }, // Ray start from 100m sky
+          { x: 0, y: -1, z: 0 },              // Direction: Straight down
+          200                                // Max distance
+        );
+        if (hitResult.hit) {
+          groundY = hitResult.point.y;
+          foundGround = true;
+          // console.log(`[SmartSpawn] Ground found via Physics at Y=${groundY}`);
+        }
       }
 
-      // Final Spawn Position (Ground + Height)
-      spawnPos = [targetX, groundY + 2, targetZ];
+      // 2. Fallback: Terrain Math (Internal interpolation)
+      if (!foundGround && terrainSys && terrainSys.getHeightAtWorld) {
+        groundY = terrainSys.getHeightAtWorld(targetX, targetZ);
+        foundGround = true;
+        // console.log(`[SmartSpawn] Ground found via Terrain Math at Y=${groundY}`);
+      }
+
+      // 3. Last Resort: World Zero
+      if (!foundGround) {
+        groundY = 0;
+      }
+
+      // Final Spawn Position (Ground + safety offset for character height)
+      spawnPos = [targetX, groundY + 1.2, targetZ];
+      // --- END: SMARTSPAWN ---
     }
 
     transform.position = spawnPos as [number, number, number];
@@ -806,14 +847,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       if (terrain) terrain.resize(width, depth);
 
       // 1. 同步视觉参数 (Args 改变会触发 R3F 重新构造 Geometry)
-      if (visual && visual.geometry.type === 'plane') {
+      if (visual && visual.geometry.type === 'plane' && visual.geometry.parameters) {
         visual.geometry.parameters.width = width;
         visual.geometry.parameters.height = depth; // Plane 使用 width/height 作为 XZ 对应
       }
 
       // 2. 同步物理碰撞体 (Static 刚体需重建以更新 Shape)
       if (physics) {
-        physics.setCollider('box', [width, 2, depth], [0, -1, 0]);
+        // 🔥 Keep Heightfield and update offset/size
+        physics.setCollider('heightfield', [width, 2, depth], [0, 0, 0]);
         // 🔥 强制物理系统重载此实体
         this.physicsSystem.onEntityRemoved(terrainEntity);
         this.physicsSystem.onEntityAdded(terrainEntity);
@@ -920,6 +962,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     }
     terrain.isDirty = true;
+
+    // 🔥 Rebuild Physics Collider to match new height data
+    if (this.physicsSystem && this.terrainEntity) {
+      this.physicsSystem.rebuildBody(this.terrainEntity.id);
+    }
   }
 
   private spawnPhysicsBox() {
@@ -1021,7 +1068,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     tVis.receiveShadow = true;
     this.entityManager.addComponent(this.terrainEntity.id, tVis);
     const tPhys = new PhysicsComponent('static');
-    tPhys.setCollider('box', [50, 2, 50], [0, -1, 0]);
+    tPhys.setCollider('heightfield', [50, 2, 50], [0, 0, 0]); // Test with zero offset
     this.entityManager.addComponent(this.terrainEntity.id, tPhys);
 
     // Camera

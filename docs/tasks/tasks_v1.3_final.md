@@ -351,7 +351,26 @@
   - 监控 FPS
   - 动态调整渲染质量
   - 动态调整阴影质量
+  - 动态调整阴影质量
   - _需求: 18.2_
+
+## Phase 21: Shadow System Hardening 阴影系统加固 (Native PCF + ASA) ✅
+
+- [x] 21.1 回归原生 PCF 软阴影 (Native PCF Revert)
+  - **决策**: 弃用 `SoftShadows` (PCSS) 以消除噪点与 Shader 警告
+  - **实现**: 强制 `shadows="soft"`
+  - **校准**: 4096 高清贴图配合 ASA 逻辑
+
+- [x] 21.2 阴影控制参数大暴力校准 (Aggressive Calibration)
+  - **Opacity Fix**: 补光灯 (HemisphereLight) 强度校准为 5.0x 以抗衡 HDR
+  - **Blur Strategy**: 放弃无效的 Radius 乘数，依赖原生 PCF 采样
+  - **Tint Visibility**: 确保在低不透明度下阴影颜色倾向可见
+
+- [x] 21.3 ASA 自适应阴影适配器 (Logic Finalization)
+  - **核心公式**: `Range = Clamp(Dist * 1.5, 150, 600)`
+  - **效果**: 近处 150m 高精锁定，远处 600m 范围保护
+  - **Bias**: 优化为 `-0.00002` 消除偏置伪影
+
 
 ---
 

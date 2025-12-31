@@ -137,12 +137,23 @@ const EntityRenderer = React.memo<{
       transform.position[2]
     );
 
-    // 2. 旋转同步 (度数转弧度)
-    group.rotation.set(
-      THREE.MathUtils.degToRad(transform.rotation[0]),
-      THREE.MathUtils.degToRad(transform.rotation[1]),
-      THREE.MathUtils.degToRad(transform.rotation[2])
-    );
+    // 2. 旋转同步
+    if (transform.quaternion) {
+      // 🚀 优先：物理精准四元数同步
+      group.quaternion.set(
+        transform.quaternion[0],
+        transform.quaternion[1],
+        transform.quaternion[2],
+        transform.quaternion[3]
+      );
+    } else {
+      // 兼容：度数转弧度同步
+      group.rotation.set(
+        THREE.MathUtils.degToRad(transform.rotation[0]),
+        THREE.MathUtils.degToRad(transform.rotation[1]),
+        THREE.MathUtils.degToRad(transform.rotation[2])
+      );
+    }
 
     // 3. 缩放同步
     group.scale.set(

@@ -34,7 +34,9 @@ export interface CameraSnapshot {
   lockAxis?: 'x' | 'y' | 'z';
   smoothSpeed: number;
   moveSpeed: number;
+
   forceMultiplier: number;
+  enableCollision?: boolean;
 }
 
 /**
@@ -102,7 +104,8 @@ export class CameraComponent implements Component {
   public forceMultiplier: number = 25.0; // 物理推力倍率 (Physics)
 
   // 碰撞检测
-  public enableCollision: boolean = true;
+  public enableCollision: boolean = false; // 默认关闭，需手动开启 (TPS/ISO)
+  public collisionRadius: number = 0.2;    // 碰撞检测半径 (虽然目前用 Raycast，保留此参数供 SphereCast 扩展)
 
   constructor() { }
 
@@ -123,7 +126,9 @@ export class CameraComponent implements Component {
       lockAxis: this.lockAxis,
       smoothSpeed: this.smoothSpeed,
       moveSpeed: this.moveSpeed,
+
       forceMultiplier: this.forceMultiplier,
+      enableCollision: this.enableCollision,
     };
   }
 
@@ -143,7 +148,9 @@ export class CameraComponent implements Component {
     this.lockAxis = snapshot.lockAxis;
     this.smoothSpeed = snapshot.smoothSpeed;
     this.moveSpeed = snapshot.moveSpeed || 10.0;
+    this.moveSpeed = snapshot.moveSpeed || 10.0;
     this.forceMultiplier = snapshot.forceMultiplier || 25.0;
+    if (snapshot.enableCollision !== undefined) this.enableCollision = snapshot.enableCollision;
   }
 
   /**
