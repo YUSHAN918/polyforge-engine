@@ -402,7 +402,31 @@ interface ArchitectureValidationPanelProps {
 // 4. 一键演示（山峰 + 植被 + 日落）
 ```
 
-### 15. GLB 导出服务（Phase 13 - 整合自 v1.1.0）
+### 15. 相机预设系统（Phase 19）
+
+**CameraPresetManager**:
+负责体验模式下的预设注册、健康检查（角色存在性验证）与自动回退。
+
+```typescript
+interface CameraPreset {
+  id: string;
+  mode: CameraMode;
+  snapshot: CameraSnapshot;
+  bindTarget: boolean; // 是否必须绑定角色
+  dualMode?: boolean;  // 有角色跟随，无角色观察
+}
+
+class CameraPresetManager {
+  private presets: Map<string, CameraPreset>;
+  public applyPreset(camera: CameraComponent, presetId: string): boolean;
+  public fallbackToSafePreset(camera: CameraComponent): void;
+}
+```
+
+**Strategy 清理增强**:
+每个 Strategy 实现 `exit()` 方法，完全重置内部状态（如缓存位置、偏移量），确保视角切换零污染。
+
+### 16. GLB 导出服务（Phase 13 - 整合自 v1.1.0）
 
 **ModelExportService**:
 ```typescript

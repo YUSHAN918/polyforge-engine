@@ -1,7 +1,7 @@
 # PolyForge v1.3.0 - 最终阶段任务清单
 
 **范围**: Phase 13-17 (分发系统、架构验证、体验模式深化、MOD、最终优化)  
-**最后更新**: 2025-12-29
+**最后更新**: 2025-12-31
 
 ---
 
@@ -308,7 +308,32 @@
   - 更新用户指南
   - _需求: 17.2_
 
-## Phase 19: React 19 + R3F 优化 ⏳
+## Phase 19: Camera Preset System 相机预设系统 ✅/⏳
+
+- [x] 19.1 核心策略重构与自由度释放 ✅
+  - [x] 重构 CameraStrategy 解除硬编码 (Isometric/Sidescroll)
+  - [x] 实现全球面坐标系投影逻辑
+  - _完成日期: 2025-12-31_
+
+- [x] 19.2 指令系统扩展与 UI 集成 ✅
+  - [x] 扩展 EngineCommand 支持 Pitch/Yaw/Distance
+  - [x] UI 栏目上线三向控制滑块 (Gameplay Config)
+  - [x] 修复 AssetRegistry 初始化竞态引发的报错
+  - _完成日期: 2025-12-31_
+
+- [x] 19.3 机制修复与优化 (体验反馈) ✅
+  - [x] 修复 TPS 视角跟随偏移问题
+  - [x] 修复 FPS 删除角色后的 1 帧回退时机
+  - [x] 统一 ISO 初始高度与回退高度为 100
+  - _完成日期: 2025-12-31_
+
+- [ ] 19.4 防穿墙机制实现 ⏳
+  - [ ] 在 CameraSystem 中实现 Raycast 碰撞检测
+  - [ ] 实现场景几何体（地形+实体）自动过滤
+  - [ ] 支持平滑推拉逻辑 (Spring Arm Like)
+  - [ ] 暴露 `enableCollision` 开关
+
+## Phase 20: React 19 + R3F 优化 ⏳
 
 - [ ] 19.1 升级到 React 19
   - 更新 package.json 依赖

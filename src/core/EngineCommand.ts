@@ -25,6 +25,9 @@ export enum EngineCommandType {
     SET_TONE_MAPPING_EXPOSURE = 'SET_TONE_MAPPING_EXPOSURE',
     SET_MOVE_SPEED = 'SET_MOVE_SPEED',
     SET_FORCE_MULTIPLIER = 'SET_FORCE_MULTIPLIER',
+    SET_CAMERA_PITCH = 'SET_CAMERA_PITCH',
+    SET_CAMERA_YAW = 'SET_CAMERA_YAW',
+    SET_CAMERA_DISTANCE = 'SET_CAMERA_DISTANCE',
     APPLY_CAMERA_PRESET = 'APPLY_CAMERA_PRESET',
 
     // Vegetation
@@ -75,6 +78,9 @@ export interface SetSmaaPayload { type: EngineCommandType.SET_SMAA_ENABLED; enab
 export interface SetExposurePayload { type: EngineCommandType.SET_TONE_MAPPING_EXPOSURE; exposure: number; }
 export interface SetMoveSpeedPayload { type: EngineCommandType.SET_MOVE_SPEED; speed: number; }
 export interface SetForceMultiplierPayload { type: EngineCommandType.SET_FORCE_MULTIPLIER; multiplier: number; }
+export interface SetCameraPitchPayload { type: EngineCommandType.SET_CAMERA_PITCH; pitch: number; }
+export interface SetCameraYawPayload { type: EngineCommandType.SET_CAMERA_YAW; yaw: number; }
+export interface SetCameraDistancePayload { type: EngineCommandType.SET_CAMERA_DISTANCE; distance: number; }
 export interface ApplyCameraPresetPayload { type: EngineCommandType.APPLY_CAMERA_PRESET; presetId: string; }
 
 export interface SpawnVegetationPayload {
@@ -129,6 +135,9 @@ export type EngineCommand =
     | SetExposurePayload
     | SetMoveSpeedPayload
     | SetForceMultiplierPayload
+    | SetCameraPitchPayload
+    | SetCameraYawPayload
+    | SetCameraDistancePayload
     | ApplyCameraPresetPayload
     | SpawnVegetationPayload
     | ClearVegetationPayload

@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
-**最后更新**: 2025-12-29  
+**最后更新**: 2025-12-31  
 **当前版本**: v1.3.1  
-**整体进度**: 16/17 阶段完成 (94.1%)
+**整体进度**: 17/18 阶段完成 (94.4%)
 
 ---
 
@@ -27,7 +27,9 @@
 
 ### 🎯 最新战果（2025-12-30）
 
-- ✅ **视觉特化与工业级阴影架构 (Phase 18)** - 攻克植被投影同步、Orbit 电影级变焦与动态阴影跟随系统
+- ✅ **相机自定义掌控权 (Phase 19)** - 释放 Isometric/Sidescroll 硬编码，UI 全量集成 Pitch/Yaw/Distance 滑块
+- ✅ **启动健壮性修复** - 解决 AssetRegistry 初始化竞态引发的控制台报错
+- ✅ **规格文档同步** - 将相机系统规格文档从 `.kiro` 归档至主 `docs/` 目录
 - ✅ **体验模式优化完成** - 禁用无角色WASD移动，统一上帝视角镜头高度
 - ✅ **UI状态同步闭环** - 建立500ms轮询机制，UI始终反映真实相机状态
 - ✅ **模块切换自动重置** - 切回架构验证时自动重置到创造模式
@@ -58,7 +60,8 @@
 | Phase 17 | 体验模式交互完善 | ✅ 完成 | 2025-12-29 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-17-experience-mode-polish--ui-state-sync) | UI状态同步与模块清理 |
 | Phase 16 | MOD 扩展系统 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-16-mod-扩展系统-) | - |
 | Phase 18 | 最终集成优化 | ✅ 完成 | 2025-12-30 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-18-最终集成优化-) | [Walkthrough](./.agent/walkthrough.md) |
-| Phase 19 | React 19 + R3F 优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-19-react-19--r3f-优化-) | - |
+| Phase 19 | 相机预设系统 | ✅/⏳ 推进中 | 2025-12-31 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-19-camera-preset-system-相机预设系统-) | [Walkthrough](./.agent/walkthrough.md) |
+| Phase 20 | React 19 + R3F 优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-20-react-19--r3f-优化-) | - |
 
 ---
 
@@ -234,6 +237,13 @@
 - **18.3 动态阴影跟随** - CSM Level 0 核心实现，光照焦点实时吸附相机中心
 - **18.4 无限世界支持** - 解决大地图边缘投影切分问题
 - _完成日期: 2025-12-30_
+
+### ✅ Phase 19: 相机自定义掌控权 (Experience Camera Freedom)
+- ✅ **策略解耦** - 释放 Isometric/Sidescroll 硬编码角度，支持全球面坐标系映射
+- ✅ **指令系统扩展** - SET_CAMERA_PITCH/YAW/DISTANCE 全链路打通
+- ✅ **UI 面板集成** - Gameplay 栏目上线 Pitch/Yaw/Distance 三向控制滑块
+- ✅ **启动性能修复** - 消除 AssetRegistry 初始化竞态带来的控制台红色警告
+- _完成日期: 2025-12-31_
 
 ---
 

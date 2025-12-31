@@ -49,7 +49,7 @@ export class IsometricStrategy implements ICameraStrategy {
         }
 
         // 🔥 制作人提示：纠正方向乱跳。Isometric 模式应使用组件自身的参数
-        const pitch = 45;
+        const pitch = camera.pitch;
         const yaw = camera.yaw;
         const distance = camera.distance;
 

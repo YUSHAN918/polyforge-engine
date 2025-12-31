@@ -29,8 +29,6 @@ export class SidescrollStrategy implements ICameraStrategy {
             targetPos = (target?.parent && t.getWorldPosition) ? t.getWorldPosition() : t.position;
         }
 
-        // 固定 Z 轴位置，只跟随 X 和 Y
-        const distance = camera.distance;
 
         // 侧板模式：严格锁定 Z 轴距离，跟随 X/Y
         // 旋转必须归零（正视前方）
@@ -42,17 +40,24 @@ export class SidescrollStrategy implements ICameraStrategy {
             targetPos[2]
         ];
 
-        // 2. 计算相机位置
+        // 2. 计算相机位置 (基于球面坐标，与 TPS/ISO 统一)
+        const pitchRad = camera.pitch * Math.PI / 180;
+        const yawRad = camera.yaw * Math.PI / 180;
+        const distance = camera.distance;
+
+        const offsetX = distance * Math.cos(pitchRad) * Math.sin(yawRad);
+        const offsetY = distance * Math.sin(pitchRad);
+        const offsetZ = distance * Math.cos(pitchRad) * Math.cos(yawRad);
+
+        // 最终相机位置 = Pivot + Offset + Manual PivotOffset
         const position: [number, number, number] = [
-            pivot[0] + camera.pivotOffset[0], // 允许左右微调
-            pivot[1] + camera.pivotOffset[1], // 允许上下微调
-            pivot[2] + camera.distance        // 严格保持距离
+            pivot[0] + offsetX + camera.pivotOffset[0],
+            pivot[1] + offsetY + camera.pivotOffset[1],
+            pivot[2] + offsetZ + camera.pivotOffset[2]
         ];
 
-        // 3. 强制锁定
-        // 如果 InputSystem 传入了非法的 resetFrameData 之前的旋转，这里要强行覆盖
-        // Sidescroll 永远是正交或正视
-        const rotation: [number, number, number] = [0, 0, 0];
+        // 3. 角度同步
+        const rotation: [number, number, number] = [-camera.pitch, camera.yaw, 0];
 
         return {
             position,

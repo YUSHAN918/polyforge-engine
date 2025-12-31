@@ -59,6 +59,13 @@ export class AssetRegistry {
   }
 
   /**
+   * 检查注册表是否已初始化
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
    * 初始化注册表
    */
   async initialize(): Promise<void> {

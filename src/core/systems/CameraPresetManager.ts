@@ -57,7 +57,7 @@ export class CameraPresetManager {
             bindTarget: false,
             dualMode: true,
             snapshot: {
-                pitch: -45,
+                pitch: 45,
                 yaw: 45,
                 distance: 15,
                 fov: 75

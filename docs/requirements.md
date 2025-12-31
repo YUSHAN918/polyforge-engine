@@ -232,6 +232,30 @@ v1.3.0 版本包含 17 个核心阶段，从基础 ECS 架构到最终优化，�
 
 ---
 
+## Phase 19: Camera Preset System 相机预设系统 ✅/⏳
+
+**用户故事**: 作为游戏创作者，我希望能够快速切换不同游戏视角（暗黑/FPS/塞尔达/横板），并能对视角参数进行精细调节。
+
+### 需求 19.1: 策略去硬编码与自由度释放
+#### 验收标准
+1. WHEN 在体验模式下 THEN 系统 SHALL 允许调节 Isometric 和 Sidescroll 的 Pitch/Yaw/Distance
+2. THE SidescrollStrategy SHALL 引入球面坐标系，不再强制锁定 Z 轴
+3. THE IsometricStrategy SHALL 默认俯仰角为 45°，但允许通过 UI 实时覆盖
+
+### 需求 19.2: 模式隔离与状态保护
+#### 验收标准
+1. THE 预设系统 SHALL 绝对隔离：体验模式逻辑不得侵入创造模式（Orbit）
+2. WHEN 角色被删除时 THEN 系统 SHALL 自动回退到 `iso` 安全视角（仅在体验模式）
+3. WHEN 跨模式切换时 THEN 系统 SHALL 自动重置相机状态，确保零污染
+
+### 需求 19.3: 防穿墙机制 (Pending ⏳)
+#### 验收标准
+1. THE CameraSystem SHALL 提供全局防穿墙检测能力
+2. WHEN 相机与目标间存在障碍物时 THEN 系统 SHALL 自动缩短相机距离
+3. THE 检测 SHALL 使用 Raycast，且支持 `enableCollision` 开关
+
+---
+
 ## 非功能需求
 
 ### 性能要求

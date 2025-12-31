@@ -71,6 +71,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [exposure, setExposure] = useState(1.0);
   const [moveSpeed, setMoveSpeed] = useState(10.0);
   const [forceMultiplier, setForceMultiplier] = useState(25.0);
+  const [camPitch, setCamPitch] = useState(45);
+  const [camYaw, setCamYaw] = useState(45);
+  const [camDistance, setCamDistance] = useState(15);
   const [flightMode, setFlightMode] = useState(false); // 🔥 Added State
 
   // World Controls
@@ -155,12 +158,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         redoCount: cmdMgr.getStats().redoStackSize,
         lastCommand: cmdMgr.getStats().lastCommand,
         hasSave: storageMgr.hasSave(),
-        assetCount: registry.getCacheStats().size,
+        assetCount: registry.isInitialized() ? registry.getCacheStats().size : 0,
         undoHistory: cmdMgr.getHistory().undo.slice(-20).reverse(),
       });
 
       // 2. Pull Asset List (Async)
-      registry.getAllMetadata().then(list => setAssetList(list));
+      if (registry.isInitialized()) {
+        registry.getAllMetadata().then(list => setAssetList(list));
+      }
 
       // 3. Pull World State
       const state = manager.getEnvironmentState();
@@ -192,6 +197,11 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         if (cameraComp && camSystem.presetManager) {
           const currentPreset = camSystem.presetManager.getActivePresetId(cameraComp);
           setActivePreset(currentPreset);
+
+          // 8. Pull Camera Parameters (🔥 Sync for custom sliders)
+          setCamPitch(cameraComp.pitch);
+          setCamYaw(cameraComp.yaw);
+          setCamDistance(cameraComp.distance);
         }
       } catch (e) {
         // Silent fail - preset system may not be fully initialized
@@ -966,6 +976,18 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 <div>
                   <label className="text-gray-500 block mb-1">视场角 (FOV)</label>
                   <input type="range" min="30" max="120" value={fov} onChange={(e) => handleFovChange(parseFloat(e.target.value))} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1">俯仰角 (Pitch)</label>
+                  <input type="range" min="-90" max="90" step="1" value={camPitch} onChange={(e) => dispatch(EngineCommandType.SET_CAMERA_PITCH, { pitch: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1">偏航角 (Yaw)</label>
+                  <input type="range" min="-180" max="180" step="1" value={camYaw} onChange={(e) => dispatch(EngineCommandType.SET_CAMERA_YAW, { yaw: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-gray-500 block mb-1">距离 (Distance)</label>
+                  <input type="range" min="0.1" max="100" step="0.5" value={camDistance} onChange={(e) => dispatch(EngineCommandType.SET_CAMERA_DISTANCE, { distance: parseFloat(e.target.value) })} className="w-full accent-indigo-500" />
                 </div>
               </div>
             </section>

@@ -225,6 +225,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SET_FORCE_MULTIPLIER:
         this.updateCameraComponent(c => c.forceMultiplier = command.multiplier);
         break;
+      case EngineCommandType.SET_CAMERA_PITCH:
+        this.updateCameraComponent(c => c.pitch = command.pitch);
+        break;
+      case EngineCommandType.SET_CAMERA_YAW:
+        this.updateCameraComponent(c => c.yaw = command.yaw);
+        break;
+      case EngineCommandType.SET_CAMERA_DISTANCE:
+        this.updateCameraComponent(c => c.distance = command.distance);
+        break;
 
       // --- Vegetation ---
       case EngineCommandType.SPAWN_VEGETATION:
