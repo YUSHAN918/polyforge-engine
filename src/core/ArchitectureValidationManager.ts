@@ -681,10 +681,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return 'Bind';
   }
 
-  private despawnPlayerCharacter() {
+  public despawnPlayerCharacter() {
     if (!this.playerEntity) return;
 
-    // Unlink Camera first
+    // 1. 强制关闭飞行模式 (Cleanup)
+    this.toggleFlightMode(false);
+
+    // 2. Unlink Camera first
     if (this.cameraEntity) {
       const cam = this.cameraEntity.getComponent<CameraComponent>('Camera');
       if (cam) {
@@ -711,12 +714,28 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     console.log('👋 Despawning Player Character');
   }
 
+  /**
+   * 获取当前飞行模式状态
+   */
+  public isFlightModeEnabled(): boolean {
+    if (!this.playerEntity) return false;
+    const physics = this.playerEntity.getComponent<PhysicsComponent>('Physics');
+    return physics ? !physics.useGravity : false;
+  }
+
   private toggleFlightMode(enabled: boolean) {
     if (!this.playerEntity) return;
 
     // Physics Component
     const physics = this.playerEntity.getComponent<PhysicsComponent>('Physics');
     if (physics) {
+      // 🛡️ 幂等性校验：如果状态一致，直接跳过，防止坐标累加
+      const currentEnabled = !physics.useGravity;
+      if (enabled === currentEnabled) {
+        console.log(`✈️ Flight Mode: Already ${enabled ? 'ON' : 'OFF'}, skipping.`);
+        return;
+      }
+
       physics.useGravity = !enabled; // Flight = No Gravity
       physics.linearDamping = enabled ? 5.0 : 0.01; // High damping for air control
 
@@ -724,13 +743,25 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       const rigidBody = this.physicsSystem.getRigidBody(this.playerEntity.id);
       if (rigidBody) {
         rigidBody.setGravityScale(enabled ? 0.0 : 1.0, true);
-        rigidBody.setLinearDamping(enabled ? 5.0 : 0.0); // Keep damping consistent for now? Or user preference.
+        rigidBody.setLinearDamping(enabled ? 5.0 : 0.0);
 
         if (enabled) {
-          // 🔥 Lift off!
+          // 🔥 Lift off! 只在开启瞬间提供一个向上的初始力
           const currentPos = rigidBody.translation();
-          rigidBody.setTranslation({ x: currentPos.x, y: currentPos.y + 1.5, z: currentPos.z }, true);
-          rigidBody.setLinvel({ x: 0, y: 2, z: 0 }, true); // Gentle upward impulse
+
+          // 如果已经在空中（y > 地面高度），则不需要传送 1.5m，只需要关闭重力
+          // 如果在地面，则传送一小段距离防止与地面摩擦力产生粘连
+          const terrainSys = this.systemManager.getSystem('TerrainSystem') as any;
+          const groundY = terrainSys?.getHeightAt ? terrainSys.getHeightAt(currentPos.x, currentPos.z) : 0;
+
+          if (currentPos.y < groundY + 0.5) {
+            rigidBody.setTranslation({ x: currentPos.x, y: groundY + 1.2, z: currentPos.z }, true);
+          }
+
+          rigidBody.setLinvel({ x: 0, y: 1.5, z: 0 }, true); // 轻微向上冲力
+        } else {
+          // 关闭飞行模式时，清除阻尼，让其受重力自由落体
+          rigidBody.setLinvel({ x: 0, y: -0.1, z: 0 }, true); // 给一个微小的下压力引导下落
         }
       }
     }

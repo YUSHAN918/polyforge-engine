@@ -202,6 +202,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           setCamPitch(cameraComp.pitch);
           setCamYaw(cameraComp.yaw);
           setCamDistance(cameraComp.distance);
+
+          // 9. Pull Flight Mode (🔥 UI同步：解决飞行模式开关失位问题)
+          setFlightMode(manager.isFlightModeEnabled());
         }
       } catch (e) {
         // Silent fail - preset system may not be fully initialized

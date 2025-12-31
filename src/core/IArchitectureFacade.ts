@@ -93,4 +93,9 @@ export interface IArchitectureFacade {
     getVegetationSystem(): VegetationSystem;
     getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null;
     getEntityManager(): EntityManager;
+
+    /**
+     * 获取飞行模式状态
+     */
+    isFlightModeEnabled(): boolean;
 }
