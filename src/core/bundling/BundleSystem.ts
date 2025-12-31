@@ -28,25 +28,50 @@ export class BundleSystem {
     }
 
     /**
-     * 收集场景依赖 (全量资产策略)
-     * 扫描 AssetRegistry 中的所有资产
+     * 收集场景依赖 (智能按需策略)
      * 
-     * 策略：打包所有已注册的资产，确保 HDR、模型、纹理等全部包含
+     * 策略：
+     * 1. 扫描当前所有 Entity 的组件 (Visual, AudioSource) 提取 AssetID
+     * 2. 扫描 WorldState 获取 HDR 环境贴图 ID
      */
-    public async collectDependencies(): Promise<Set<string>> {
+    public async collectDependencies(options?: BundleOptions): Promise<Set<string>> {
         const dependencies = new Set<string>();
 
-        console.log(`📦 [BundleSystem] Collecting all assets from AssetRegistry...`);
+        if (options?.includeUnusedAssets) {
+            console.log(`📦 [BundleSystem] Mode: Full Library (Heavy)`);
+            const allAssets = await this.assetRegistry.getAllMetadata();
+            for (const metadata of allAssets) {
+                dependencies.add(metadata.id);
+            }
+        } else {
+            console.log(`📦 [BundleSystem] Mode: Smart Gathering (Used only)`);
 
-        // 从 AssetRegistry 获取所有资产的元数据
-        const allAssets = await this.assetRegistry.getAllMetadata();
+            // 1. 从实体组件收集
+            const entities = this.entityManager.serializeAll();
+            for (const entity of entities) {
+                for (const comp of entity.components) {
+                    // 检查通用 assetId 字段 (VisualComponent, AudioSourceComponent)
+                    if ((comp as any).assetId) {
+                        dependencies.add((comp as any).assetId);
+                    }
+                }
+            }
 
-        for (const metadata of allAssets) {
-            dependencies.add(metadata.id);
-            console.log(`   - Collected ${metadata.type}: ${metadata.name} (${metadata.id})`);
+            // 2. 从 WorldState 收集 (HDR)
+            // 注意：这里由于层级隔离，如果无法直接访问 WorldStateManager，
+            // 我们可以从序列化服务的预留 assetReferences 中获取，或者手动检查
+            // 现在的 SerializationService.serialize 已经包含 collectAssetReferences
+            const worldData = this.serializationService.serialize();
+            if (worldData.assetReferences) {
+                worldData.assetReferences.forEach(id => dependencies.add(id));
+            }
+
+            // 特殊检查：WorldState HDR (如果 serializationService 没盖全)
+            const hdrId = (worldData as any).worldState?.hdrAssetId;
+            if (hdrId) dependencies.add(hdrId);
         }
 
-        console.log(`📦 [BundleSystem] Found ${dependencies.size} unique assets.`);
+        console.log(`📦 [BundleSystem] Found ${dependencies.size} unique assets used.`);
         return dependencies;
     }
 
@@ -57,9 +82,9 @@ export class BundleSystem {
         console.log(`📦 [BundleSystem] Creating bundle "${options.name}"...`);
 
         // 1. 收集依赖
-        const assetIds = await this.collectDependencies(); // Set<string>
+        const assetIds = await this.collectDependencies(options);
 
-        // 2. 准备 Asset 数据 (Metadata & Blobs)
+        // 2. 准备 Asset 数据
         const assetMap: BundleManifest['assets'] = {};
         const blobs = new Map<string, Blob>();
 
@@ -68,212 +93,174 @@ export class BundleSystem {
             const blob = await this.assetRegistry.getAsset(id);
 
             if (!metadata || !blob) {
-                console.warn(`⚠️ [BundleSystem] Asset referenced but missing: ${id}`);
+                console.warn(`⚠️ [BundleSystem] Asset referenced but missing in registry: ${id}`);
                 continue;
             }
 
-            // 构建相对路径: assets/{category}/{name}.{ext}
-            // 这里的 extension 需要根据 type 映射，或者直接从 name 获取
-            // 为简化，暂且通过 metadata.type 推断
-            let ext = 'dat';
-            if (metadata.type === AssetType.MODEL) ext = 'glb';
-            else if (metadata.type === AssetType.TEXTURE) ext = 'png';
-            else if (metadata.type === AssetType.AUDIO) ext = 'mp3';
-            else if (metadata.type === AssetType.HDR) ext = 'hdr';
-
+            const ext = this.getExtensionForType(metadata.type);
             const path = `assets/${metadata.category || 'misc'}/${metadata.name}.${ext}`;
 
             assetMap[id] = {
                 path,
-                metadata
+                metadata,
+                size: blob.size
             };
 
             blobs.set(id, blob);
         }
 
-        // 3. 序列化场景数据 (Scene Graph)
+        // 3. 序列化场景数据 (Scene Graph + WorldState)
         const sceneData = this.serializationService.serialize();
 
         // 4. 生成 Manifest
         const manifest: BundleManifest = {
-            version: '1.0.0',
+            version: '1.3.5',
             timestamp: Date.now(),
-            author: options.author || 'Anonymous',
-            description: options.description || 'PolyForge Scene Bundle',
+            author: options.author || 'PolyForge Creator',
+            description: options.description || 'Standalone Scene Bundle',
             sceneData,
             assets: assetMap
         };
 
-        console.log(`✅ [BundleSystem] Bundle ready: ${blobs.size} assets, Manifest generated.`);
-
-        return {
-            manifest,
-            blobs
-        };
+        return { manifest, blobs };
     }
 
     /**
-     * 将 Bundle 打包为单一 JSON 字符串 (Base64 嵌入)
-     * 适用于无 zip 库环境
+     * 将 Bundle 打包为二进制 (.pfb) 格式 [🔥 Phase 13 核心修复]
+     * 格式：[PFB! (4b)] [JSONLen (4b)] [JSONData] [BinaryBlobs]
      */
-    public async packToJSON(bundle: PolyForgeBundle): Promise<string> {
-        const exportData: any = {
-            manifest: bundle.manifest,
-            assets: {}
-        };
+    public async packToBinary(bundle: PolyForgeBundle): Promise<ArrayBuffer> {
+        console.log(`📦 [BundleSystem] Packaging to Binary PFB format...`);
 
-        console.log(`📦 [BundleSystem] Packing ${bundle.blobs.size} assets to JSON (Base64)...`);
+        // 1. 准备 Manifest JSON 以及计算二进制偏移
+        const manifest = { ...bundle.manifest };
+        let currentOffset = 0;
 
+        const blobList: Blob[] = [];
         for (const [id, blob] of bundle.blobs) {
-            const base64 = await this.blobToBase64(blob);
-            exportData.assets[id] = base64;
+            if (manifest.assets[id]) {
+                manifest.assets[id].offset = currentOffset;
+                manifest.assets[id].size = blob.size;
+                currentOffset += blob.size;
+                blobList.push(blob);
+            }
         }
 
-        return JSON.stringify(exportData, null, 2);
+        const jsonStr = JSON.stringify(manifest);
+        const jsonBuffer = new TextEncoder().encode(jsonStr);
+
+        // 2. 计算总长度
+        // Magic(4) + Version(4) + JSONLen(4) + JSONData + Blobs
+        const totalHeaderSize = 12;
+        const totalSize = totalHeaderSize + jsonBuffer.byteLength + currentOffset;
+
+        const mainBuffer = new Uint8Array(totalSize);
+        const view = new DataView(mainBuffer.buffer);
+
+        // Header: PFB!
+        mainBuffer.set([80, 70, 66, 33], 0);
+        // Version: 135 (v1.3.5)
+        view.setUint32(4, 135, true);
+        // JSON Length
+        view.setUint32(8, jsonBuffer.byteLength, true);
+        // JSON Data
+        mainBuffer.set(jsonBuffer, 12);
+
+        // 3. 填充二进制资产 (使用 Blob 和 Response 优化内存)
+        // 注意：在大文件场景下，直接拼接 ArrayBuffer 容易 OOM
+        // 我们返回一个整合后的 Blob 会更安全。但为了符合接口，先拼接。
+        let writeOffset = 12 + jsonBuffer.byteLength;
+        for (const blob of blobList) {
+            const arr = new Uint8Array(await blob.arrayBuffer());
+            mainBuffer.set(arr, writeOffset);
+            writeOffset += arr.length;
+        }
+
+        return mainBuffer.buffer;
     }
 
     /**
-     * 加载 JSON Bundle (逆向解包)
-     * 1. 解析 Manifest
-     * 2. 还原 Assets (Base64 -> Blob)
-     * 3. 注册到 AssetRegistry (如有必要)
-     * 4. 返回 Manifest 供 Scene 恢复使用
+     * 从二进制加载 Bundle
      */
-    public async loadBundle(jsonString: string): Promise<BundleManifest> {
-        console.log(`📦 [BundleSystem] Loading bundle from JSON...`);
+    public async loadFromBinary(buffer: ArrayBuffer): Promise<BundleManifest> {
+        const view = new DataView(buffer);
+        const magic = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
 
-        let data: any;
-        try {
-            data = JSON.parse(jsonString);
-        } catch (e) {
-            throw new Error('Invalid JSON bundle format');
-        }
+        if (magic !== 'PFB!') throw new Error('Invalid PFB file format');
 
-        if (!data.manifest || !data.assets) {
-            throw new Error('Bundle missing manifest or assets data');
-        }
+        const jsonLen = view.getUint32(8, true);
+        const jsonData = new Uint8Array(buffer, 12, jsonLen);
+        const manifest = JSON.parse(new TextDecoder().decode(jsonData)) as BundleManifest;
 
-        const manifest = data.manifest as BundleManifest;
-        const assetsBase64 = data.assets as { [id: string]: string };
+        console.log(`📦 [BundleSystem] Loading PFB v${manifest.version} | Assets: ${Object.keys(manifest.assets).length}`);
 
-        console.log(`📦 [BundleSystem] Bundle info: v${manifest.version} by ${manifest.author}`);
-        console.log(`📦 [BundleSystem] Restoring ${Object.keys(assetsBase64).length} assets...`);
+        const binaryStart = 12 + jsonLen;
+        let skipCount = 0;
+        let restoreCount = 0;
 
-        // 还原并注册资产
-        for (const [id, base64] of Object.entries(assetsBase64)) {
-            const assetInfo = manifest.assets[id];
-            if (!assetInfo) {
-                console.warn(`⚠️ [BundleSystem] Asset data found needed but not in manifest: ${id}`);
+        for (const [id, info] of Object.entries(manifest.assets)) {
+            // 检查本地是否已存在
+            const existing = await this.assetRegistry.getMetadata(id);
+            if (existing) {
+                skipCount++;
                 continue;
             }
 
-            // Base64 -> Blob
-            const mimeType = this.getMimeType(assetInfo.metadata.type);
-            const blob = await this.base64ToBlob(base64, mimeType);
-
-            // 注册到本地库 (IndexedDB)
-            // 注意：如果本地已有同名/同ID资产，策略是覆盖还是跳过？
-            // 这里为了确保一致性，选择覆盖 (或者 update)
-            // 实际上 AssetRegistry.registerAsset 会处理 ID 碰撞
-
-            // 为了避免重复注册同一 ID 导致的问题，我们先检查是否存在
-            const existing = await this.assetRegistry.getMetadata(id);
-            if (!existing) {
-                // 重构 File 对象 (模拟)
-                const file = new File([blob], assetInfo.metadata.name, { type: mimeType });
-
-                // 直接写入底层存储，跳过 registerAsset 的 ID 生成逻辑 (我们需要保持 ID 一致)
-                // 但 AssetRegistry 目前没有直接 set 的公开接口，通常 import 会生成新 ID
-                // HACK: 为了保持 ID 引用关系，我们需要 AssetRegistry 提供一个 forceRegister 或直接操作 storage
-                // 暂时使用 registerAsset 但传入 id (需要修改 AssetRegistry 支持指定 ID? 或者假设 manifest 中的 ID 就是 GUID)
-
-                // 修正策略：AssetRegistry.registerAsset 内部生成 UUID。
-                // 如果我们要恢复场景，必须保证 Entity 里的 AssetID 能找到对应的 Asset。
-                // 方案 A: 修改 Entity 数据里的 AssetID 为新生成的 ID (复杂)
-                // 方案 B: 强制 AssetRegistry 使用 Bundle 里的 ID (需要扩展 AssetRegistry)
-
-                // 让我们看看 AssetRegistry.ts... (假设它在内存里)
-                // 实际上 registerAsset 返回 metadata。
-                // 简单起见，我们假设 AssetRegistry 有一个 internal API 或者我们扩展它。
-                // *查看 AssetRegistry.ts 发现它用 indexedDB.put(metadata)*
-                // 我们调用 import 逻辑的前身: registerAsset(metadata, blob)
-                // 如果 metadata 里已有 ID，AssetRegistry 会保留吗？
-                // 通常 registerAsset 会 overwrite id = uuidv4()。
-
-                // 临时解决方案：
-                // 1. 调用 registerAsset
-                // 2. 拿到新 ID
-                // 3. 建立 OldID -> NewID 的映射表
-                // 4. 后面恢复 SceneData 时，把 SceneData 里的 OldID 替换为 NewID
-
-                // 但这里我们简单点，暂时假设 registerAsset 允许传入 ID (或者我们稍后修改 AssetRegistry)
-                // *Actually, checking AssetRegistry implementation is safer.*
-                // 但是为了推进，我先写一个 restoreAsset helper
-
-                // 2025-12-26 修正：因为 AssetRegistry 尚未完全暴露 "指定ID注册" 功能
-                // 我们采用 "ID 映射" 策略。
-                // 然而，BundleSystem.loadBundle 返回的是 Manifest。
-                // 我们可以在这里修改 Manifest 里的 sceneData，把旧 ID 替换成新 ID！
-
-                console.log(`   - Restoring asset: ${assetInfo.metadata.name} (${id})`);
-
-                // 这部分逻辑比较重，为了 Phase 13.3 先打通，我们暂时略过 ID Mapping，
-                // 假设用户是在同一个环境 Restore，或者 AssetRegistry 能处理。
-                // 真正的做法应该是：
-                await this.restoreAsset(id, assetInfo.metadata, blob);
-            } else {
-                console.log(`   - Asset already exists (skip): ${assetInfo.metadata.name} (${id})`);
+            // 提取二进制片段并恢复
+            if (info.offset !== undefined && info.size !== undefined) {
+                const blobPart = new Blob([buffer.slice(binaryStart + info.offset, binaryStart + info.offset + info.size)], {
+                    type: this.getMimeType(info.metadata.type)
+                });
+                await this.assetRegistry.forceRegisterAsset(info.metadata, blobPart);
+                restoreCount++;
             }
         }
 
-        console.log(`✅ [BundleSystem] Bundle assets restored.`);
+        console.log(`✅ [BundleSystem] Restore complete. (Restored: ${restoreCount}, Skipped: ${skipCount})`);
         return manifest;
     }
 
     /**
-     * 辅助：将资产写入 Registry (强制使用指定 ID)
-     * 需要 AssetRegistry 支持，或者我们暂时 hack 一下
-     * 目前 AssetRegistry.registerAsset 会生成新 ID。
-     * 
-     * 更好的做法是：BundleSystem 维护一个 idMap
-     * 这里先用一个 private helper
+     * 保持向下兼容的 JSON 加载 (带日志降噪)
      */
-    private async restoreAsset(originalId: string, metadata: any, blob: Blob) {
-        // HACK: 我们尝试直接调用 storage 接口，或者使用 registerAsset 并接受新 ID
-        // 如果我们接受新 ID，那么 sceneData 里的引用就断了。
-        // 所以必须 Hack AssetRegistry 支持 "Force ID"
-        // 或者我们在这里修改 metadata.id = originalId 然后传给 registerAsset?
+    public async loadBundle(jsonString: string): Promise<BundleManifest> {
+        console.log(`📦 [BundleSystem] Loading bundle (JSON Fallback)...`);
+        const data = JSON.parse(jsonString);
+        const manifest = data.manifest as BundleManifest;
+        const assetsBase64 = data.assets as { [id: string]: string };
 
-        // 让我们赌一把：AssetRegistry 可能允许 metadata 中带 id
-        const meta = { ...metadata, id: originalId };
-        // 这一步依赖 AssetRegistry 的具体实现。如果不成功，Phase 13.3 后续需要去改 AssetRegistry。
-        await this.assetRegistry.registerAsset(meta, blob as File);
-    }
+        let skipCount = 0;
+        let restoreCount = 0;
 
-    private blobToBase64(blob: Blob): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const result = reader.result as string;
-                const base64 = result.split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    }
+        for (const [id, base64] of Object.entries(assetsBase64)) {
+            const assetInfo = manifest.assets[id];
+            if (!assetInfo) continue;
 
-    private base64ToBlob(base64: string, mimeType: string): Promise<Blob> {
-        return new Promise((resolve) => {
-            const byteCharacters = atob(base64);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            const existing = await this.assetRegistry.getMetadata(id);
+            if (existing) {
+                skipCount++;
+                continue;
             }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: mimeType });
-            resolve(blob);
-        });
+
+            const blob = await this.base64ToBlob(base64, this.getMimeType(assetInfo.metadata.type));
+            await this.assetRegistry.forceRegisterAsset(assetInfo.metadata, blob);
+            restoreCount++;
+        }
+
+        if (skipCount > 0) console.log(`ℹ️ [BundleSystem] Skipped ${skipCount} existing assets.`);
+        console.log(`✅ [BundleSystem] Restored ${restoreCount} new assets.`);
+
+        return manifest;
+    }
+
+    private getExtensionForType(type: AssetType): string {
+        switch (type) {
+            case AssetType.MODEL: return 'glb';
+            case AssetType.TEXTURE: return 'png';
+            case AssetType.AUDIO: return 'mp3';
+            case AssetType.HDR: return 'hdr';
+            default: return 'dat';
+        }
     }
 
     private getMimeType(type: AssetType): string {
@@ -285,4 +272,26 @@ export class BundleSystem {
             default: return 'application/octet-stream';
         }
     }
+
+    private blobToBase64(blob: Blob, mimeType: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const result = reader.result as string;
+                resolve(result.split(',')[1]);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    private base64ToBlob(base64: string, mimeType: string): Promise<Blob> {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        return Promise.resolve(new Blob([new Uint8Array(byteNumbers)], { type: mimeType }));
+    }
 }
+

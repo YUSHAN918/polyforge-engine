@@ -24,6 +24,8 @@ export interface BundleManifest {
         [assetId: string]: {
             path: string;      // 在包内的相对路径 (e.g., "assets/models/my_model.glb")
             metadata: AssetMetadata; // 原始元数据 (用于恢复 Registry)
+            offset?: number;    // 🔥 [Phase 13 二进制支持] 在二进制流中的偏移量
+            size?: number;      // 🔥 [Phase 13 二进制支持] 在二进制流中的字节长度
         }
     };
 }

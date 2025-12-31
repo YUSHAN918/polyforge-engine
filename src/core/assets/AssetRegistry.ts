@@ -167,6 +167,39 @@ export class AssetRegistry {
   }
 
   /**
+   * 强行注册资产（用于 Bundle 恢复，保持 ID 一致性）
+   * 
+   * @param metadata 完整资产元数据（含 ID）
+   * @param data 资产数据（Blob）
+   */
+  async forceRegisterAsset(metadata: AssetMetadata, data: Blob): Promise<string> {
+    this.ensureInitialized();
+
+    try {
+      // 1. 保存到 IndexedDB
+      await this.storage.saveMetadata(metadata);
+      await this.storage.saveFile(metadata.id, data);
+
+      // 2. 计算内容哈希并保存指纹（用于去重）
+      const hash = await this.calculateHash(data);
+      await this.storage.saveFingerprint({
+        hash,
+        size: data.size,
+        assetId: metadata.id,
+      });
+
+      // 3. 更新元数据缓存
+      this.metadataCache.set(metadata.id, metadata);
+
+      console.log(`[AssetRegistry] Force registered asset: ${metadata.name} (${metadata.id})`);
+      return metadata.id;
+    } catch (error) {
+      console.error('[AssetRegistry] Failed to force register asset:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 注册资产
    * 
    * @param metadata 资产元数据
@@ -191,7 +224,7 @@ export class AssetRegistry {
         ...metadata,
         id: this.generateId(),
         createdAt: Date.now(),
-      };
+      } as AssetMetadata; // 明确强制转换为 AssetMetadata
 
       // 3. 计算内容哈希并保存指纹
       const hash = await this.calculateHash(data);

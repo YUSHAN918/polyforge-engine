@@ -1007,28 +1007,67 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private async exportBundle(name: string) {
-    const bundle = await this.bundleSystem.createBundle({ name, author: 'User', description: 'Exported' });
-    bundle.manifest.sceneData.worldState = this.worldStateManager.getState();
-    const json = await this.bundleSystem.packToJSON(bundle);
+    console.log(`📦 [Manager] Starting PFB Binary Export: ${name}`);
 
-    // Trigger Download
-    const blob = new Blob([json], { type: 'application/json' });
+    // 1. 创建 Bundle (默认采用按需收集策略，解决 OOM 问题)
+    const bundle = await this.bundleSystem.createBundle({
+      name,
+      author: 'PolyForge Creator',
+      description: 'Standalone PFB Bundle',
+      includeUnusedAssets: false // 🔥 核心修复：按需打包，阻断体积爆炸
+    });
+
+    // 2. 挂载环境状态 (确保 WorldState 完整性)
+    bundle.manifest.sceneData.worldState = this.worldStateManager.getState();
+
+    // 3. 执行二进制打包装箱
+    const buffer = await this.bundleSystem.packToBinary(bundle);
+
+    // 4. 触发浏览器下载
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `${name}_${Date.now()}.pfb`;
     a.click();
-    URL.revokeObjectURL(url);
+
+    // 延迟释放以确保下载正常
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    console.log(`✅ [Manager] Exported Binary PFB: ${name} (Scene + Used Assets)`);
   }
 
   private async importBundle(file: File) {
-    const json = await file.text();
-    const manifest = await this.bundleSystem.loadBundle(json);
-    this.restoreFromSnapshot({
-      worldState: manifest.sceneData.worldState,
-      entities: manifest.sceneData.entities
-    });
-    this.storageManager.save();
+    console.log(`📦 [Manager] Importing bundle: ${file.name}`);
+    const buffer = await file.arrayBuffer();
+
+    // 1. 检测 Magic Number: PFB! (little endian: 0x21424650)
+    const view = new DataView(buffer);
+    const isBinary = buffer.byteLength > 4 && view.getUint32(0, true) === 0x21424650;
+
+    let manifest;
+    try {
+      if (isBinary) {
+        // 🔥 新版二进制解析流程 (高效率，零 OOM)
+        manifest = await this.bundleSystem.loadFromBinary(buffer);
+      } else {
+        // ⚠️ 旧版 JSON 降级兼容 (带日志降噪)
+        console.warn('⚠️ [Manager] Legacy JSON bundle detected. Falling back to text decoder...');
+        const text = new TextDecoder().decode(buffer);
+        manifest = await this.bundleSystem.loadBundle(text);
+      }
+
+      // 2. 还原场景镜像
+      this.restoreFromSnapshot({
+        worldState: manifest.sceneData.worldState,
+        entities: manifest.sceneData.entities
+      });
+
+      this.storageManager.save();
+      console.log(`✅ [Manager] Bundle "${file.name}" imported successfully.`);
+    } catch (error) {
+      console.error('🔥 [Manager] Import failed:', error);
+      alert(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
   }
 
   // --- Scene Logic ---
