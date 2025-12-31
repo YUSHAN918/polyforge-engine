@@ -894,6 +894,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     if (this.isDisposed) return;
     this.systemManager.updateManual(1 / 60); // 🔥 Fixed: usage of updateManual as per Stability Strike
 
+    // 🔥 Anti-Drift: Reset input deltas at the end of frame processing
+    if (this.inputSystem) {
+      this.inputSystem.resetFrameData();
+    }
+
     // Auto Save
     if (Date.now() - this.lastSaveTime > this.autoSaveInterval) {
       this.storageManager.save();
