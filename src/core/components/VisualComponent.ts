@@ -72,6 +72,9 @@ export class VisualComponent implements Component {
   public castShadow: boolean;
   public receiveShadow: boolean;
 
+  // 偏移量 (相对于实体的本地偏移)
+  public offset: [number, number, number];
+
   // 可见性
   public visible: boolean;
 
@@ -101,6 +104,7 @@ export class VisualComponent implements Component {
     this.postProcessing = postProcessing;
     this.castShadow = true;
     this.receiveShadow = true;
+    this.offset = [0, 0, 0];
     this.visible = true;
   }
 
@@ -114,6 +118,7 @@ export class VisualComponent implements Component {
       postProcessing: this.postProcessing,
       castShadow: this.castShadow,
       receiveShadow: this.receiveShadow,
+      offset: this.offset,
       visible: this.visible,
     };
   }
@@ -140,6 +145,7 @@ export class VisualComponent implements Component {
     };
     this.castShadow = data.castShadow ?? true;
     this.receiveShadow = data.receiveShadow ?? true;
+    this.offset = data.offset || [0, 0, 0];
     this.visible = data.visible ?? true;
   }
 

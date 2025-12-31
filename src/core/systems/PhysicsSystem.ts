@@ -198,6 +198,10 @@ export class PhysicsSystem implements System {
     if (collider) {
       physics.rapierColliderHandle = collider.handle;
     }
+
+    // 🚀 应用物理锁定 (解决角色倾倒与方块抖动)
+    rigidBody.setEnabledTranslations(!physics.lockPosition[0], !physics.lockPosition[1], !physics.lockPosition[2], true);
+    rigidBody.setEnabledRotations(!physics.lockRotation[0], !physics.lockRotation[1], !physics.lockRotation[2], true);
   }
 
   /**
@@ -687,15 +691,21 @@ export class PhysicsSystem implements System {
       excludeBody = this.bodyMap.get(ignoreEntityId);
     }
 
-    // castRay(ray, maxToi, solid, groups, excludeBody)
-    // 假设 Rapier 版本支持 excludeRigidBody 参数 (常见于 0.10+)
-    // 0xffffffff 是默认 bitmask
-    // Simplified castRay call - let Rapier handle defaults
-    const hit = this.world.castRay(ray, maxToi, true);
+    // 🚀 Robust Raycast for Camera (Compatible with multiple Rapier versions)
+    // Try positional arguments first as per rapier3d-compat common practice.
+    // (ray, maxToi, solid, queryGroups, queryFilter, excludeRigidBody)
+    const hit = (this.world as any).castRay(
+      ray,
+      maxToi,
+      true,         // solid
+      0xffffffff,   // groups (all bits)
+      undefined,    // filter
+      excludeBody   // excludeRigidBody
+    );
 
     if (hit) {
-      // Safe property access
-      const timeOfImpact = (hit as any).toi ?? (hit as any).timeOfImpact;
+      // Safe property access: handle both .toi and .timeOfImpact
+      const timeOfImpact = (hit as any).toi ?? (hit as any).timeOfImpact ?? 0;
       return {
         hit: true,
         toi: timeOfImpact,

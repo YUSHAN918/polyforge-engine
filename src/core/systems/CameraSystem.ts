@@ -631,6 +631,11 @@ export class CameraSystem implements System {
       const margin = camera.collisionRadius || 0.2;
       const hitDist = result.toi;
 
+      // 🛑 Phase 19.5 Depth Fix: Anti-snap for self/near objects
+      // If hit occurs VERY close to pivot (within 0.15m), it's likely own neck/head socket.
+      // Ignoring it keeps the camera from "snapping into the head".
+      if (hitDist < 0.15) return;
+
       // Clamp distance (min 0.2 to avoid being inside head)
       const safeDist = Math.max(0.2, hitDist - margin);
 

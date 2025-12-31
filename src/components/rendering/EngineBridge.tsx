@@ -219,67 +219,70 @@ const EntityRenderer = React.memo<{
 
   return (
     <group ref={groupRef} name={entity.name}>
-      {/* 渲染加载的模型 */}
-      {modelLoaded && meshes.map((mesh, index) => (
-        <primitive key={index} object={mesh.clone()} />
-      ))}
+      {/* 🚀 Visual Sub-Group: Handles local offsets (like character footprint alignment) */}
+      <group position={visual.offset || [0, 0, 0]}>
+        {/* 渲染加载的模型 */}
+        {modelLoaded && meshes.map((mesh, index) => (
+          <primitive key={index} object={mesh.clone()} />
+        ))}
 
-      {/* 渲染基础几何体（如果没有模型资产） */}
-      {!visual.geometry.assetId && (
-        <mesh
-          castShadow={visual.castShadow}
-          receiveShadow={visual.receiveShadow}
-        >
-          {/* 几何体 */}
-          {visual.geometry.type === 'box' && (
-            <boxGeometry args={[
-              visual.geometry.parameters?.width || 1,
-              visual.geometry.parameters?.height || 1,
-              visual.geometry.parameters?.depth || 1,
-            ]} />
-          )}
-          {visual.geometry.type === 'sphere' && (
-            <sphereGeometry args={[
-              visual.geometry.parameters?.radius || 0.5,
-              visual.geometry.parameters?.segments || 32,
-              visual.geometry.parameters?.segments || 32,
-            ]} />
-          )}
-          {visual.geometry.type === 'cylinder' && (
-            <cylinderGeometry args={[
-              visual.geometry.parameters?.radius || 0.5,
-              visual.geometry.parameters?.radius || 0.5,
-              visual.geometry.parameters?.height || 1,
-              visual.geometry.parameters?.segments || 32,
-            ]} />
-          )}
-          {visual.geometry.type === 'cone' && (
-            <coneGeometry args={[
-              visual.geometry.parameters?.radius || 0.5,
-              visual.geometry.parameters?.height || 1,
-              visual.geometry.parameters?.segments || 32,
-            ]} />
-          )}
-          {visual.geometry.type === 'plane' && (
-            <planeGeometry args={[
-              visual.geometry.parameters?.width || 1,
-              visual.geometry.parameters?.height || 1,
-            ]} />
-          )}
+        {/* 渲染基础几何体（如果没有模型资产） */}
+        {!visual.geometry.assetId && (
+          <mesh
+            castShadow={visual.castShadow}
+            receiveShadow={visual.receiveShadow}
+          >
+            {/* 几何体 */}
+            {visual.geometry.type === 'box' && (
+              <boxGeometry args={[
+                visual.geometry.parameters?.width || 1,
+                visual.geometry.parameters?.height || 1,
+                visual.geometry.parameters?.depth || 1,
+              ]} />
+            )}
+            {visual.geometry.type === 'sphere' && (
+              <sphereGeometry args={[
+                visual.geometry.parameters?.radius || 0.5,
+                visual.geometry.parameters?.segments || 32,
+                visual.geometry.parameters?.segments || 32,
+              ]} />
+            )}
+            {visual.geometry.type === 'cylinder' && (
+              <cylinderGeometry args={[
+                visual.geometry.parameters?.radius || 0.5,
+                visual.geometry.parameters?.radius || 0.5,
+                visual.geometry.parameters?.height || 1,
+                visual.geometry.parameters?.segments || 32,
+              ]} />
+            )}
+            {visual.geometry.type === 'cone' && (
+              <coneGeometry args={[
+                visual.geometry.parameters?.radius || 0.5,
+                visual.geometry.parameters?.height || 1,
+                visual.geometry.parameters?.segments || 32,
+              ]} />
+            )}
+            {visual.geometry.type === 'plane' && (
+              <planeGeometry args={[
+                visual.geometry.parameters?.width || 1,
+                visual.geometry.parameters?.height || 1,
+              ]} />
+            )}
 
-          {/* 材质 */}
-          <meshStandardMaterial
-            color={visual.material.color}
-            metalness={visual.material.metalness ?? 0.5}
-            roughness={visual.material.roughness ?? 0.5}
-            opacity={visual.material.opacity ?? 1.0}
-            transparent={visual.material.transparent ?? false}
-            emissive={visual.emissive.color}
-            emissiveIntensity={visual.emissive.intensity}
-            envMapIntensity={worldState?.lightIntensity || 1.0}
-          />
-        </mesh>
-      )}
+            {/* 材质 */}
+            <meshStandardMaterial
+              color={visual.material.color}
+              metalness={visual.material.metalness ?? 0.5}
+              roughness={visual.material.roughness ?? 0.5}
+              opacity={visual.material.opacity ?? 1.0}
+              transparent={visual.material.transparent ?? false}
+              emissive={visual.emissive.color}
+              emissiveIntensity={visual.emissive.intensity}
+              envMapIntensity={worldState?.lightIntensity || 1.0}
+            />
+          </mesh>
+        )}
+      </group>
 
       {/* 递归渲染子实体 */}
       {entity.children.map((child) => (

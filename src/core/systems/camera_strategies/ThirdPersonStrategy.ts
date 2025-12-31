@@ -87,7 +87,7 @@ export class ThirdPersonStrategy implements ICameraStrategy {
         // 应用 Pivot (Target Head/Body)
         // TPS 通常看向角色头部上方一点，或者腰部
         const pivotX = targetPos[0];
-        const pivotY = targetPos[1] + 1.5; // Look at upper body
+        const pivotY = targetPos[1] + 1.6; // 🚀 Look at upper body / shoulder level (1.6m)
         const pivotZ = targetPos[2];
 
         // 最终相机位置 = Pivot + Offset + Manual PivotOffset

@@ -215,6 +215,6 @@ export class CameraComponent implements Component {
     this.rotationSpeed = data.rotationSpeed || 100;
     this.moveSpeed = data.moveSpeed || 10.0;
     this.forceMultiplier = data.forceMultiplier || 25.0;
-    this.enableCollision = data.enableCollision !== undefined ? data.enableCollision : true;
+    this.enableCollision = data.enableCollision !== undefined ? data.enableCollision : false;
   }
 }

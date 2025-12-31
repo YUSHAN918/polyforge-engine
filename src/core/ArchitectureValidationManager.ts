@@ -660,18 +660,21 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         groundY = 0;
       }
 
-      // Final Spawn Position (Ground + safety offset for character height)
-      spawnPos = [targetX, groundY + 1.2, targetZ];
+      // Final Spawn Position (Ground + small safety margin for foot origin)
+      spawnPos = [targetX, groundY + 0.1, targetZ];
       // --- END: SMARTSPAWN ---
     }
 
     transform.position = spawnPos as [number, number, number];
     this.entityManager.addComponent(entity.id, transform);
 
-    // 2. Physics (Dynamic Capsule)
+    // 2. Physics (Dynamic Capsule: Radius 0.5, Total Height 2.0)
     const physics = new PhysicsComponent('dynamic');
-    physics.setCollider('capsule', [0.5, 1, 0], [0, 0.5, 0]);
+    // radius=0.5, halfHeight=0.5. Total height = 2r + 2h = 1 + 1 = 2m.
+    // Center at [0, 1, 0] makes bottom at 0, top at 2m.
+    physics.setCollider('capsule', [0.5, 0.5, 0], [0, 1, 0]);
     physics.mass = 1.0;
+    // 🚀 Critical: Lock X and Z rotation to keep character standing
     physics.lockRotation = [true, false, true];
     physics.friction = 0.5;
     this.entityManager.addComponent(entity.id, physics);
@@ -679,17 +682,20 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // 3. Visual (Green Glowing Capsule -> Cylinder Proxy)
     const visual = new VisualComponent();
-    visual.geometry = { type: 'cylinder', parameters: { radius: 0.5, height: 1 } };
+    // Match physical height (2m)
+    visual.geometry = { type: 'cylinder', parameters: { radius: 0.5, height: 2 } };
     visual.material = { type: 'standard', color: '#00ff00', roughness: 0.3 };
     visual.emissive = { color: '#00ff00', intensity: 2.0 };
     visual.castShadow = true;
+    // 🚀 Visual Offset: Raise by 1.0 to align bottom with entity origin (foot at Y=0)
+    visual.offset = [0, 1, 0];
     this.entityManager.addComponent(entity.id, visual);
 
     // 4. Sockets (Head for FPS)
     entity.addSocket({
       name: 'Head',
       localTransform: {
-        position: [0, 0.8, 0],
+        position: [0, 1.7, 0], // Eye level for 2m character
         rotation: [0, 0, 0],
         scale: [1, 1, 1]
       }
@@ -711,13 +717,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     cam.targetEntityId = target.id;
     cam.controlledEntityId = target.id; // Ensure WASD works
 
-    // Zoom In to 35
-    cam.distance = 35;
-
-    // Switch to ISO if in Orbit
+    // Switch to ISO if in Orbit (God View safe default)
     if (cam.mode === 'orbit') cam.mode = 'isometric';
 
-    console.log('📷 Camera Bound & Zoomed-In to 35');
+    console.log('📷 Camera Bound to Target');
   }
 
   private unbindCamera(cam: CameraComponent) {

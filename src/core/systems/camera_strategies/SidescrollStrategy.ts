@@ -36,7 +36,7 @@ export class SidescrollStrategy implements ICameraStrategy {
         // 1. 计算目标中心 (Pivot)
         const pivot: [number, number, number] = [
             targetPos[0],
-            targetPos[1] + 1.0, // 降低高度，让角色居中 (腰部高度)
+            targetPos[1] + 1.5, // 🚀 提高高度至 1.5m，越过地表植被，看向胸部/头部
             targetPos[2]
         ];
 
