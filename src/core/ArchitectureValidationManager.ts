@@ -421,8 +421,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SET_CONTEXT:
         this.currentContext = (command as any).context === 'CREATION' ? ValidationContext.CREATION : ValidationContext.EXPERIENCE;
         console.log(`📡 [Manager] Context switched to: ${this.currentContext}`);
+
         if (this.currentContext === ValidationContext.EXPERIENCE) {
           this.handleCancelPlacement(); // 切换到体验模式时强制取消放置
+        } else {
+          // 🔥 神经修复：切换回创造模式时强制释放指针锁定 (防止鼠标消失)
+          if (document.pointerLockElement) {
+            document.exitPointerLock();
+          }
         }
         break;
 
@@ -1232,9 +1238,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.inputSystem.resetFrameData();
     }
 
-    // 🕒 [Heartbeat Auto Save] 每 5s 进行一次低频状态固化
+    // 🕒 [Heartbeat Auto Save] 每 5s 进行一次低频状态固化 (仅在 CREATION 模式)
     const now = Date.now();
-    if (now - this.lastSaveTime > this.autoSaveInterval) {
+    if (this.currentContext === ValidationContext.CREATION && now - this.lastSaveTime > this.autoSaveInterval) {
       this.storageManager.save();
       this.lastSaveTime = now;
       // console.log('🕒 [Manager] Heartbeat auto-save completed.');

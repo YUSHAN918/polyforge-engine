@@ -91,13 +91,16 @@ export class VegetationSystem implements System {
 
     let targetGlobalScale: number | null = null;
 
-    // 第一步：检测是否有任何一个实体的缩放发生了变化
-    for (const entity of entities) {
-      const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
-      if (vegetation && vegetation.enabled) {
-        if (vegetation.config.scale !== this.globalScale) {
-          targetGlobalScale = vegetation.config.scale!;
-          break; // 以第一个检测到的变化为准
+    // 第一步：检测缩放变化 (仅在 CREATION 模式且已有实体时进行同步)
+    const isCreation = (this.worldStateManager?.getState().context === 'CREATION');
+    if (isCreation) {
+      for (const entity of entities) {
+        const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
+        if (vegetation && vegetation.enabled) {
+          if (vegetation.config.scale !== this.globalScale) {
+            targetGlobalScale = vegetation.config.scale!;
+            break;
+          }
         }
       }
     }

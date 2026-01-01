@@ -165,9 +165,10 @@ const EntityRenderer = React.memo<{
 
     // 4. 🔥 后处理标志同步 (Outline) - 仅设置 group 根节点
     // 性能修复 (2026-01-01): 移除每帧 traverse()，改为仅设置根节点
-    // SELECTION_CHANGED 事件处理器会执行一次性遍历来收集所有 outline 对象
+    // 深度隔离 (2026-01-02): 体验模式强制屏蔽轮廓线
     if (visual) {
-      group.userData.outline = visual.postProcessing.outline;
+      const isExperience = getCameraMode?.() !== 'orbit';
+      group.userData.outline = isExperience ? false : visual.postProcessing.outline;
     }
   });
 
