@@ -70,6 +70,12 @@ export interface ModelMetadata {
   animations: number;      // 动画数
   materials: number;       // 材质数
   textures: number;        // 纹理数
+  boundingBox?: {          // 🔥 原始物理包围盒
+    min: [number, number, number];
+    max: [number, number, number];
+    size: [number, number, number];
+    center: [number, number, number]; // 🔥 中心偏移坐标
+  };
 }
 
 /**

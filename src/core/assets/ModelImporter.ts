@@ -105,12 +105,12 @@ export class ModelImporter {
       // 统计几何体信息
       if (object.isMesh && object.geometry) {
         const geometry = object.geometry;
-        
+
         // 顶点数
         if (geometry.attributes.position) {
           vertices += geometry.attributes.position.count;
         }
-        
+
         // 面数
         if (geometry.index) {
           faces += geometry.index.count / 3;
@@ -131,7 +131,7 @@ export class ModelImporter {
           if (mat.uuid) {
             materials.add(mat.uuid);
           }
-          
+
           // 统计纹理
           if (mat.map) textures.add(mat.map.uuid);
           if (mat.normalMap) textures.add(mat.normalMap.uuid);
@@ -142,6 +142,38 @@ export class ModelImporter {
       }
     });
 
+    // 提取物理包围盒 (Original Dimensions)
+    // 🔥 紧致算法：排除非渲染节点（如灯光、辅助相机），只计算 Mesh 顶点的真实包围盒
+    // 🛡️ 架构加固 (2026-01-02): 必须强制同步世界矩阵，否则子网格的 applyMatrix4 将失效
+    gltf.scene.updateMatrixWorld(true);
+
+    const tightBox = new THREE.Box3();
+    let hasMesh = false;
+
+    gltf.scene.traverse((obj: any) => {
+      if (obj.isMesh && obj.geometry) {
+        // 计算该网格的包围盒（应用其世界变换前的本地包围盒转世界坐标）
+        if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+        const meshBox = obj.geometry.boundingBox.clone();
+        meshBox.applyMatrix4(obj.matrixWorld);
+
+        if (!hasMesh) {
+          tightBox.copy(meshBox);
+          hasMesh = true;
+        } else {
+          tightBox.union(meshBox);
+        }
+      }
+    });
+
+    // 如果找不到网格（兜底），使用标准 setFromObject
+    if (!hasMesh) tightBox.setFromObject(gltf.scene);
+
+    const min = tightBox.min.toArray() as [number, number, number];
+    const max = tightBox.max.toArray() as [number, number, number];
+    const size = tightBox.getSize(new THREE.Vector3()).toArray() as [number, number, number];
+    const center = tightBox.getCenter(new THREE.Vector3()).toArray() as [number, number, number];
+
     return {
       vertices: Math.round(vertices),
       faces: Math.round(faces),
@@ -149,6 +181,7 @@ export class ModelImporter {
       animations: gltf.animations ? gltf.animations.length : 0,
       materials: materials.size,
       textures: textures.size,
+      boundingBox: { min, max, size, center }
     };
   }
 
@@ -158,10 +191,10 @@ export class ModelImporter {
   private async generateThumbnail(gltf: any): Promise<string> {
     // 初始化渲染器（如果还没有）
     if (!this.renderer) {
-      this.renderer = new THREE.WebGLRenderer({ 
-        antialias: true, 
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: true,
         alpha: true,
-        preserveDrawingBuffer: true 
+        preserveDrawingBuffer: true
       });
       this.renderer.setSize(128, 128);
       this.renderer.setClearColor(0x000000, 0); // 透明背景

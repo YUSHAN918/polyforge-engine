@@ -60,6 +60,9 @@ export class PhysicsComponent implements Component {
   // 角色控制器标记
   public isCharacterController: boolean = false;
 
+  // 物理微调系数 (用于补偿非紧致模型或制作人特定需求)
+  public colliderScale: number = 1.0;
+
   constructor(
     bodyType: BodyType = 'dynamic',
     collider: ColliderConfig = {
@@ -97,6 +100,7 @@ export class PhysicsComponent implements Component {
       lockRotation: this.lockRotation,
       lockPosition: this.lockPosition,
       useGravity: this.useGravity,
+      colliderScale: this.colliderScale,
       // 注意：不序列化 Rapier 句柄，这些是运行时数据
     };
   }
@@ -117,6 +121,7 @@ export class PhysicsComponent implements Component {
     this.lockRotation = data.lockRotation || [false, false, false];
     this.lockPosition = data.lockPosition || [false, false, false];
     this.useGravity = data.useGravity ?? true;
+    this.colliderScale = data.colliderScale ?? 1.0;
   }
 
   /**

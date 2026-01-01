@@ -97,6 +97,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [isGenerating, setIsGenerating] = useState(false);
   const [terrainWidth, setTerrainWidth] = useState(50);
   const [terrainDepth, setTerrainDepth] = useState(50);
+  const [colliderScale, setColliderScale] = useState(1.0); // 🔥 Physics compensation
+
 
   // Asset Controls
   const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'models' | 'audio' | 'environments' | 'textures'>('all');
@@ -255,6 +257,16 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
           // 9. Pull Flight Mode (🔥 UI同步：解决飞行模式开关失位问题)
           setFlightMode(manager.isFlightModeEnabled());
+        }
+
+        // 10. Pull Collider Scale (🔥 物理微调同步)
+        const selId = manager.getSelectedEntityId();
+        if (selId) {
+          const entity = manager.getEntityManager().getEntity(selId);
+          const phys = entity?.getComponent<any>('Physics');
+          if (phys) {
+            setColliderScale(phys.colliderScale ?? 1.0);
+          }
         }
       } catch (e) {
         // Silent fail - preset system may not be fully initialized
@@ -1561,6 +1573,32 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   </>
                 );
               })()}
+
+              {/* 🔥 Physics Compensation Slider */}
+              <div className="space-y-1 mt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">物理边界修正 (Collider Scale)</span>
+                  <span className="text-blue-400 font-mono text-[10px]">{colliderScale.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="5.0"
+                  step="0.05"
+                  value={colliderScale}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setColliderScale(val);
+                    dispatch(EngineCommandType.SET_COLLIDER_SCALE, { scale: val });
+                  }}
+                  className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+                <div className="flex justify-between text-[8px] text-gray-600">
+                  <span>紧致 (Tight)</span>
+                  <span>宽松 (Loose)</span>
+                </div>
+              </div>
+
               <div className="h-px bg-gray-800 my-2"></div>
 
               <button

@@ -226,22 +226,27 @@ export class PhysicsSystem implements System {
     };
 
     // 根据形状创建碰撞体描述
+    const transform = entity?.getComponent<TransformComponent>('Transform');
+    const physComp = entity?.getComponent<PhysicsComponent>('Physics');
+    const baseScale = transform ? transform.scale[0] : 1.0;
+    const scale = baseScale * (physComp?.colliderScale ?? 1.0); // 🔥 最终物理缩放 = 变换缩放 * 物理微调因子
+
     switch (shape) {
       case 'box':
         colliderDesc = this.RAPIER.ColliderDesc.cuboid(
-          size[0] / 2,
-          size[1] / 2,
-          size[2] / 2
+          (size[0] * scale) / 2,
+          (size[1] * scale) / 2,
+          (size[2] * scale) / 2
         );
         break;
       case 'sphere':
-        colliderDesc = this.RAPIER.ColliderDesc.ball(size[0]);
+        colliderDesc = this.RAPIER.ColliderDesc.ball(size[0] * scale);
         break;
       case 'capsule':
-        colliderDesc = this.RAPIER.ColliderDesc.capsule(size[1] / 2, size[0]);
+        colliderDesc = this.RAPIER.ColliderDesc.capsule((size[1] * scale) / 2, size[0] * scale);
         break;
       case 'cylinder':
-        colliderDesc = this.RAPIER.ColliderDesc.cylinder(size[1] / 2, size[0]);
+        colliderDesc = this.RAPIER.ColliderDesc.cylinder((size[1] * scale) / 2, size[0] * scale);
         break;
       case 'heightfield':
         // 🔥 Terrain Collision Support

@@ -199,9 +199,11 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
   useFrame(() => {
     if (!enabled || !composerRef.current) return;
 
-    // 🔥 性能修复 (2026-01-01): 移除每帧 scene.traverse()
-    // Outline 选择现在通过事件驱动更新，由 EngineBridge 在 mesh 实例化时设置 userData.outline
-    // 并通过 outlinePassRef.current.selectedObjects 直接更新（无需遍历）
+    // 🔥 选中强光描边 (由 EngineBridge 负责收集对象)
+    if (outlinePassRef.current) {
+      outlinePassRef.current.edgeStrength = 8.0;
+      outlinePassRef.current.edgeGlow = 1.0;
+    }
 
     // 使用 EffectComposer 渲染（替代默认渲染）
     composerRef.current.render();

@@ -48,6 +48,7 @@ export interface EmissiveConfig {
 export interface PostProcessingConfig {
   bloom: boolean; // 是否参与辉光效果
   outline: boolean; // 是否显示轮廓
+  hover?: boolean; // 🔥 是否显示悬停高亮
 }
 
 /**
@@ -96,6 +97,7 @@ export class VisualComponent implements Component {
     postProcessing: PostProcessingConfig = {
       bloom: false,
       outline: false,
+      hover: false,
     }
   ) {
     this.geometry = geometry;
@@ -142,6 +144,7 @@ export class VisualComponent implements Component {
     this.postProcessing = data.postProcessing || {
       bloom: false,
       outline: false,
+      hover: false,
     };
     this.castShadow = data.castShadow ?? true;
     this.receiveShadow = data.receiveShadow ?? true;

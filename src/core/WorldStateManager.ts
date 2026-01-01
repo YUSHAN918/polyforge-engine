@@ -51,6 +51,7 @@ export interface WorldState {
   shadowRadius: number;      // 🔥 阴影模糊半径 (PCSS)
   shadowColor: string;       // 🔥 阴影颜色倾向 (补光色)
   shadowDistance: number;    // 🔥 阴影覆盖距离 (-1: Auto ASA, >0: Manual)
+  context: 'CREATION' | 'EXPERIENCE'; // 🔥 当前运行上下文
 }
 
 /**
@@ -107,7 +108,8 @@ export class WorldStateManager {
       shadowOpacity: 0.8,      // 默认较深阴影 (0.8不透明度 -> 0.2补光)
       shadowRadius: 1,         // 默认轻微柔化
       shadowColor: '#3f423e',  // 默认冷灰暗部
-      shadowDistance: -1       // 默认自动 ASA 托管
+      shadowDistance: -1,      // 默认自动 ASA 托管
+      context: 'CREATION'      // 默认创建模式
     };
   }
 
@@ -534,7 +536,7 @@ export class WorldStateManager {
    * 反序列化环境状态
    */
   deserialize(data: WorldState): void {
-    this.state = { ...data };
+    this.state = { ...this.state, ...data }; // 🔥 混合合并，防止旧存档物理覆盖导致新属性(如 context)丢失
     this.notifyStateChanged();
     console.log('🌍 World state deserialized');
   }

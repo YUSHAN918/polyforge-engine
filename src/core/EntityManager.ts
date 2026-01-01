@@ -311,6 +311,38 @@ export class EntityManager {
     return this.getEntitiesWithComponents(componentTypes).filter(e => e.active);
   }
 
+  /**
+   * 复制实体
+   * 包含所有组件和属性，并注册到管理器中
+   */
+  public duplicateEntity(originalId: string, newName?: string): string | null {
+    const original = this.entities.get(originalId);
+    if (!original) return null;
+
+    const cloned = original.clone(newName);
+    this.entities.set(cloned.id, cloned);
+
+    // 维护层级根节点列表
+    if (!cloned.parent) {
+      this.hierarchyRoot.push(cloned);
+    }
+
+    // 重建组件索引
+    for (const componentType of cloned.components.keys()) {
+      this.addToComponentIndex(cloned.id, componentType);
+    }
+
+    // 神经同步：通知系统全量增量
+    if (this.systemManager) {
+      this.systemManager.notifyEntityAdded(cloned);
+      for (const componentType of cloned.components.keys()) {
+        this.systemManager.notifyComponentChanged(cloned, componentType, true);
+      }
+    }
+
+    return cloned.id;
+  }
+
   // ============================================================================
   // 层级管理
   // ============================================================================

@@ -163,12 +163,13 @@ const EntityRenderer = React.memo<{
       transform.scale[2]
     );
 
-    // 4. 🔥 后处理标志同步 (Outline) - 仅设置 group 根节点
-    // 性能修复 (2026-01-01): 移除每帧 traverse()，改为仅设置根节点
-    // 深度隔离 (2026-01-02): 体验模式强制屏蔽轮廓线
+    // 4. 🔥 后处理标志同步 (Outline/Hover)
+    // 深度隔离 (2026-01-02): 体验模式强制屏蔽一切编辑器辅助视觉
     if (visual) {
-      const isExperience = getCameraMode?.() !== 'orbit';
-      group.userData.outline = isExperience ? false : visual.postProcessing.outline;
+      const isExperience = worldState?.context === 'EXPERIENCE';
+      group.userData.outline = isExperience ? false : !!visual.postProcessing.outline;
+      group.userData.hover = isExperience ? false : !!visual.postProcessing.hover;
+      group.userData.entityId = entity.id;
     }
   });
 
@@ -186,8 +187,13 @@ const EntityRenderer = React.memo<{
         mesh.material.opacity = visual.material.opacity ?? 1.0;
         mesh.material.transparent = visual.material.transparent ?? false;
 
-        // 更新自发光
-        if (visual.hasEmissive()) {
+        // 🔥 [Visual Polish] 材质染色悬停反馈 (全方位识别 - 晶莹白方案)
+        if (visual.postProcessing.hover) {
+          // 如果悬停，叠加一层纯白荧光 (对比度最高)
+          mesh.material.emissive.set('#ffffff');
+          mesh.material.emissiveIntensity = 1.2;
+        } else if (visual.hasEmissive()) {
+          // 正常的逻辑自发光
           mesh.material.emissive.set(visual.emissive.color);
           mesh.material.emissiveIntensity = visual.emissive.intensity;
         } else {
@@ -197,7 +203,6 @@ const EntityRenderer = React.memo<{
 
         // 响应环境光照变化
         if (worldState) {
-          // 根据光照强度调整材质亮度
           const lightIntensity = worldState.lightIntensity || 1.0;
           mesh.material.envMapIntensity = lightIntensity;
         }
@@ -562,16 +567,15 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   // 订阅 SELECTION_CHANGED 事件，仅在选中实体变化时执行一次场景遍历
   useEffect(() => {
     const handleSelectionChanged = () => {
-      // 在下一帧延迟执行，确保 EntityRenderer 已同步 userData.outline
+      // 在下一帧延迟执行，确保 EntityRenderer 已同步 userData.outline/hover
       requestAnimationFrame(() => {
         const outlineObjects: THREE.Object3D[] = [];
         scene.traverse((obj) => {
-          if (obj.userData?.outline === true) {
+          if (obj.userData?.outline === true || obj.userData?.hover === true) {
             outlineObjects.push(obj);
           }
         });
         eventBus.emit('OUTLINE_UPDATE', outlineObjects);
-        // console.log(`[EngineBridge] OUTLINE_UPDATE emitted with ${outlineObjects.length} objects`);
       });
     };
 

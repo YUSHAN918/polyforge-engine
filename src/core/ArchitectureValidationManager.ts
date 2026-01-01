@@ -18,11 +18,13 @@ import { TerrainComponent } from './components/TerrainComponent';
 import { VegetationType, VegetationComponent } from './components/VegetationComponent';
 import { CameraComponent, CameraMode } from './components/CameraComponent';
 import { PhysicsComponent } from './components/PhysicsComponent';
+import { PlacementComponent } from './components/PlacementComponent';
 import { TerrainSystem } from './systems/TerrainSystem';
 import { VegetationSystem } from './systems/VegetationSystem';
 import { CameraSystem } from './systems/CameraSystem';
 import { InputSystem } from './systems/InputSystem';
 import { PhysicsSystem } from './systems/PhysicsSystem';
+import { PlacementSystem } from './systems/PlacementSystem';
 import { AudioSystem } from './systems/AudioSystem';
 import { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
 import { SerializationService } from './SerializationService';
@@ -54,6 +56,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private cameraSystem: CameraSystem;
   private inputSystem: InputSystem;
   private physicsSystem: PhysicsSystem;
+  private placementSystem: PlacementSystem;
   private audioSystem: AudioSystem;
   private assetRegistry: AssetRegistry;
   private serializationService: SerializationService;
@@ -72,14 +75,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private currentContext: ValidationContext = ValidationContext.CREATION;
   private isDisposed: boolean = false;
   private selectedEntityId: string | null = null;
+  private hoveredEntityId: string | null = null;
 
-  // 放置系统状态 (Placement State)
+  // 放置系统状态
   private ghostEntityId: string | null = null;
-  private placementMode: 'standee' | 'sticker' | 'billboard' | 'model' = 'model';
   private currentPlacementAsset: { id: string, name: string, type: 'model' | 'image' } | null = null;
-  private placementScale: number = 1.0;
-  private placementRotationY: number = 0;
-  private placementRotationX: boolean = false; // Shift+R 用于翻转
+  private flightMode: boolean = false; // ✈️ 飞行模式状态
   private tickCounter: number = 0; // 🔥 Performance Throttle
 
   constructor() {
@@ -106,6 +107,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.entityManager.registerComponent('Vegetation', VegetationComponent);
     this.entityManager.registerComponent('Camera', CameraComponent);
     this.entityManager.registerComponent('Physics', PhysicsComponent);
+    this.entityManager.registerComponent('Placement', PlacementComponent);
 
     // 3. System Initialization
     this.inputSystem = new InputSystem();
@@ -114,6 +116,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.cameraSystem = new CameraSystem();
     this.physicsSystem = new PhysicsSystem();
     this.physicsSystem.setEntityManager(this.entityManager); // Critical Fix for Physics
+    this.placementSystem = new PlacementSystem(this.cameraSystem, this.inputSystem, this.physicsSystem);
     this.audioSystem = new AudioSystem();
 
     // 4. Wiring
@@ -129,6 +132,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.systemManager.registerSystem('VegetationSystem', this.vegetationSystem);
     this.systemManager.registerSystem('CameraSystem', this.cameraSystem);
     this.systemManager.registerSystem('PhysicsSystem', this.physicsSystem);
+    this.systemManager.registerSystem('PlacementSystem', this.placementSystem);
     this.systemManager.registerSystem('AudioSystem', this.audioSystem);
 
     // 6. Async Polish
@@ -401,16 +405,41 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       // 放置微调指令 (由 UI 快捷键触发)
       case EngineCommandType.ROTATE_PLACEMENT:
-        // TypeScript Now Knows 'command' is RotatePlacementPayload
-        if (command.axis === 'x') this.placementRotationX = !this.placementRotationX;
-        else this.placementRotationY = (this.placementRotationY + 90) % 360;
+        if (this.ghostEntityId) {
+          const ghost = this.entityManager.getEntity(this.ghostEntityId);
+          const placement = ghost?.getComponent<PlacementComponent>('Placement');
+          if (placement) {
+            if (command.axis === 'x') placement.rotationX = !placement.rotationX;
+            else placement.rotationY = (placement.rotationY + 90) % 360;
+          }
+        }
         break;
+      case EngineCommandType.SCALE_PLACEMENT: {
+        if (this.ghostEntityId) {
+          const c = command as any;
+          const delta = c.delta || 0;
+          const ghost = this.entityManager.getEntity(this.ghostEntityId);
+          const placement = ghost?.getComponent<PlacementComponent>('Placement');
+          if (placement) {
+            placement.scale = Math.max(0.1, Math.min(100, placement.scale + delta));
+          }
+        }
+        break;
+      }
 
-      case EngineCommandType.SCALE_PLACEMENT:
-        // TypeScript Now Knows 'command' is ScalePlacementPayload
-        const delta = command.delta || 0;
-        this.placementScale = Math.max(0.1, Math.min(100, this.placementScale + delta));
+      case EngineCommandType.SET_COLLIDER_SCALE: {
+        if (this.selectedEntityId) {
+          const c = command as any;
+          const entity = this.entityManager.getEntity(this.selectedEntityId);
+          const phys = entity?.getComponent<PhysicsComponent>('Physics');
+          if (phys) {
+            phys.colliderScale = c.scale;
+            this.physicsSystem.rebuildBody(this.selectedEntityId);
+            console.log(`🧊 [Manager] Collider scale adjusted to: ${c.scale}`);
+          }
+        }
         break;
+      }
 
       // --- Audio ---
       case EngineCommandType.SET_PLAYBACK_RATE:
@@ -421,6 +450,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SET_CONTEXT:
         this.currentContext = (command as any).context === 'CREATION' ? ValidationContext.CREATION : ValidationContext.EXPERIENCE;
         console.log(`📡 [Manager] Context switched to: ${this.currentContext}`);
+
+        // 🔥 同步到 WorldState (系统单源真理)
+        this.worldStateManager.setState({ context: (command as any).context });
 
         if (this.currentContext === ValidationContext.EXPERIENCE) {
           this.handleCancelPlacement(); // 切换到体验模式时强制取消放置
@@ -501,6 +533,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return this.currentContext;
   }
 
+  public getSelectedEntityId(): string | null {
+    return this.selectedEntityId;
+  }
+
   public getAssetRegistry(): AssetRegistry {
     return this.assetRegistry;
   }
@@ -543,10 +579,16 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return this.vegetationSystem;
   }
 
+  public getPhysicsDebugBuffers() {
+    return this.physicsSystem.getDebugBuffers();
+  }
+
   public getPlacementState() {
+    const ghost = this.ghostEntityId ? this.entityManager.getEntity(this.ghostEntityId) : null;
+    const placement = ghost?.getComponent<PlacementComponent>('Placement');
     return {
       isPlacing: !!this.ghostEntityId,
-      mode: this.placementMode,
+      mode: placement?.mode || 'model',
       assetName: this.currentPlacementAsset?.name || null
     };
   }
@@ -623,6 +665,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // ===================================================================================
   // 🧠 Internal Logic (Helpers) - NOW PRIVATE
   // ===================================================================================
+
+
 
   private updateCameraComponent(updater: (comp: CameraComponent) => void) {
     if (!this.cameraEntity) return;
@@ -922,49 +966,43 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return physics ? !physics.useGravity : false;
   }
 
-  private toggleFlightMode(enabled: boolean) {
-    if (!this.playerEntity) return;
+  public toggleFlightMode(enabled: boolean) {
+    this.flightMode = enabled;
+    if (!this.playerEntity) {
+      console.log(`✈️ [Manager] Flight mode (Virtual) toggled: ${enabled}`);
+      return;
+    }
 
     // Physics Component
     const physics = this.playerEntity.getComponent<PhysicsComponent>('Physics');
     if (physics) {
-      // 🛡️ 幂等性校验：如果状态一致，直接跳过，防止坐标累加
+      // 🛡️ 幂等性校验
       const currentEnabled = !physics.useGravity;
-      if (enabled === currentEnabled) {
-        console.log(`✈️ Flight Mode: Already ${enabled ? 'ON' : 'OFF'}, skipping.`);
-        return;
-      }
+      if (enabled === currentEnabled) return;
 
       physics.useGravity = !enabled; // Flight = No Gravity
-      physics.linearDamping = enabled ? 5.0 : 0.01; // High damping for air control
+      physics.linearDamping = enabled ? 5.0 : 0.01;
 
-      // Update Rapier
       const rigidBody = this.physicsSystem.getRigidBody(this.playerEntity.id);
       if (rigidBody) {
         rigidBody.setGravityScale(enabled ? 0.0 : 1.0, true);
         rigidBody.setLinearDamping(enabled ? 5.0 : 0.0);
 
         if (enabled) {
-          // 🔥 Lift off! 只在开启瞬间提供一个向上的初始力
-          const currentPos = rigidBody.translation();
-
-          // 如果已经在空中（y > 地面高度），则不需要传送 1.5m，只需要关闭重力
-          // 如果在地面，则传送一小段距离防止与地面摩擦力产生粘连
           const terrainSys = this.systemManager.getSystem('TerrainSystem') as any;
+          const currentPos = rigidBody.translation();
           const groundY = terrainSys?.getHeightAt ? terrainSys.getHeightAt(currentPos.x, currentPos.z) : 0;
-
           if (currentPos.y < groundY + 0.5) {
             rigidBody.setTranslation({ x: currentPos.x, y: groundY + 1.2, z: currentPos.z }, true);
           }
-
-          rigidBody.setLinvel({ x: 0, y: 1.5, z: 0 }, true); // 轻微向上冲力
+          rigidBody.setLinvel({ x: 0, y: 1.5, z: 0 }, true);
         } else {
-          // 关闭飞行模式时，清除阻尼，让其受重力自由落体
-          rigidBody.setLinvel({ x: 0, y: -0.1, z: 0 }, true); // 给一个微小的下压力引导下落
+          rigidBody.setLinvel({ x: 0, y: -0.1, z: 0 }, true);
         }
       }
     }
     console.log(`✈️ Flight Mode: ${enabled ? 'ON' : 'OFF'}`);
+    eventBus.emit('gameplay:flight_mode:changed', { enabled });
   }
 
   private setTerrainSize(width: number, depth: number) {
@@ -1223,9 +1261,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const deltaTime = this.clock.tick(); // 使用 Clock 驱动并获取 DeltaTime
     this.systemManager.updateManual(deltaTime);
 
-    // 🚀 [Placement System] 实时射线检测与幽灵同步 (仅在 CREATION 模式激活)
+    // 🚀 [Placement System] 幽灵实体更新已由 PlacementSystem 自动处理
     if (this.currentContext === ValidationContext.CREATION) {
-      this.handlePlacementTick();
+      // 🔥 新增：悬停检测 (每隔一定帧数执行，节省开销)
+      if (this.tickCounter % 5 === 0 && !this.ghostEntityId) {
+        this.performHoverRaycast();
+      }
     }
 
     // 🔥 Keyboard Input Handler (ESC, SCALE, ROTATE)
@@ -1331,17 +1372,21 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // ===================================================================================
 
   private async handleEnterPlacementMode(assetId: string, assetName: string) {
-    this.handleCancelPlacement(); // 清理旧的放置状态
+    if (this.currentContext !== ValidationContext.CREATION) return;
 
+    // 1. Cleanup existing ghost
+    this.handleCancelPlacement();
+
+    // 2. Create Ghost Entity
     const id = `Ghost_${assetName}_${Date.now()}`;
     const entity = this.entityManager.createEntity(`Ghost: ${assetName}`, id);
+    if (!entity) return;
     entity.persistent = false;
 
-    // 1. Transform
+    // 3. Components
     const transform = new TransformComponent();
     this.entityManager.addComponent(id, transform);
 
-    // 2. Visual (Ghost Style)
     const visual = new VisualComponent();
     visual.geometry = { type: 'custom', assetId: assetId };
     visual.material = {
@@ -1356,16 +1401,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     visual.postProcessing = { bloom: true, outline: true };
     this.entityManager.addComponent(id, visual);
 
+    // 🛡️ ECS 隔离加固：存储放置控制元数据
+    const placement = new PlacementComponent(assetId, assetName);
+    placement.mode = 'model';
+    this.entityManager.addComponent(id, placement);
+
     this.ghostEntityId = id;
-    this.placementMode = 'model';
     this.currentPlacementAsset = { id: assetId, name: assetName, type: 'model' };
 
-    // 🔥 初始化变换状态
-    this.placementScale = 1.0; // TODO: 这里可以在 AssetRegistry 中读取模型原始尺寸来做归一化
-    this.placementRotationY = 0;
-    this.placementRotationX = false;
-
-    console.log(`📡 [Placement] Entered Ghost Mode for model: ${assetName}`);
+    console.log(`👻 [Placement] Entered Ghost Mode (ECS) for model: ${assetName}`);
   }
 
   private async handleEnterImagePlacementMode(assetId: string, assetName: string) {
@@ -1373,13 +1417,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     const id = `Ghost_Image_${assetName}_${Date.now()}`;
     const entity = this.entityManager.createEntity(`Ghost Image: ${assetName}`, id);
+    if (!entity) return;
     entity.persistent = false;
 
     const transform = new TransformComponent();
     this.entityManager.addComponent(id, transform);
 
     const visual = new VisualComponent();
-    // 默认生成一个 1:1 的面片
     visual.geometry = { type: 'plane', parameters: { width: 4, height: 4 } };
     visual.material = {
       type: 'standard',
@@ -1392,37 +1436,29 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     visual.postProcessing = { bloom: true, outline: true };
     this.entityManager.addComponent(id, visual);
 
+    // 🛡️ ECS 隔离加固
+    const placement = new PlacementComponent(assetId, assetName);
+    placement.mode = 'billboard'; // 图片默认进入看板模式
+    this.entityManager.addComponent(id, placement);
+
     this.ghostEntityId = id;
-    this.placementMode = 'sticker'; // 图片默认进入贴纸模式 (贴地)
     this.currentPlacementAsset = { id: assetId, name: assetName, type: 'image' };
 
-    // 🔥 初始化变换状态
-    this.placementScale = 1.0;
-    this.placementRotationY = 0;
-    this.placementRotationX = false;
-
-    console.log(`📡 [Placement] Entered Ghost Mode for image: ${assetName}`);
+    console.log(`🖼️ [Placement] Entered Ghost Mode (ECS) for image: ${assetName}`);
   }
 
   private handleTogglePlacementMode() {
     if (!this.ghostEntityId || !this.currentPlacementAsset) return;
 
+    const ghost = this.entityManager.getEntity(this.ghostEntityId);
+    if (!ghost) return;
+    const placement = ghost.getComponent<PlacementComponent>('Placement');
+    if (!placement) return;
+
     if (this.currentPlacementAsset.type === 'image') {
-      const modes: Array<'sticker' | 'standee' | 'billboard'> = ['sticker', 'standee', 'billboard'];
-      const currentIndex = modes.indexOf(this.placementMode as any);
-      this.placementMode = modes[(currentIndex + 1) % modes.length];
-
-      // 更新 Visual 组件以适应新模式
-      const visual = this.entityManager.getEntity(this.ghostEntityId)?.getComponent<VisualComponent>('Visual');
-      if (visual) {
-        if (this.placementMode === 'standee') {
-          visual.offset = [0, 2, 0]; // 立牌中心抬高
-        } else {
-          visual.offset = [0, 0, 0];
-        }
-      }
-
-      console.log(`🔄 [Placement] Image mode toggled to: ${this.placementMode}`);
+      // 切换模式：billboard <-> billboard (目前仅支持看板，后续可加贴地)
+      // 保持简单，当前仅切换预览
+      console.log(`🔄 [Placement] Image mode toggled (Dummy)`);
     }
   }
 
@@ -1434,158 +1470,78 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.currentPlacementAsset = null;
   }
 
-  private handleCommitPlacement() {
+  private async handleCommitPlacement() {
     if (!this.ghostEntityId || !this.currentPlacementAsset) return;
 
     const ghost = this.entityManager.getEntity(this.ghostEntityId);
     if (!ghost) return;
 
+    const placement = ghost.getComponent<PlacementComponent>('Placement');
     const transform = ghost.getComponent<TransformComponent>('Transform');
-    const visual = ghost.getComponent<VisualComponent>('Visual');
-    if (!transform || !visual) return;
+    if (!placement || !transform) return;
 
-    // 固化实体
-    const solidId = `${this.currentPlacementAsset.name}_${Date.now()}`;
-    const solidEntity = this.entityManager.createEntity(this.currentPlacementAsset.name, solidId);
-    solidEntity.persistent = true;
+    const assetId = placement.assetId;
+    const assetName = placement.assetName;
 
-    // 复制变换
-    const solidTransform = new TransformComponent();
-    solidTransform.position = [...transform.position];
-    solidTransform.rotation = [...transform.rotation];
-    solidTransform.scale = [this.placementScale, this.placementScale, this.placementScale]; // 🔥 应用最终缩放
-    if (transform.quaternion) solidTransform.quaternion = [...transform.quaternion];
-    this.entityManager.addComponent(solidId, solidTransform);
+    // 1. Fetch metadata for precise collider creation
+    const metadata = await this.assetRegistry.getMetadata(assetId) as any;
+    const bBox = metadata?.modelStats?.boundingBox;
 
-    // 复制视觉并去除幽灵效果
-    const solidVisual = new VisualComponent();
-    solidVisual.geometry = { ...visual.geometry };
-    solidVisual.material = {
-      ...visual.material,
-      opacity: 1.0,
-      transparent: visual.material.transparent || false, // 保留图片透明度
-      color: this.currentPlacementAsset.type === 'model' ? '#ffffff' : visual.material.color
-    };
-    solidVisual.emissive = { color: '#000000', intensity: 0 };
-    solidVisual.postProcessing = { bloom: false, outline: false };
-    solidVisual.offset = visual.offset ? [...visual.offset] : [0, 0, 0];
-    this.entityManager.addComponent(solidId, solidVisual);
+    // 2. Instantiate Solid Entity (Persistent)
+    // 使用克隆逻辑
+    const solidId = await this.entityManager.duplicateEntity(this.ghostEntityId, assetName);
+    if (!solidId) return;
 
-    // 如果是模型，且非贴纸，可能需要物理碰撞
+    // 🚀 [Compliant Transition] Remove Preview/Ghost specific traits
+    this.entityManager.removeComponent(solidId, 'Placement');
+
+    // Switch Visual from Ghost Style to Standard Solid
+    const solidEntity = this.entityManager.getEntity(solidId);
+    if (solidEntity) {
+      solidEntity.persistent = true;
+      const visual = solidEntity.getComponent<VisualComponent>('Visual');
+      if (visual) {
+        visual.material = {
+          type: 'physical',
+          color: '#ffffff',
+          roughness: 0.5,
+          transparent: visual.material.transparent || false
+        };
+        visual.postProcessing = { bloom: false, outline: false };
+        visual.emissive = { color: '#000000', intensity: 0 };
+      }
+    }
+
+    // 3. Physics Setup (The "Glass Box" Killer)
     if (this.currentPlacementAsset.type === 'model') {
       const solidPhysics = new PhysicsComponent('static');
-      // 默认给个包围盒碰撞，未来可以基于模型数据生成更精准的
-      solidPhysics.setCollider('box', [1, 1, 1], [0, 0, 0]);
+
+      if (bBox && bBox.size) {
+        // 🔥 核心修正: 使用 ModelImporter 导出的精准包围盒尺寸与中心偏移
+        const center = bBox.center || [0, 0, 0];
+        solidPhysics.setCollider('box', bBox.size, center);
+        console.log(`🧊 [Manager] Static collider auto-locked to BBox size: ${bBox.size}, offset: ${center}`);
+      } else {
+        solidPhysics.setCollider('box', [1, 1, 1], [0, 0, 0]);
+        console.warn(`⚠️ [Manager] BBox missing for ${assetName}, falling back to unit box.`);
+      }
       this.entityManager.addComponent(solidId, solidPhysics);
     }
 
-    this.entityManager.addComponent(solidId, solidVisual);
-
-    // 🔥 交互优化：放置后自动选中，方便微调
+    // 4. Final Sync & Selection
     const oldId = this.selectedEntityId;
     this.selectedEntityId = solidId;
     this.updateSelectionOutline(oldId, this.selectedEntityId);
-    console.log(`✅ [Placement] Committed & Selected: ${solidId}`);
 
-    // 退出放置模式，进入编辑模式
+    // Cleanup Ghost
     this.handleCancelPlacement();
+    console.log(`✅ [Placement] Committed: ${assetName} (${solidId})`);
   }
 
   public isPlacing(): boolean {
     return this.ghostEntityId !== null;
   }
 
-  private handlePlacementTick() {
-    if (!this.ghostEntityId) return;
-
-    // 🔥 性能优化：降低射线检测频率 (30Hz instead of 60Hz)
-    this.tickCounter++;
-    if (this.tickCounter % 2 !== 0) return;
-
-    const ghost = this.entityManager.getEntity(this.ghostEntityId);
-    const transform = ghost?.getComponent<TransformComponent>('Transform');
-    const camSys = this.cameraSystem as any;
-    if (!transform) return;
-
-    // 🔥 交互革命：从 InputSystem 获取鼠标位置，从 CameraSystem 获取动态射线
-    const mouse = this.inputSystem.mousePosition;
-    const ray = this.cameraSystem.getRayFromScreen(mouse.x, mouse.y);
-    if (!ray) return;
-
-    // 实时射线检测以调整落位点
-    let hitPos = [0, 0, 0] as [number, number, number];
-    let hitNormal = [0, 1, 0];
-    let isHit = false;
-
-    if (this.physicsSystem) {
-      const hit = this.physicsSystem.castRay(
-        { x: ray.origin.x, y: ray.origin.y, z: ray.origin.z },
-        { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z },
-        1000 // 探测半径
-      ) as any;
-
-      if (hit.hit) {
-        hitPos = [hit.point.x, hit.point.y, hit.point.z];
-        hitNormal = hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : [0, 1, 0];
-        isHit = true;
-      }
-    }
-
-    // 兜底：如果射线没碰到物体，则与 Y=0 平面相交
-    if (!isHit) {
-      if (ray.direction.y < -0.01) {
-        const t = -ray.origin.y / ray.direction.y;
-        if (t > 0) {
-          hitPos = [
-            ray.origin.x + ray.direction.x * t,
-            0,
-            ray.origin.z + ray.direction.z * t
-          ];
-          isHit = true;
-        }
-      }
-    }
-
-    if (isHit) {
-      transform.position = [...hitPos];
-      transform.scale = [this.placementScale, this.placementScale, this.placementScale];
-
-      // 更新旋转逻辑 (三模态)
-      if (this.placementMode === 'sticker') {
-        const dummy = new THREE.Object3D();
-        dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
-        const targetNormal = new THREE.Vector3(hitNormal[0], hitNormal[1], hitNormal[2]);
-        const lookAtPos = new THREE.Vector3().addVectors(dummy.position, targetNormal);
-        dummy.lookAt(lookAtPos);
-        const q = dummy.quaternion;
-        transform.quaternion = [q.x, q.y, q.z, q.w];
-        transform.rotation = [0, 0, 0];
-      } else if (this.placementMode === 'standee') {
-        const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
-        const angle = Math.atan2(camPos[0] - hitPos[0], camPos[2] - hitPos[2]);
-        transform.quaternion = undefined;
-        transform.rotation = [0, angle * (180 / Math.PI) + this.placementRotationY, 0];
-      } else if (this.placementMode === 'model') {
-        transform.quaternion = undefined;
-        transform.rotation = [this.placementRotationX ? -90 : 0, this.placementRotationY, 0];
-      } else if (this.placementMode === 'billboard') {
-        const dummy = new THREE.Object3D();
-        dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
-        const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
-        dummy.lookAt(camPos[0], camPos[1], camPos[2]);
-        const q = dummy.quaternion;
-        transform.quaternion = [q.x, q.y, q.z, q.w];
-        transform.rotation = [0, 0, 0];
-      }
-
-      transform.markLocalDirty();
-    }
-  }
-
-  public getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
-    if (!this.physicsSystem) return null;
-    return this.physicsSystem.getDebugBuffers();
-  }
 
   // --- Utility Handlers ---
 
@@ -1607,10 +1563,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     }
 
     console.log(`🎨 [Manager] Applied ${assetType} (${assetId}) to entity: ${this.selectedEntityId}`);
-  }
-
-  public getSelectedEntityId(): string | null {
-    return this.selectedEntityId;
   }
 
   // 🔥 交互革新：统一入口处理点击与交互
@@ -1664,7 +1616,52 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   /**
-   * 更新选择高亮状态
+   * 悬停射线检测
+   */
+  private performHoverRaycast() {
+    if (!this.physicsSystem || !this.inputSystem) return;
+
+    const mouse = this.inputSystem.mousePosition;
+    const ray = this.cameraSystem.getRayFromScreen(mouse.x, mouse.y);
+    if (!ray) return;
+
+    const hit = this.physicsSystem.castRay(
+      { x: ray.origin.x, y: ray.origin.y, z: ray.origin.z },
+      { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z },
+      1000
+    ) as any;
+
+    const oldHoverId = this.hoveredEntityId;
+    if (hit.hit && hit.entityId && hit.entityId !== this.terrainEntity?.id) {
+      this.hoveredEntityId = hit.entityId;
+    } else {
+      this.hoveredEntityId = null;
+    }
+
+    if (oldHoverId !== this.hoveredEntityId) {
+      this.updateHoverOutline(oldHoverId, this.hoveredEntityId);
+    }
+  }
+
+  /**
+   * 更新悬停高亮状态 (识别弱)
+   */
+  private updateHoverOutline(oldId: string | null, newId: string | null) {
+    if (oldId) {
+      const entity = this.entityManager.getEntity(oldId);
+      const visual = entity?.getComponent<VisualComponent>('Visual');
+      if (visual) visual.postProcessing.hover = false;
+    }
+    if (newId) {
+      const entity = this.entityManager.getEntity(newId);
+      const visual = entity?.getComponent<VisualComponent>('Visual');
+      if (visual) visual.postProcessing.hover = true;
+    }
+    eventBus.emit('SELECTION_CHANGED', { oldId: null, newId: null }); // 触发重新收集
+  }
+
+  /**
+   * 更新选择高亮状态 (选中强)
    */
   private updateSelectionOutline(oldId: string | null, newId: string | null) {
     if (oldId === newId) return;
@@ -1692,17 +1689,20 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     eventBus.emit('SELECTION_CHANGED', { oldId, newId });
   }
 
-  public handleDeleteSelectedEntity() {
-    if (!this.selectedEntityId) return;
+  public handleDeleteSelectedEntity(): void {
+    if (this.selectedEntityId && !this.ghostEntityId) {
+      // 禁止删除核心实体 (地基)
+      if (this.selectedEntityId === this.terrainEntity?.id || this.selectedEntityId === this.cameraEntity?.id) {
+        console.warn('🛡️ [Manager] Cannot delete core engine entities.');
+        return;
+      }
 
-    // 禁止删除核心实体
-    if (this.selectedEntityId === this.terrainEntity?.id || this.selectedEntityId === this.cameraEntity?.id) {
-      return;
+      console.log(`🗑️ [Manager] Deleting entity: ${this.selectedEntityId}`);
+      this.entityManager.destroyEntity(this.selectedEntityId);
+      const oldId = this.selectedEntityId;
+      this.selectedEntityId = null;
+      this.updateSelectionOutline(oldId, null);
     }
-
-    console.log(`🗑️ [Manager] Deleting entity: ${this.selectedEntityId}`);
-    this.entityManager.destroyEntity(this.selectedEntityId);
-    this.selectedEntityId = null;
   }
 
   /**
@@ -1773,15 +1773,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         transform.scale = [newScale, newScale, newScale];
         transform.markLocalDirty();
 
-        // 2. 🔥 同步物理碰撞盒尺寸 (解决缩放后检测不匹配问题)
+        // 2. 🔥 同步物理 (触发重建)
+        // PhysicsSystem.createCollider 已经会自动乘以 transform.scale
+        // 所以这里不需要修改 physics.collider.size，只需触发重建即可
         if (physics && this.physicsSystem) {
-          const currentSize = physics.collider.size;
-          physics.collider.size = [
-            currentSize[0] * scaleRatio,
-            currentSize[1] * scaleRatio,
-            currentSize[2] * scaleRatio
-          ];
-          // 重建物理体以应用新尺寸
           this.physicsSystem.rebuildBody(this.selectedEntityId);
         }
 
