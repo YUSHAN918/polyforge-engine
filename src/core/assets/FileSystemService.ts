@@ -234,21 +234,21 @@ export class FileSystemService {
     switch (type) {
       case 'model':
         await registry.importModel(file, {
-          category: 'imported',
+          category: 'models',
           tags: ['batch-import', 'model', path],
         });
         break;
 
       case 'audio':
         await registry.importAudio(file, {
-          category: 'imported',
+          category: 'audio',
           tags: ['batch-import', 'audio', path],
         });
         break;
 
       case 'hdr':
         await registry.importHDR(file, {
-          category: 'imported',
+          category: 'environments',
           tags: ['batch-import', 'hdr', path],
         });
         break;

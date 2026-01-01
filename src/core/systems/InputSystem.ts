@@ -203,13 +203,16 @@ export class InputSystem implements System {
     const newX = event.clientX;
     const newY = event.clientY;
 
-    // 🔥 修正状态机：计算原始 Delta
-    const dx = newX - this.mousePosition.x;
-    const dy = newY - this.mousePosition.y;
+    // 🔥 修正状态机：优先使用硬件层面的 movementX/Y (支持 Pointer Lock)
+    const dx = event.movementX;
+    const dy = event.movementY;
 
     // 核心熔断：只有当交互（按下）起始于 Canvas 时，才输出 Delta。
     // 这彻底杜绝了在 UI 上操作时导致的相机旋转。
-    if (this.interactionOrigin === 'canvas' && this.isDragging) {
+    // 🔥 再次修复 (2026-01-01): 如果处于 Pointer Lock 模式 (沉浸式体验)，则无条件输出 Delta，不再受 interactionOrigin 限制
+    const isLocked = typeof document !== 'undefined' && !!document.pointerLockElement;
+
+    if (isLocked || (this.interactionOrigin === 'canvas' && this.isDragging)) {
       this.mouseDelta.x = dx;
       this.mouseDelta.y = dy;
     } else {

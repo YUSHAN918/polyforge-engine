@@ -135,9 +135,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.physicsSystem.initialize().then(() => console.log('⚡ Physics Warmup Complete'));
     this.assetRegistry.initialize().then(async () => {
       console.log('📦 Assets Initialized');
-      // 🚨 如果注册表为空，自动播种默认资产 (Seeding)
-      // 防止用户看到空荡荡的面板感到困惑
-      if (this.assetRegistry.getCacheStats().size === 0) {
+      // 🚨 修正判据：检查元数据总量而非内存 Blob 缓存 (Fix duplication)
+      if (this.assetRegistry.getTotalAssetCount() === 0) {
         console.log('🌱 Seeding default assets...');
         await this.seedDefaultAssets();
       }
@@ -1681,6 +1680,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         visual.postProcessing.outline = true;
       }
     }
+
+    // 🔥 性能修复 (2026-01-01): 通知渲染层更新 Outline
+    // EngineBridge 订阅此事件后，会在下一帧收集需要 outline 的 Object3D 并发射 OUTLINE_UPDATE
+    eventBus.emit('SELECTION_CHANGED', { oldId, newId });
   }
 
   public handleDeleteSelectedEntity() {
@@ -1753,11 +1756,30 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     } else if (this.selectedEntityId) {
       const entity = this.entityManager.getEntity(this.selectedEntityId);
       const transform = entity?.getComponent<TransformComponent>('Transform');
+      const physics = entity?.getComponent<PhysicsComponent>('Physics');
+
       if (transform) {
-        const newScale = Math.max(0.1, transform.scale[0] + delta);
+        const oldScale = transform.scale[0];
+        const newScale = Math.max(0.1, oldScale + delta);
+        const scaleRatio = newScale / oldScale;
+
+        // 1. 更新视觉缩放
         transform.scale = [newScale, newScale, newScale];
         transform.markLocalDirty();
-        console.log(`⌨️ [Keyboard] Scaling Selected Entity: ${newScale.toFixed(2)}`);
+
+        // 2. 🔥 同步物理碰撞盒尺寸 (解决缩放后检测不匹配问题)
+        if (physics && this.physicsSystem) {
+          const currentSize = physics.collider.size;
+          physics.collider.size = [
+            currentSize[0] * scaleRatio,
+            currentSize[1] * scaleRatio,
+            currentSize[2] * scaleRatio
+          ];
+          // 重建物理体以应用新尺寸
+          this.physicsSystem.rebuildBody(this.selectedEntityId);
+        }
+
+        console.log(`⌨️ [Keyboard] Scaling Selected Entity: ${newScale.toFixed(2)} (Collider synced)`);
       }
     }
   }

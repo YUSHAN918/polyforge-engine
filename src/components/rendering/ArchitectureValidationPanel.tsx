@@ -201,10 +201,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         undoHistory: cmdMgr.getHistory().undo.slice(-20).reverse(),
       });
 
-      // 2. Pull Asset List (Async)
-      if (registry.isInitialized()) {
-        registry.getAllMetadata().then(list => setAssetList(list));
-      }
+      // 2. Pull Asset List (Async) - Moved to Event-Driven logic below for performance
 
       // 3. Pull World State
       const state = manager.getEnvironmentState();
@@ -301,6 +298,29 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     window.addEventListener('click', handleCanvasClick);
     return () => window.removeEventListener('click', handleCanvasClick);
   }, [activeTab, manager]);
+
+  // 资产变更监听 (Performance Fix)
+  useEffect(() => {
+    if (!manager) return;
+    const registry = manager.getAssetRegistry();
+
+    const refreshAssets = () => {
+      if (registry.isInitialized()) {
+        registry.getAllMetadata().then(list => setAssetList(list));
+      } else {
+        // 如果还未初始化，尝试初始化并刷新（兜底逻辑）
+        registry.initialize().then(() => {
+          registry.getAllMetadata().then(list => setAssetList(list));
+        });
+      }
+    };
+
+    // 初始加载
+    refreshAssets();
+
+    eventBus.on('ASSET_REGISTRY_CHANGED', refreshAssets);
+    return () => eventBus.off('ASSET_REGISTRY_CHANGED', refreshAssets);
+  }, [manager]);
 
   // Sync Flight Mode UI State
   useEffect(() => {
@@ -1016,27 +1036,61 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 </div>
               </div>
 
-              {/* Asset Import Button */}
-              <div className="flex justify-between items-center">
+              {/* Asset Import Controls (Adaptive & Restoration) */}
+              <div className="flex gap-2 items-center">
                 <div className="flex-grow">
-                  <label htmlFor="asset_upload" className="w-full py-2 bg-cyan-900/30 rounded border border-cyan-500/30 text-cyan-300 font-bold hover:bg-cyan-900/50 shadow-lg shadow-cyan-500/10 flex items-center justify-center cursor-pointer">
-                    <i className="fas fa-upload mr-2"></i> 导入资产 (Import Asset)
-                    <input
-                      type="file"
-                      id="asset_upload"
-                      className="hidden"
-                      multiple
-                      accept={
-                        activeAssetTab === 'models' ? '.glb,.gltf' :
-                          activeAssetTab === 'textures' ? '.png,.jpg,.jpeg,.webp' :
-                            activeAssetTab === 'audio' ? '.mp3,.wav,.ogg' : '.hdr'
-                      }
-                      onChange={(e) => {
-                        if (activeAssetTab === 'all') handleBatchImport(e); // Smart auto-classify
-                        else handleAssetImport(e, activeAssetTab);
+                  {activeAssetTab === 'all' ? (
+                    /* 📁 文件夹/批量导入 (Merged Restoration) */
+                    <button
+                      onClick={async () => {
+                        if (!manager) return;
+                        setIsLoading(true);
+                        setLoadingText('Scanning Folder...');
+                        try {
+                          const dirHandle = await FileSystemService.selectDirectory();
+                          if (dirHandle) {
+                            const files = await FileSystemService.scanDirectory(dirHandle);
+                            if (files.length > 0) {
+                              setLoadingText(`Importing ${files.length} assets...`);
+                              await FileSystemService.batchImport(files, manager.getAssetRegistry(), (p) => {
+                                setLoadingText(`Importing... ${p.current}/${p.total}`);
+                              });
+                              setNotification({ message: `成功导入 ${files.length} 个资产`, type: 'success' });
+                            }
+                          }
+                        } catch (err) {
+                          console.error('Folder Import Error:', err);
+                          setNotification({ message: '文件夹导入失败', type: 'error' });
+                        } finally {
+                          setIsLoading(false);
+                        }
                       }}
-                    />
-                  </label>
+                      className="w-full py-2 bg-indigo-900/30 rounded border border-indigo-500/30 text-[10px] text-indigo-300 font-bold hover:bg-indigo-900/50 shadow-lg shadow-indigo-500/10 flex items-center justify-center cursor-pointer transition-all"
+                    >
+                      <i className="fas fa-folder-plus mr-2"></i> 文件夹批量导入 (Batch Folder Import)
+                    </button>
+                  ) : (
+                    /* 📄 单选导入 (Adaptive) */
+                    <label htmlFor="asset_upload" className="w-full py-2 bg-cyan-900/30 rounded border border-cyan-500/30 text-[10px] text-cyan-300 font-bold hover:bg-cyan-900/50 shadow-lg shadow-cyan-500/10 flex items-center justify-center cursor-pointer transition-all">
+                      <i className="fas fa-upload mr-2"></i>
+                      {activeAssetTab === 'models' ? '导入模型 (Import Model)' :
+                        activeAssetTab === 'audio' ? '导入音频 (Import Audio)' :
+                          activeAssetTab === 'environments' ? '导入 HDR (Import HDR)' : '导入贴图 (Import Texture)'}
+                      <input
+                        type="file"
+                        id="asset_upload"
+                        className="hidden"
+                        multiple
+                        accept={
+                          activeAssetTab === 'models' ? '.glb,.gltf' :
+                            activeAssetTab === 'textures' ? '.png,.jpg,.jpeg,.webp' :
+                              activeAssetTab === 'audio' ? '.mp3,.wav,.ogg' :
+                                activeAssetTab === 'environments' ? '.hdr' : '*'
+                        }
+                        onChange={(e) => handleAssetImport(e, activeAssetTab)}
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
             </div>

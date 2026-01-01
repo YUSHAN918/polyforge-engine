@@ -27,6 +27,7 @@ import { AssetType } from '../../core/assets/types';
 import { PostProcessing } from './PostProcessing';
 import { TerrainVisual } from './TerrainVisual';
 import { VegetationVisual } from './VegetationVisual';
+import { eventBus } from '../../core/EventBus';
 
 /**
  * EngineBridge Props
@@ -162,15 +163,11 @@ const EntityRenderer = React.memo<{
       transform.scale[2]
     );
 
-    // 4. 🔥 后处理标志同步 (Outline)
+    // 4. 🔥 后处理标志同步 (Outline) - 仅设置 group 根节点
+    // 性能修复 (2026-01-01): 移除每帧 traverse()，改为仅设置根节点
+    // SELECTION_CHANGED 事件处理器会执行一次性遍历来收集所有 outline 对象
     if (visual) {
       group.userData.outline = visual.postProcessing.outline;
-      // 同时同步给所有子 meshes
-      group.traverse((child) => {
-        if (child instanceof THREE.Mesh || child instanceof THREE.Group) {
-          child.userData.outline = visual.postProcessing.outline;
-        }
-      });
     }
   });
 
@@ -560,6 +557,31 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     };
   }, [gl, archValidationManager]);
 
+  // 🔥 性能修复 (2026-01-01): 事件驱动的 Outline 收集
+  // 订阅 SELECTION_CHANGED 事件，仅在选中实体变化时执行一次场景遍历
+  useEffect(() => {
+    const handleSelectionChanged = () => {
+      // 在下一帧延迟执行，确保 EntityRenderer 已同步 userData.outline
+      requestAnimationFrame(() => {
+        const outlineObjects: THREE.Object3D[] = [];
+        scene.traverse((obj) => {
+          if (obj.userData?.outline === true) {
+            outlineObjects.push(obj);
+          }
+        });
+        eventBus.emit('OUTLINE_UPDATE', outlineObjects);
+        // console.log(`[EngineBridge] OUTLINE_UPDATE emitted with ${outlineObjects.length} objects`);
+      });
+    };
+
+    eventBus.on('SELECTION_CHANGED', handleSelectionChanged);
+    console.log('[EngineBridge] Subscribed to SELECTION_CHANGED (Event-Driven Outline Collection)');
+
+    return () => {
+      eventBus.off('SELECTION_CHANGED', handleSelectionChanged);
+    };
+  }, [scene]);
+
   // 监听 EntityManager 变化
   useEffect(() => {
     const updateEntities = () => {
@@ -703,8 +725,9 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
     const handleClick = () => {
       if (!archValidationManager) return;
       const camSys = archValidationManager.getCameraSystem();
-      // Only request lock if in First Person Mode
-      if (camSys && camSys.getMode() === 'firstPerson') {
+      // 🔥 修复：同时支持 FPS 和 TPS 模式的 Pointer Lock
+      const mode = camSys?.getMode();
+      if (mode === 'firstPerson' || mode === 'thirdPerson') {
         canvas.requestPointerLock();
       }
     };

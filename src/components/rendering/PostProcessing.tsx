@@ -9,7 +9,7 @@
  * - 自发光强度联动
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useThree, useFrame, extend } from '@react-three/fiber';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -20,6 +20,7 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import * as THREE from 'three';
+import { eventBus } from '../../core/EventBus';
 
 // 扩展 R3F 以支持后处理类
 extend({ EffectComposer, RenderPass, UnrealBloomPass, SMAAPass, ShaderPass, OutputPass, OutlinePass });
@@ -154,6 +155,22 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
     };
   }, [enabled, gl, scene, camera, bloomEnabled, smaaEnabled]); // 🔥 修复:移除 size 依赖，防止 Resize 时销毁重建
 
+  // 🔥 性能修复 (2026-01-01): 事件驱动的 Outline 更新
+  // 订阅 OUTLINE_UPDATE 事件，仅在选中实体变化时更新 OutlinePass.selectedObjects
+  useEffect(() => {
+    const handleOutlineUpdate = (objects: THREE.Object3D[] | null) => {
+      if (!outlinePassRef.current) return;
+      outlinePassRef.current.selectedObjects = objects || [];
+    };
+
+    eventBus.on('OUTLINE_UPDATE', handleOutlineUpdate);
+    console.log('[PostProcessing] Subscribed to OUTLINE_UPDATE (Event-Driven Outline)');
+
+    return () => {
+      eventBus.off('OUTLINE_UPDATE', handleOutlineUpdate);
+    };
+  }, []);
+
   // 更新 Bloom 参数
   useEffect(() => {
     if (!bloomPassRef.current) return;
@@ -182,18 +199,9 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
   useFrame(() => {
     if (!enabled || !composerRef.current) return;
 
-    // 🔥 每帧巡检场景中的 outline 标志并更新 OutlinePass
-    if (outlinePassRef.current) {
-      const selectedObjects: THREE.Object3D[] = [];
-      scene.traverse((obj) => {
-        // 我们约定，如果 userData 中有 outline 标志，则加入描边
-        // EngineBridge 可以在实例化 mesh 时设置这个标记，或者我们直接搜寻 VisualComponent 的投影
-        if (obj.userData?.outline === true) {
-          selectedObjects.push(obj);
-        }
-      });
-      outlinePassRef.current.selectedObjects = selectedObjects;
-    }
+    // 🔥 性能修复 (2026-01-01): 移除每帧 scene.traverse()
+    // Outline 选择现在通过事件驱动更新，由 EngineBridge 在 mesh 实例化时设置 userData.outline
+    // 并通过 outlinePassRef.current.selectedObjects 直接更新（无需遍历）
 
     // 使用 EffectComposer 渲染（替代默认渲染）
     composerRef.current.render();

@@ -11,6 +11,7 @@
  */
 
 import * as THREE from 'three';
+import { eventBus } from '../EventBus';
 import { IndexedDBStorage } from './IndexedDBStorage';
 import { ModelImporter } from './ModelImporter';
 import { AudioImporter } from './AudioImporter';
@@ -84,6 +85,7 @@ export class AssetRegistry {
 
       this.initialized = true;
       console.log(`[AssetRegistry] Initialized with ${allMetadata.length} assets`);
+      eventBus.emit('ASSET_REGISTRY_CHANGED');
     } catch (error) {
       console.error('[AssetRegistry] Initialization failed:', error);
       throw error;
@@ -192,6 +194,7 @@ export class AssetRegistry {
       this.metadataCache.set(metadata.id, metadata);
 
       console.log(`[AssetRegistry] Force registered asset: ${metadata.name} (${metadata.id})`);
+      eventBus.emit('ASSET_REGISTRY_CHANGED');
       return metadata.id;
     } catch (error) {
       console.error('[AssetRegistry] Failed to force register asset:', error);
@@ -242,6 +245,7 @@ export class AssetRegistry {
       this.metadataCache.set(fullMetadata.id, fullMetadata);
 
       console.log(`[AssetRegistry] Registered asset: ${fullMetadata.name} (${fullMetadata.id})`);
+      eventBus.emit('ASSET_REGISTRY_CHANGED');
       return fullMetadata.id;
     } catch (error) {
       console.error('[AssetRegistry] Failed to register asset:', error);
@@ -562,6 +566,7 @@ export class AssetRegistry {
       }
 
       console.log(`[AssetRegistry] Deleted asset: ${id}`);
+      eventBus.emit('ASSET_REGISTRY_CHANGED');
     } catch (error) {
       console.error(`[AssetRegistry] Failed to delete asset ${id}:`, error);
       throw error;
@@ -659,6 +664,13 @@ export class AssetRegistry {
       size: this.cache.size,
       keys: Array.from(this.cache.keys()),
     };
+  }
+
+  /**
+   * 获取注册表中的总资产数 (含持久化但未加载到内存的)
+   */
+  getTotalAssetCount(): number {
+    return this.metadataCache.size;
   }
 
   /**
