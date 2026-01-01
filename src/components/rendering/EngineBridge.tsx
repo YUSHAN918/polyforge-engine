@@ -161,6 +161,17 @@ const EntityRenderer = React.memo<{
       transform.scale[1],
       transform.scale[2]
     );
+
+    // 4. 🔥 后处理标志同步 (Outline)
+    if (visual) {
+      group.userData.outline = visual.postProcessing.outline;
+      // 同时同步给所有子 meshes
+      group.traverse((child) => {
+        if (child instanceof THREE.Mesh || child instanceof THREE.Group) {
+          child.userData.outline = visual.postProcessing.outline;
+        }
+      });
+    }
   });
 
   // 更新材质(响应 WorldState 变化)

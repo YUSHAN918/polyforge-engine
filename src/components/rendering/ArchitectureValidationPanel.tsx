@@ -670,13 +670,11 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
     if (type === 'model') {
       dispatch(EngineCommandType.ENTER_PLACEMENT_MODE, { assetId: asset.id, assetName: asset.name });
-      setNotification({ message: `进入放置模式: ${asset.name} (Tab切换/Esc取消/Enter确认)`, type: 'info' });
       return;
     }
 
     if (type === 'image') {
       dispatch(EngineCommandType.ENTER_IMAGE_PLACEMENT_MODE, { assetId: asset.id, assetName: asset.name });
-      setNotification({ message: `进入影像投射模式 (Tab切换 贴纸/立牌/告示板)`, type: 'info' });
       return;
     }
 
@@ -1451,22 +1449,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         )
       }
 
-      {/* 🚀 New Minimalist Placement HUD */}
-      {
-        placementState.isPlacing && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-gray-950/80 backdrop-blur-md px-6 py-3 rounded-full border border-cyan-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-top-4 z-50 pointer-events-none">
-            <div className="flex items-center gap-2">
-              <i className="fas fa-cube text-cyan-400 animate-pulse"></i>
-              <span className="text-white font-bold text-xs">{placementState.assetName}</span>
-            </div>
-            <div className="h-4 w-px bg-gray-700"></div>
-            <div className="flex gap-4 text-[10px] text-gray-300 font-mono uppercase">
-              <span className="flex items-center gap-1"><span className="text-cyan-400 font-bold">[左键]</span> 放置</span>
-              <span className="flex items-center gap-1"><span className="text-red-400 font-bold">[右键]</span> 取消</span>
-            </div>
-          </div>
-        )
-      }
+      {/* 🚀 Placement HUD removed as requested - pure composition view enabled */}
 
 
 
@@ -1501,6 +1484,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 const visual = entity?.getComponent<any>('Visual');
                 const geom = visual?.geometry;
                 const isModel = geom?.type === 'model';
+                const assetId = visual?.assetId;
+                const assetMetadata = assetId ? manager.getAssetRegistry().getMetadataSync(assetId) : null;
+                const realFaces = assetMetadata?.modelStats?.faces;
 
                 return (
                   <>
@@ -1509,8 +1495,10 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                       <span className="text-cyan-400 font-mono uppercase">{geom?.type || 'Unknown'}</span>
                     </div>
                     <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">多边形估算 (Polygons)</span>
-                      <span className="text-cyan-400 font-mono">{isModel ? '~42.5k' : '2'}</span>
+                      <span className="text-gray-500">{realFaces ? '多边形总数 (Faces)' : '多边形估算 (Polygons)'}</span>
+                      <span className="text-cyan-400 font-mono">
+                        {realFaces ? realFaces.toLocaleString() : (isModel || geom?.type === 'custom' ? '~42.5k' : '24')}
+                      </span>
                     </div>
                     <div className="flex justify-between text-[10px]">
                       <span className="text-gray-500">材质插槽 (Materials)</span>

@@ -26,7 +26,7 @@ import { PhysicsSystem } from './systems/PhysicsSystem';
 import { AudioSystem } from './systems/AudioSystem';
 import { AssetRegistry, getAssetRegistry } from './assets/AssetRegistry';
 import { SerializationService } from './SerializationService';
-import { CommandManager } from './CommandManager';
+import { CommandManager, ICommand } from './CommandManager';
 import { ArchitectureStorageManager } from './ArchitectureStorageManager';
 import { BundleSystem } from './bundling/BundleSystem';
 import { BundleOptions } from './bundling/BundleBuilder';
@@ -34,6 +34,7 @@ import { BundleProgress } from './bundling/types';
 import { IArchitectureFacade, ValidationStats } from './IArchitectureFacade';
 import { EngineCommand, EngineCommandType } from './EngineCommand';
 import { eventBus } from './EventBus';
+import { CreateEntityCommand, UpdateWorldStateCommand } from './CommandManager';
 
 export enum ValidationContext {
   CREATION = 'CREATION',
@@ -180,49 +181,84 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // ===================================================================================
 
   public async dispatch(command: EngineCommand): Promise<void> {
-    // console.log(`⚡ Dispatching: ${command.type}`, command); // Debug log
-    // 记录到历史栈 (除了 UNDO/REDO)
-    if (command.type !== EngineCommandType.UNDO && command.type !== EngineCommandType.REDO) {
-      // ⚠️ FIXME: EngineCommand is a raw data payload, not an ICommand object with execute/undo methods.
-      // We cannot pass it directly to CommandManager. To support Undo/Redo for these, we need to wrap them.
-      // this.commandManager.execute(command);
-    }
+    // 🛡️ 拦截器：非撤销类指令且非元指令（如选中/上下文切换）才进入撤销栈
+    const isUndoable = command.type !== EngineCommandType.UNDO &&
+      command.type !== EngineCommandType.REDO &&
+      command.type !== EngineCommandType.SELECT_ENTITY &&
+      command.type !== EngineCommandType.SET_CONTEXT &&
+      command.type !== EngineCommandType.SAVE_SCENE &&
+      command.type !== EngineCommandType.RESET_SCENE &&
+      command.type !== EngineCommandType.EXPORT_BUNDLE;
 
-    // 执行命令
+    if (isUndoable) {
+      // ✅ 架构回归：针对性地封装底层指令，不再使用重度全量快照
+      switch (command.type) {
+        case EngineCommandType.SPAWN_PHYSICS_BOX: {
+          const createCmd = new CreateEntityCommand(this.entityManager, 'GravityCube');
+          this.commandManager.execute(createCmd);
+          // 执行后的附加逻辑（如添加物理组件）交由 dispatchInternal 处理
+          await this.dispatchInternal(command, (createCmd as any).createdEntityId);
+          break;
+        }
+
+        case EngineCommandType.SET_TIME_OF_DAY: {
+          const oldTime = this.worldStateManager.getState().timeOfDay;
+          const cmd = new UpdateWorldStateCommand(this.worldStateManager, 'timeOfDay', oldTime, command.hour);
+          this.commandManager.execute(cmd);
+          break;
+        }
+
+        default:
+          // 其他暂未定义的指令直接执行（可通过 dispatchInternal 扩展更多精密指令）
+          await this.dispatchInternal(command);
+          break;
+      }
+    } else {
+      // 执行元指令
+      await this.dispatchInternal(command);
+    }
+  }
+
+  // 🤫 Internal execution (Do not call directly unless you know what you are doing)
+  public async dispatchInternal(command: EngineCommand, targetId?: string): Promise<void> {
+    // console.log(`⚡ Executing: ${command.type}`, command);
     switch (command.type) {
+      // --- Undo/Redo ---
+      case EngineCommandType.UNDO:
+        this.commandManager.undo();
+        break;
+      case EngineCommandType.REDO:
+        this.commandManager.redo();
+        break;
+
       // --- Environment ---
       case EngineCommandType.SET_TIME_OF_DAY:
-        this.worldStateManager.setTimeOfDay(command.hour);
-        this.storageManager.save();
+        // 如果不是从精密指令（UpdateWorldStateCommand）来的，则执行原始逻辑
+        if (!(command as any)._fromCommand) {
+          this.worldStateManager.setTimeOfDay(command.hour);
+        }
         break;
       case EngineCommandType.SET_LIGHT_INTENSITY:
         this.worldStateManager.setLightIntensity(command.intensity);
-        this.storageManager.save();
         break;
       case EngineCommandType.SET_BLOOM_STRENGTH:
         this.worldStateManager.setBloomStrength(command.strength);
-        this.storageManager.save();
         break;
       case EngineCommandType.SET_BLOOM_THRESHOLD:
         this.worldStateManager.setBloomThreshold(command.threshold);
-        this.storageManager.save();
         break;
       case EngineCommandType.SET_TONE_MAPPING_EXPOSURE:
         this.worldStateManager.setToneMappingExposure(command.exposure);
-        this.storageManager.save();
         break;
       case EngineCommandType.SET_SMAA_ENABLED:
         this.worldStateManager.setSMAAEnabled(command.enabled);
-        this.storageManager.save();
         break;
       case EngineCommandType.SET_GRAVITY:
         this.worldStateManager.setGravity((command as any).value);
         this.physicsSystem.setGravity(0, (command as any).value, 0);
-        this.storageManager.save();
         break;
       case EngineCommandType.SET_HDR:
         this.worldStateManager.setHDR((command as any).assetId);
-        this.storageManager.save();
         break;
 
       // --- Camera ---
@@ -299,7 +335,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       // --- Physics & Debug ---
       case EngineCommandType.SPAWN_PHYSICS_BOX:
-        this.spawnPhysicsBox();
+        this.spawnPhysicsBox(targetId);
         break;
       case EngineCommandType.SPAWN_CHARACTER:
         this.spawnPlayerCharacter();
@@ -321,12 +357,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         break;
 
       // --- System ---
-      case EngineCommandType.UNDO:
-        this.commandManager.undo();
-        break;
-      case EngineCommandType.REDO:
-        this.commandManager.redo();
-        break;
       case EngineCommandType.SAVE_SCENE:
         this.storageManager.save();
         break;
@@ -414,6 +444,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   public getEnvironmentState(): WorldState {
     return this.worldStateManager.getState();
+  }
+
+  public getSerializationService(): SerializationService {
+    return this.serializationService;
   }
 
   public getStats(): ValidationStats {
@@ -1060,10 +1094,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     }
   }
 
-  private spawnPhysicsBox() {
-    const id = `GravityCube_${Date.now()}`;
-    // 🔥 复原：使用 GravityCube 作为名称，建立更强的业务关联
-    const entity = this.entityManager.createEntity('GravityCube', id);
+  /**
+   * 物理生成重力方块
+   * @param existingId 如果是由 CreateEntityCommand 先行生成的实体 ID
+   */
+  public spawnPhysicsBox(existingId?: string) {
+    const id = existingId || `GravityCube_${Date.now()}`;
+    // 🔥 如果实体已存在（CreateEntityCommand 创建），则直接获取，否则按需创建
+    const entity = existingId ? this.entityManager.getEntity(existingId)! : this.entityManager.createEntity('GravityCube', id);
     // 🔥 根据模式决定持久化：创造模式下持久化（场景搭建），体验模式下非持久化（物理测试）
     entity.persistent = this.currentContext === ValidationContext.CREATION;
 
@@ -1177,11 +1215,17 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   public update(): void {
     if (this.isDisposed) return;
-    this.systemManager.updateManual(1 / 60);
+    const deltaTime = this.clock.tick(); // 使用 Clock 驱动并获取 DeltaTime
+    this.systemManager.updateManual(deltaTime);
 
     // 🚀 [Placement System] 实时射线检测与幽灵同步 (仅在 CREATION 模式激活)
     if (this.currentContext === ValidationContext.CREATION) {
       this.handlePlacementTick();
+    }
+
+    // 🔥 Keyboard Input Handler (ESC, SCALE, ROTATE)
+    if (this.currentContext === ValidationContext.CREATION) {
+      this.handleKeyboardInputs();
     }
 
     // 🔥 Anti-Drift: Reset input deltas at the end of frame processing
@@ -1189,10 +1233,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.inputSystem.resetFrameData();
     }
 
-    // Auto Save
-    if (Date.now() - this.lastSaveTime > this.autoSaveInterval) {
+    // 🕒 [Heartbeat Auto Save] 每 5s 进行一次低频状态固化
+    const now = Date.now();
+    if (now - this.lastSaveTime > this.autoSaveInterval) {
       this.storageManager.save();
-      this.lastSaveTime = Date.now();
+      this.lastSaveTime = now;
+      // console.log('🕒 [Manager] Heartbeat auto-save completed.');
     }
   }
 
@@ -1431,12 +1477,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.entityManager.addComponent(solidId, solidVisual);
 
     // 🔥 交互优化：放置后自动选中，方便微调
+    const oldId = this.selectedEntityId;
     this.selectedEntityId = solidId;
+    this.updateSelectionOutline(oldId, this.selectedEntityId);
     console.log(`✅ [Placement] Committed & Selected: ${solidId}`);
 
     // 退出放置模式，进入编辑模式
     this.handleCancelPlacement();
-    this.storageManager.save();
   }
 
   public isPlacing(): boolean {
@@ -1555,7 +1602,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     }
 
     console.log(`🎨 [Manager] Applied ${assetType} (${assetId}) to entity: ${this.selectedEntityId}`);
-    this.storageManager.save();
   }
 
   public getSelectedEntityId(): string | null {
@@ -1594,6 +1640,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       1000
     ) as any; // 🔥 使用 any 暂时绕过 IDE 的跨文件类型扫描延迟
 
+    const oldId = this.selectedEntityId;
+
     if (hit.hit && hit.entityId) {
       // 排除地形的选中
       if (hit.entityId === this.terrainEntity?.id) {
@@ -1604,6 +1652,34 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     } else {
       this.selectedEntityId = null;
+    }
+
+    // 🔥 视觉反馈：更新 Outline 状态
+    this.updateSelectionOutline(oldId, this.selectedEntityId);
+  }
+
+  /**
+   * 更新选择高亮状态
+   */
+  private updateSelectionOutline(oldId: string | null, newId: string | null) {
+    if (oldId === newId) return;
+
+    // 清除旧的高亮
+    if (oldId) {
+      const entity = this.entityManager.getEntity(oldId);
+      const visual = entity?.getComponent<VisualComponent>('Visual');
+      if (visual) {
+        visual.postProcessing.outline = false;
+      }
+    }
+
+    // 开启新的高亮
+    if (newId) {
+      const entity = this.entityManager.getEntity(newId);
+      const visual = entity?.getComponent<VisualComponent>('Visual');
+      if (visual) {
+        visual.postProcessing.outline = true;
+      }
     }
   }
 
@@ -1618,12 +1694,74 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     console.log(`🗑️ [Manager] Deleting entity: ${this.selectedEntityId}`);
     this.entityManager.destroyEntity(this.selectedEntityId);
     this.selectedEntityId = null;
-    this.storageManager.save();
   }
 
   /**
-   * 🚨 紧急播种：当资产库为空时，注入默认基础资产
+   * ⌨️ 键盘交互核心：处理编辑器快捷键 (ESC, R, [, ])
    */
+  private handleKeyboardInputs() {
+    if (!this.inputSystem) return;
+
+    // 1. ESC: 取消放置或取消选中
+    if (this.inputSystem.isActionPressed('CANCEL_PLACEMENT')) {
+      if (this.isPlacing()) {
+        this.handleCancelPlacement();
+        console.log('⌨️ [Keyboard] Placement Cancelled');
+      } else if (this.selectedEntityId) {
+        const oldId = this.selectedEntityId;
+        this.selectedEntityId = null;
+        this.updateSelectionOutline(oldId, null);
+        console.log('⌨️ [Keyboard] Selection Cleared');
+      }
+    }
+
+    // 2. ENTER: 确认放置
+    if (this.inputSystem.isActionPressed('COMMIT_PLACEMENT')) {
+      if (this.isPlacing()) {
+        this.handleCommitPlacement();
+        console.log('⌨️ [Keyboard] Placement Committed');
+      }
+    }
+
+    // 3. R: 旋转当前 Ghost 或 选中物体
+    if (this.inputSystem.isActionPressed('ROTATE_ENTITY')) {
+      if (this.isPlacing()) {
+        this.dispatch({ type: EngineCommandType.ROTATE_PLACEMENT, axis: 'y' } as any);
+      } else if (this.selectedEntityId) {
+        const entity = this.entityManager.getEntity(this.selectedEntityId);
+        const transform = entity?.getComponent<TransformComponent>('Transform');
+        if (transform) {
+          transform.rotation[1] = (transform.rotation[1] + 90) % 360;
+          transform.markLocalDirty();
+          console.log(`⌨️ [Keyboard] Rotating Selected Entity: ${transform.rotation[1]}°`);
+        }
+      }
+    }
+
+    // 4. [ / ]: 缩放
+    if (this.inputSystem.isActionPressed('SCALE_UP')) {
+      this.adjustKeyboardScale(0.1);
+    }
+    if (this.inputSystem.isActionPressed('SCALE_DOWN')) {
+      this.adjustKeyboardScale(-0.1);
+    }
+  }
+
+  private adjustKeyboardScale(delta: number) {
+    if (this.isPlacing()) {
+      this.dispatch({ type: EngineCommandType.SCALE_PLACEMENT, delta } as any);
+    } else if (this.selectedEntityId) {
+      const entity = this.entityManager.getEntity(this.selectedEntityId);
+      const transform = entity?.getComponent<TransformComponent>('Transform');
+      if (transform) {
+        const newScale = Math.max(0.1, transform.scale[0] + delta);
+        transform.scale = [newScale, newScale, newScale];
+        transform.markLocalDirty();
+        console.log(`⌨️ [Keyboard] Scaling Selected Entity: ${newScale.toFixed(2)}`);
+      }
+    }
+  }
+
   private async seedDefaultAssets(): Promise<void> {
     try {
       // 1. 生成渐变贴图 (Gradient Texture)
@@ -1680,3 +1818,5 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     }
   }
 }
+
+

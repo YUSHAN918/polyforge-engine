@@ -7,6 +7,8 @@ import { EntityManager } from './EntityManager';
 import { SerializationService } from './SerializationService';
 import { Component, SerializedEntity } from './types';
 
+import { WorldStateManager } from './WorldStateManager';
+
 /**
  * 命令接口
  * 所有命令必须实现此接口
@@ -483,6 +485,51 @@ export class AttachToSocketCommand implements ICommand {
     } else {
       // 移除父实体
       this.entityManager.removeParent(this.childId);
+    }
+  }
+}
+
+/**
+ * 更新世界状态命令
+ */
+export class UpdateWorldStateCommand implements ICommand {
+  public readonly id: string;
+  public readonly name: string;
+  public readonly timestamp: number;
+
+  private worldStateManager: WorldStateManager;
+  private property: string;
+  private oldValue: any;
+  private newValue: any;
+
+  constructor(
+    worldStateManager: WorldStateManager,
+    property: string,
+    oldValue: any,
+    newValue: any
+  ) {
+    this.id = `world_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.name = `World: Set ${property}`;
+    this.timestamp = Date.now();
+    this.worldStateManager = worldStateManager;
+    this.property = property;
+    this.oldValue = oldValue;
+    this.newValue = newValue;
+  }
+
+  execute(): void {
+    const setterName = `set${this.property.charAt(0).toUpperCase()}${this.property.slice(1)}`;
+    if (typeof (this.worldStateManager as any)[setterName] === 'function') {
+      (this.worldStateManager as any)[setterName](this.newValue);
+    } else {
+      console.warn(`[Command] Setter ${setterName} not found on WorldStateManager`);
+    }
+  }
+
+  undo(): void {
+    const setterName = `set${this.property.charAt(0).toUpperCase()}${this.property.slice(1)}`;
+    if (typeof (this.worldStateManager as any)[setterName] === 'function') {
+      (this.worldStateManager as any)[setterName](this.oldValue);
     }
   }
 }

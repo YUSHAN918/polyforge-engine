@@ -62,6 +62,7 @@ export class SerializationService {
       timestamp: Date.now(),
       entities,
       assetReferences,
+      worldState: (metadata as any)?.worldState, // 从元数据中提取或直接传入
     };
 
     if (metadata) {

@@ -128,7 +128,29 @@
 - [2025-12-31] Phase 19: 精准重建与视角净化 (RE-Core)。实现四元数 (Quaternion) 物理渲染 1:1 同步，彻底解决旋转抖动与倾斜 Bug；实装刚体旋转锁定及 2m 角色物理视觉对齐（Offset 1.0m）。重构相机碰撞检测机制：通过位置参数签名修复地表探测兼容性，引入 0.15m 过滤阈值解决“镜头入体”Bug，并实现模式间碰撞逻辑的物理隔离（仅 TPS 开启）。回归上帝视角 (ISO) 黄金初始参数 (FOV 60, Distance 50)。
 - [2026-01-01] Phase 13 RE: 第二代二进制打包引擎 (PFB v2)。彻底攻克全量导出导致的 OOM 崩溃。实现智能按需资产收集 (Smart Gathering)，大幅降低 Bundle 体积；实装 PFB 原生二进制打包装箱，实现秒级导出/导入；内核级 ID 强力恢复技术，确保异地分发引用 100% 闭环。
 
-## 第六部分：核心知识地图 (Knowledge Map)
+---
+
+## 第七部分：核心工程底线与自审协议 (The Bottom Line)
+**本章节是“山神”执行任何修改前的物理准则。若有冲突，本章节具备最高解释权。**
+
+### 1. 性能底线 (Performance Baseline)
+- **IO 容忍度**：严禁在 `update`/`render` 循环或由于 UI 高频触发（如 Slider）的同步逻辑内调用 `localStorage.save()` 或 `SerializationService.serialize()`。
+- **降频存档**：所有持久化操作必须映射为低频（如 5s）的心跳自动保存，主线程 IO 必须保持“零感知”。
+- **计算冗余**：严禁通过“销毁+全量重建”来实现撤销功能。撤销必须基于增量的 `ICommand` 实现。
+
+### 2. 架构稳定性 (Architectural Integrity)
+- **核心实体主权**：`GodCamera` (相机实体) 与 `ValidationTerrain` (地形实体) 是场景的物理支撑点。任何逻辑（包括 Undo）严禁导致这些实体被销毁或不可逆重置。
+- **状态单一源**：`WorldStateManager` 是环境的唯一真理。UI 层不允许保留环境状态的私有副本。
+
+### 3. 操作自审清单 (Self-Audit Checklist)
+> **“在提请制作人审核方案前，我必须完成以下自测：”**
+- [ ] **性能**：该方案是否会导致 FPS 从 60 帧跌落？
+- [ ] **抖动**：该方案是否会导致撤销时镜头闪跳？
+- [ ] **KISS**：这是否是实现目标的“最少改动”路径？
+
+---
+
+## 第八部分：核心知识地图 (Knowledge Map)
 - **核心组件**：`WorldStateManager` (状态) -> `AssetRegistry` (资产) -> `BundleSystem` (打包)。
 - **核心指南**：[AGENT_CORE.md](file:///f:/工作/LOW3D编辑文件储存点/polyforge-engine-v130-251230/.agent/AGENT_CORE.md) (协议) / [VISION.md](file:///f:/工作/LOW3D编辑文件储存点/polyforge-engine-v130-251230/.agent/VISION.md) (愿景)。
 - **实时目标**：保持 Phase 13/19 的稳定性，推进场景导出与外部资产兼容性验证。

@@ -18,10 +18,11 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import * as THREE from 'three';
 
 // 扩展 R3F 以支持后处理类
-extend({ EffectComposer, RenderPass, UnrealBloomPass, SMAAPass, ShaderPass, OutputPass });
+extend({ EffectComposer, RenderPass, UnrealBloomPass, SMAAPass, ShaderPass, OutputPass, OutlinePass });
 
 /**
  * PostProcessing Props
@@ -51,6 +52,7 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
   const { gl, scene, camera, size } = useThree();
   const composerRef = useRef<EffectComposer | null>(null);
   const bloomPassRef = useRef<UnrealBloomPass | null>(null);
+  const outlinePassRef = useRef<OutlinePass | null>(null);
   const fxaaPassRef = useRef<any | null>(null); // Use any to support SMAAPass | ShaderPass
 
   // 初始化 EffectComposer
@@ -102,6 +104,22 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
       bloomPassRef.current = bloomPass;
       console.log('[PostProcessing] UnrealBloomPass added');
     }
+
+    // 添加 OutlinePass (描边高亮)
+    const outlinePass = new OutlinePass(
+      new THREE.Vector2(size.width, size.height),
+      scene,
+      camera
+    );
+    // 配置符合引擎美学的蓝向描边
+    outlinePass.edgeStrength = 8.0;
+    outlinePass.edgeGlow = 1.0;
+    outlinePass.edgeThickness = 2.0;
+    outlinePass.visibleEdgeColor.set('#00ffff');
+    outlinePass.hiddenEdgeColor.set('#004444');
+    composer.addPass(outlinePass);
+    outlinePassRef.current = outlinePass;
+    console.log('[PostProcessing] OutlinePass added');
 
     // 添加 OutputPass (ToneMapping + ColorSpace Conversion)
     // 必须在 AA 之前应用，确保 AA 基于最终显示的颜色（sRGB/ToneMapped）进行边缘检测
@@ -163,6 +181,19 @@ export const PostProcessing: React.FC<PostProcessingProps> = ({
   // 渲染循环
   useFrame(() => {
     if (!enabled || !composerRef.current) return;
+
+    // 🔥 每帧巡检场景中的 outline 标志并更新 OutlinePass
+    if (outlinePassRef.current) {
+      const selectedObjects: THREE.Object3D[] = [];
+      scene.traverse((obj) => {
+        // 我们约定，如果 userData 中有 outline 标志，则加入描边
+        // EngineBridge 可以在实例化 mesh 时设置这个标记，或者我们直接搜寻 VisualComponent 的投影
+        if (obj.userData?.outline === true) {
+          selectedObjects.push(obj);
+        }
+      });
+      outlinePassRef.current.selectedObjects = selectedObjects;
+    }
 
     // 使用 EffectComposer 渲染（替代默认渲染）
     composerRef.current.render();

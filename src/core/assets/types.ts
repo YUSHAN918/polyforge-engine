@@ -28,6 +28,7 @@ export interface AssetMetadata {
   size: number;            // 文件大小（字节）
   createdAt: number;       // 创建时间戳
   thumbnail?: string;      // Base64 缩略图（可选）
+  modelStats?: ModelMetadata; // 模型特定数据（可选）
 }
 
 /**

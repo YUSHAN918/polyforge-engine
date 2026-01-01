@@ -274,6 +274,7 @@ export class AssetRegistry {
           tags: options.tags || ['imported', 'model'],
           size: blob.size,
           thumbnail,
+          modelStats: metadata, // 🔥 核心修复：持久化精准几何数据
         },
         blob
       );
@@ -492,6 +493,13 @@ export class AssetRegistry {
       console.error(`[AssetRegistry] Failed to get metadata ${id}:`, error);
       return null;
     }
+  }
+
+  /**
+   * 同步获取资产元数据 (限已缓存条目)
+   */
+  public getMetadataSync(id: string): AssetMetadata | null {
+    return this.metadataCache.get(id) || null;
   }
 
   /**

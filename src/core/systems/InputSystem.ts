@@ -376,6 +376,13 @@ export class InputSystem implements System {
     actions.set('SPACE', { name: 'SPACE', keys: [' ', 'space'] }); // 🔥 防止空格导致页面滚动
     actions.set('ESCAPE', { name: 'ESCAPE', keys: ['escape'] });
 
+    // 编辑器专用动作
+    actions.set('CANCEL_PLACEMENT', { name: 'CANCEL_PLACEMENT', keys: ['escape'] });
+    actions.set('COMMIT_PLACEMENT', { name: 'COMMIT_PLACEMENT', keys: ['enter', 'return'] });
+    actions.set('ROTATE_ENTITY', { name: 'ROTATE_ENTITY', keys: ['r'] });
+    actions.set('SCALE_UP', { name: 'SCALE_UP', keys: [']', '}'] });
+    actions.set('SCALE_DOWN', { name: 'SCALE_DOWN', keys: ['[', '{'] });
+
     return {
       name: 'default',
       actions,
