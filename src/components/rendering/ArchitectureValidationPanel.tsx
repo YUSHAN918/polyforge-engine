@@ -11,8 +11,11 @@ import { IArchitectureFacade } from '../../core/IArchitectureFacade'; // Use Int
 import { EngineCommandType } from '../../core/EngineCommand';
 import { TerrainComponent } from '../../core/components/TerrainComponent';
 import { CameraMode, CameraComponent } from '../../core/components/CameraComponent';
+import * as THREE from 'three';
 import { FileSystemService } from '../../core/assets/FileSystemService';
 import { eventBus } from '../../core/EventBus';
+import { BundleProgress } from '../../core/bundling/types';
+import { ModelExportService } from '../../core/export/ModelExportService';
 
 interface ArchitectureValidationPanelProps {
   manager: IArchitectureFacade | null; // Strict typing
@@ -104,6 +107,9 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [loadingText, setLoadingText] = useState('Processing...');
   const [showConfirm, setShowConfirm] = useState<{ message: string, onConfirm: () => void } | null>(null);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' | 'error' } | null>(null);
+  const [bundleProgress, setBundleProgress] = useState<BundleProgress | null>(null);
+
+  const exportService = useRef(new ModelExportService());
 
   // Auto-dismiss notification
   useEffect(() => {
@@ -140,10 +146,28 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     eventBus.on('camera:preset:fallback', onPresetFallback);
     eventBus.on('camera:preset:error', onError);
 
+    // 🔥 Bundle & Export Listeners
+    const onBundleProgress = (data: BundleProgress | null) => setBundleProgress(data);
+    const onExportComplete = (data: any) => {
+      if (data.success) {
+        setNotification({
+          message: data.isLarge ? `导出成功 (带容量警告): ${data.filename}` : `导出成功: ${data.filename}`,
+          type: data.isLarge ? 'info' : 'success'
+        });
+      } else {
+        setNotification({ message: `导出失败: ${data.error}`, type: 'error' });
+      }
+    };
+
+    eventBus.on('BUNDLE_PROGRESS', onBundleProgress);
+    eventBus.on('MODEL_EXPORT_COMPLETE', onExportComplete);
+
     return () => {
       eventBus.off('camera:preset:changed', onPresetChanged);
       eventBus.off('camera:preset:fallback', onPresetFallback);
       eventBus.off('camera:preset:error', onError);
+      eventBus.off('BUNDLE_PROGRESS', onBundleProgress);
+      eventBus.off('MODEL_EXPORT_COMPLETE', onExportComplete);
     };
   }, [manager]); // Re-bind if manager changes (usually once)
 
@@ -469,16 +493,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     const name = prompt('捆绑包名称 (Bundle Name):', 'MySceneLevel');
     if (!name) return;
 
-    setIsLoading(true);
-    setLoadingText('正在打包导出 (Bundling)...');
+    // 不再使用全屏加载，改用 HUD 进度条 (由 Manager 的 EventBus 驱动)
     try {
       await dispatch(EngineCommandType.EXPORT_BUNDLE, { name });
-      setNotification({ message: `导出成功: ${name}.pfb`, type: 'success' });
+      // 成功通知由 MODEL_EXPORT_COMPLETE 监听器处理 (见 useEffect)
     } catch (err) {
       console.error(err);
       setNotification({ message: '导出失败 (Export Failed)', type: 'error' });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -486,17 +507,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 清空 input 使得同一个文件可以再次选择
     e.target.value = '';
 
     setShowConfirm({
       message: '确定要导入该生态包吗？当前场景将被覆盖。\n(Import this bundle? Current scene will be overwritten.)',
       onConfirm: async () => {
-        setIsLoading(true);
-        setLoadingText('正在解析生态包 (Parsing Bundle)...');
         try {
           await dispatch(EngineCommandType.IMPORT_BUNDLE, { file });
-          setNotification({ message: '导入成功 (Import Complete)', type: 'success' });
           // Force refresh world state UI
           if (manager) {
             const state = manager.getEnvironmentState();
@@ -505,8 +522,6 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         } catch (err) {
           console.error(err);
           setNotification({ message: '导入失败 (Import Failed)', type: 'error' });
-        } finally {
-          setIsLoading(false);
         }
       }
     });
@@ -561,6 +576,31 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         manager.getAssetRegistry().deleteAsset(id);
       }
     }
+  };
+
+  const handleModelExport = async (asset: any) => {
+    if (!manager) return;
+
+    // 1. 从资源库获取模型数据 (Blob -> URL -> GLTFLoader -> Object)
+    // 注意：这里为了简化，我们先直接下载 PFB 已有的 Blob，
+    // 或者通过 Manager 重新导出当前场景中的 Entity (如果是已实例化的)
+    // 这里的实现选择：将当前选中的资源库模型导出
+    const registry = manager.getAssetRegistry();
+    const blob = await registry.getAsset(asset.id);
+    if (!blob) return;
+
+    // 触发全局进度感 (伪进度，因为是单体导出)
+    setBundleProgress({ step: '正在进行单体模型导出...', assetName: asset.name, progress: 0.5 });
+
+    try {
+      // 逻辑：直接分发原始资产数据，保留全部模型细节 (如制作人的 41MB 手枪)
+      const buffer = await blob.arrayBuffer();
+      await exportService.current.exportBuffer(buffer, asset.name);
+    } catch (err) {
+      console.error('[handleModelExport] Export failed:', err);
+    }
+
+    setBundleProgress(null);
   };
 
   const handleAssetClick = (asset: any) => {
@@ -963,12 +1003,24 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                           )}
 
                           {/* Floating Delete Mini Button */}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleAssetDelete(asset.id); }}
-                            className="absolute bottom-1 right-1 w-5 h-5 bg-red-950/80 text-red-400 rounded-md flex items-center justify-center text-[7px] opacity-0 group-hover:opacity-100 hover:bg-red-900 transition-all z-20 border border-red-500/20"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          <div className="absolute bottom-1 right-1 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-all">
+                            {(asset.category === 'models' || asset.category === 'model') && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleModelExport(asset); }}
+                                className="w-5 h-5 bg-cyan-950/80 text-cyan-400 rounded-md flex items-center justify-center text-[7px] hover:bg-cyan-900 border border-cyan-500/20"
+                                title="导出为 GLB"
+                              >
+                                <i className="fas fa-file-export"></i>
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleAssetDelete(asset.id); }}
+                              className="w-5 h-5 bg-red-950/80 text-red-400 rounded-md flex items-center justify-center text-[7px] hover:bg-red-900 border border-red-500/20"
+                              title="删除资产"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -1257,6 +1309,25 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             notification.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'
             }`}></i>
           <span className="text-[10px] font-bold">{notification.message}</span>
+        </div>
+      )}
+
+      {/* 🔥 Universal HUD Progress Overlay (The Neural Sync) */}
+      {bundleProgress && (
+        <div className="absolute inset-x-0 bottom-6 px-4 py-3 bg-black/80 backdrop-blur-md border-t border-cyan-500/30 flex flex-col gap-2 z-[100] animate-in fade-in slide-in-from-bottom-5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+          <div className="flex justify-between items-end">
+            <div className="flex flex-col">
+              <span className="text-[8px] text-cyan-400 font-black uppercase tracking-[0.2em]">{bundleProgress.step}</span>
+              <span className="text-[10px] text-white font-bold opacity-80">{bundleProgress.assetName}</span>
+            </div>
+            <span className="text-[10px] font-mono text-cyan-400">{Math.round(bundleProgress.progress * 100)}%</span>
+          </div>
+          <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-cyan-500 transition-all duration-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+              style={{ width: `${bundleProgress.progress * 100}%` }}
+            ></div>
+          </div>
         </div>
       )}
     </div>

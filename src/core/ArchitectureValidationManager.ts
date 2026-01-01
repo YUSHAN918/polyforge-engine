@@ -28,6 +28,8 @@ import { SerializationService } from './SerializationService';
 import { CommandManager } from './CommandManager';
 import { ArchitectureStorageManager } from './ArchitectureStorageManager';
 import { BundleSystem } from './bundling/BundleSystem';
+import { BundleOptions } from './bundling/BundleBuilder';
+import { BundleProgress } from './bundling/types';
 import { IArchitectureFacade, ValidationStats } from './IArchitectureFacade';
 import { EngineCommand, EngineCommandType } from './EngineCommand';
 import { eventBus } from './EventBus';
@@ -83,7 +85,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.storageManager = new ArchitectureStorageManager(this.entityManager, this.worldStateManager);
 
     this.assetRegistry = getAssetRegistry();
-    this.bundleSystem = new BundleSystem(this.entityManager, this.assetRegistry, this.serializationService);
+    this.bundleSystem = new BundleSystem(this.entityManager, this.assetRegistry, this.serializationService, this.worldStateManager);
 
     // 2. Component Registration
     this.entityManager.registerComponent('Transform', TransformComponent);
@@ -1009,31 +1011,39 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private async exportBundle(name: string) {
     console.log(`📦 [Manager] Starting PFB Binary Export: ${name}`);
 
-    // 1. 创建 Bundle (默认采用按需收集策略，解决 OOM 问题)
-    const bundle = await this.bundleSystem.createBundle({
-      name,
-      author: 'PolyForge Creator',
-      description: 'Standalone PFB Bundle',
-      includeUnusedAssets: false // 🔥 核心修复：按需打包，阻断体积爆炸
-    });
+    try {
+      // 1. 执行二进制打包装箱 (内部已包含依赖收集与序列化)
+      const buffer = await this.bundleSystem.packToBinary({
+        name,
+        author: 'PolyForge Creator',
+        description: 'Standalone PFB Bundle',
+        includeUnusedAssets: false
+      }, (progress: BundleProgress) => {
+        // 🔥 通过 EventBus 分发进度
+        eventBus.emit('BUNDLE_PROGRESS', progress);
+      });
 
-    // 2. 挂载环境状态 (确保 WorldState 完整性)
-    bundle.manifest.sceneData.worldState = this.worldStateManager.getState();
+      // 2. 触发浏览器下载
+      const blob = new Blob([buffer], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}_${Date.now()}.pfb`;
+      a.click();
 
-    // 3. 执行二进制打包装箱
-    const buffer = await this.bundleSystem.packToBinary(bundle);
+      // 延迟释放以确保下载正常
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        // 清理进度 UI
+        eventBus.emit('BUNDLE_PROGRESS', null);
+      }, 1000);
 
-    // 4. 触发浏览器下载
-    const blob = new Blob([buffer], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${name}_${Date.now()}.pfb`;
-    a.click();
-
-    // 延迟释放以确保下载正常
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    console.log(`✅ [Manager] Exported Binary PFB: ${name} (Scene + Used Assets)`);
+      console.log(`✅ [Manager] Exported Binary PFB: ${name}`);
+    } catch (error) {
+      console.error('🔥 [Manager] Export failed:', error);
+      eventBus.emit('BUNDLE_PROGRESS', null);
+      alert(`导出失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
   }
 
   private async importBundle(file: File) {
@@ -1047,10 +1057,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     let manifest;
     try {
       if (isBinary) {
-        // 🔥 新版二进制解析流程 (高效率，零 OOM)
-        manifest = await this.bundleSystem.loadFromBinary(buffer);
+        // 🔥 新版二进制解析流程 (高效率，带进度回调)
+        manifest = await this.bundleSystem.loadFromBinary(buffer, (progress: BundleProgress) => {
+          eventBus.emit('BUNDLE_PROGRESS', progress);
+        });
       } else {
-        // ⚠️ 旧版 JSON 降级兼容 (带日志降噪)
+        // ⚠️ 旧版 JSON 降级兼容
         console.warn('⚠️ [Manager] Legacy JSON bundle detected. Falling back to text decoder...');
         const text = new TextDecoder().decode(buffer);
         manifest = await this.bundleSystem.loadBundle(text);
@@ -1063,9 +1075,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       });
 
       this.storageManager.save();
+
+      // 清理进度 UI
+      setTimeout(() => eventBus.emit('BUNDLE_PROGRESS', null), 500);
+
       console.log(`✅ [Manager] Bundle "${file.name}" imported successfully.`);
     } catch (error) {
       console.error('🔥 [Manager] Import failed:', error);
+      eventBus.emit('BUNDLE_PROGRESS', null);
       alert(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }
