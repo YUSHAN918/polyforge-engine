@@ -90,6 +90,16 @@ export interface IArchitectureFacade {
     getSelectedEntityId(): string | null;
 
     /**
+     * 处理交互输入 (Click/RightClick)
+     */
+    handleInteraction(type: 'click' | 'rightClick', data: { x: number, y: number }): void;
+
+    /**
+     * 删除当前选中的实体
+     */
+    handleDeleteSelectedEntity(): void;
+
+    /**
      * 销毁/清理
    */
     dispose(): void;

@@ -42,8 +42,11 @@ export class OrbitStrategy implements ICameraStrategy {
         const pressedKeys = inputSystem.pressedKeys || new Set();
         const wheel = inputSystem.wheelDelta;
 
-        // 1. Panning: Space + Left Click (0) OR Middle Click (1)
-        if (pressedKeys.has(' ') && (pressedButtons.has(0) || pressedButtons.has(1))) {
+        // 1. Panning: Space + Middle Click (1) Only
+        // 🔥 规范化：移除左键平移占用。保留 [中键 + 空格] 进行画面平移。
+        const isSpacePressed = pressedKeys.has(' ') || pressedKeys.has('space') || pressedKeys.has('spacebar');
+
+        if (isSpacePressed && pressedButtons.has(1)) {
             if (mouseDelta && (Math.abs(mouseDelta.x) > 0 || Math.abs(mouseDelta.y) > 0)) {
                 // Adjust pan speed based on distance (farther = faster)
                 const panSpeed = camera.distance * 0.002;

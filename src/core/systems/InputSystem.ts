@@ -53,6 +53,7 @@ export class InputSystem implements System {
   public mouseDelta: { x: number; y: number } = { x: 0, y: 0 };
   public wheelDelta: number = 0;
   private isDragging: boolean = false;
+  private interactionOrigin: 'canvas' | 'ui' | null = null; // 🔥 新增：交互起始源追踪
 
   constructor() {
     this.currentPreset = this.createDefaultPreset();
@@ -144,25 +145,38 @@ export class InputSystem implements System {
    * 处理鼠标按下事件
    */
   private handleMouseDown = (event: MouseEvent): void => {
-    // 🔥 过滤逻辑：如果在 Canvas 上，由 EngineBridge 接管，这里不处理
-    // 否则会导致双重事件
     const target = event.target as HTMLElement;
-    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
-    if (isCanvas) return;
 
+    // 🔥 增强探测：如果 target 是容器，尝试穿透获取真实的底层元素
+    let actualTarget = target;
+    if (target.tagName === 'DIV') {
+      const fromPoint = document.elementFromPoint(event.clientX, event.clientY);
+      if (fromPoint) actualTarget = fromPoint as HTMLElement;
+    }
+
+    const isCanvas = actualTarget.tagName === 'CANVAS' || actualTarget.closest('canvas');
+
+    // 🔥 协议对齐：InputSystem 作为硬件抽象层，必须记录所有状态
+    // 不再根据 isCanvas 返回，确保 pressedButtons 的准确性
     this.pressedButtons.add(event.button);
 
+    // 锁定本次会话的起源
+    this.interactionOrigin = isCanvas ? 'canvas' : 'ui';
+
     // 右键或中键按下时开始拖拽
-    if (event.button === 1 || event.button === 2) {
+    if (event.button === 1 || event.button === 2 || event.button === 0) {
       this.isDragging = true;
     }
 
     // 检查是否有匹配的动作
     for (const [, action] of this.currentPreset.actions) {
       if (action.mouseButtons?.includes(event.button)) {
-        if (this.matchesModifiers(action, event)) {
-          if (action.callback) {
-            action.callback();
+        // 如果动作起源于 UI，则不在这里触发场景关联的 Action
+        if (this.interactionOrigin === 'canvas') {
+          if (this.matchesModifiers(action, event)) {
+            if (action.callback) {
+              action.callback();
+            }
           }
         }
       }
@@ -173,39 +187,37 @@ export class InputSystem implements System {
    * 处理鼠标释放事件
    */
   private handleMouseUp = (event: MouseEvent): void => {
-    const target = event.target as HTMLElement;
-    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
-    if (isCanvas) return;
-
+    // 同样的，全域同步状态
     this.pressedButtons.delete(event.button);
-    this.isDragging = false;
+
+    if (this.pressedButtons.size === 0) {
+      this.isDragging = false;
+      this.interactionOrigin = null; // 重置会话
+    }
   };
 
   /**
    * 处理鼠标移动事件
    */
   private handleMouseMove = (event: MouseEvent): void => {
-    const target = event.target as HTMLElement;
-    const isCanvas = target.tagName === 'CANVAS' || target.closest('canvas');
-    if (isCanvas) return;
-
     const newX = event.clientX;
     const newY = event.clientY;
 
-    // 🔥 修正状态机：如果有按钮按下，自动进入拖拽状态
-    if (event.buttons > 0 && (this.pressedButtons.has(1) || this.pressedButtons.has(2))) {
-      this.isDragging = true;
-    }
+    // 🔥 修正状态机：计算原始 Delta
+    const dx = newX - this.mousePosition.x;
+    const dy = newY - this.mousePosition.y;
 
-    // 计算 delta（只在拖拽时有效）
-    if (this.isDragging) {
-      this.mouseDelta.x = newX - this.mousePosition.x;
-      this.mouseDelta.y = newY - this.mousePosition.y;
+    // 核心熔断：只有当交互（按下）起始于 Canvas 时，才输出 Delta。
+    // 这彻底杜绝了在 UI 上操作时导致的相机旋转。
+    if (this.interactionOrigin === 'canvas' && this.isDragging) {
+      this.mouseDelta.x = dx;
+      this.mouseDelta.y = dy;
     } else {
       this.mouseDelta.x = 0;
       this.mouseDelta.y = 0;
     }
 
+    // 坐标位置依然全域更新，以支持无缝的放置预览
     this.mousePosition.x = newX;
     this.mousePosition.y = newY;
   };
@@ -361,6 +373,7 @@ export class InputSystem implements System {
 
     // 全局快捷键
     actions.set('FOCUS', { name: 'FOCUS', keys: ['f'] });
+    actions.set('SPACE', { name: 'SPACE', keys: [' ', 'space'] }); // 🔥 防止空格导致页面滚动
     actions.set('ESCAPE', { name: 'ESCAPE', keys: ['escape'] });
 
     return {

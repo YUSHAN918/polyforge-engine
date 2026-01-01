@@ -79,6 +79,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private placementScale: number = 1.0;
   private placementRotationY: number = 0;
   private placementRotationX: boolean = false; // Shift+R 用于翻转
+  private tickCounter: number = 0; // 🔥 Performance Throttle
 
   constructor() {
     console.log('🏗️ [ArchitectureValidationManager] Initializing Shadow Core...');
@@ -1427,114 +1428,105 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       this.entityManager.addComponent(solidId, solidPhysics);
     }
 
+    this.entityManager.addComponent(solidId, solidVisual);
+
+    // 🔥 交互优化：放置后自动选中，方便微调
+    this.selectedEntityId = solidId;
+    console.log(`✅ [Placement] Committed & Selected: ${solidId}`);
+
+    // 退出放置模式，进入编辑模式
     this.handleCancelPlacement();
     this.storageManager.save();
-    console.log(`✅ [Placement] Committed: ${solidId}`);
+  }
+
+  public isPlacing(): boolean {
+    return this.ghostEntityId !== null;
   }
 
   private handlePlacementTick() {
     if (!this.ghostEntityId) return;
 
+    // 🔥 性能优化：降低射线检测频率 (30Hz instead of 60Hz)
+    this.tickCounter++;
+    if (this.tickCounter % 2 !== 0) return;
+
     const ghost = this.entityManager.getEntity(this.ghostEntityId);
     const transform = ghost?.getComponent<TransformComponent>('Transform');
+    const camSys = this.cameraSystem as any;
     if (!transform) return;
 
-    // 获取射线
-    const camSys = this.cameraSystem as any;
-    if (!camSys.getRay) return;
-
-    // TODO: 这里需要从 InputSystem 获取鼠标位置来生成射线
-    // 目前简化处理，让 CameraSystem 内部处理从屏幕中心发射的射线，或者直接获取当前 Pivot
-    const pivot = camSys.getCurrentPivot();
+    // 🔥 交互革命：从 InputSystem 获取鼠标位置，从 CameraSystem 获取动态射线
+    const mouse = this.inputSystem.mousePosition;
+    const ray = this.cameraSystem.getRayFromScreen(mouse.x, mouse.y);
+    if (!ray) return;
 
     // 实时射线检测以调整落位点
-    let hitPos = [...pivot] as [number, number, number];
+    let hitPos = [0, 0, 0] as [number, number, number];
     let hitNormal = [0, 1, 0];
-    let isMeshHit = false;
+    let isHit = false;
 
-    // 模拟射线检测逻辑 (寻找地形或建筑表面)
     if (this.physicsSystem) {
-      // 从相机位置向焦点发射射线，寻找更精确的落脚点
-      const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
-      const dir = [pivot[0] - camPos[0], pivot[1] - camPos[1], pivot[2] - camPos[2]];
-      const length = Math.sqrt(dir[0] ** 2 + dir[1] ** 2 + dir[2] ** 2);
-
-      // 归一化方向
-      const dirNorm = { x: dir[0] / length, y: dir[1] / length, z: dir[2] / length };
-
       const hit = this.physicsSystem.castRay(
-        { x: camPos[0], y: camPos[1], z: camPos[2] },
-        dirNorm,
-        length + 100 // 增加探测距离
-      );
+        { x: ray.origin.x, y: ray.origin.y, z: ray.origin.z },
+        { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z },
+        1000 // 探测半径
+      ) as any;
 
       if (hit.hit) {
         hitPos = [hit.point.x, hit.point.y, hit.point.z];
         hitNormal = hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : [0, 1, 0];
-        isMeshHit = true;
-      } else {
-        // 🔥 射线检测兜底：如果不中，与 Y=0 平面做相交测试
-        // 这样即使指向天空，物体也会落在地平面上滑动，不会消失
-        if (dirNorm.y < -0.01) { // 必须是向下看
-          const t = -camPos[1] / dirNorm.y;
-          if (t > 0) {
-            hitPos = [
-              camPos[0] + dirNorm.x * t,
-              0,
-              camPos[2] + dirNorm.z * t
-            ];
-            hitNormal = [0, 1, 0];
-          }
+        isHit = true;
+      }
+    }
+
+    // 兜底：如果射线没碰到物体，则与 Y=0 平面相交
+    if (!isHit) {
+      if (ray.direction.y < -0.01) {
+        const t = -ray.origin.y / ray.direction.y;
+        if (t > 0) {
+          hitPos = [
+            ray.origin.x + ray.direction.x * t,
+            0,
+            ray.origin.z + ray.direction.z * t
+          ];
+          isHit = true;
         }
       }
     }
 
-    // 更新位置
-    transform.position = hitPos;
+    if (isHit) {
+      transform.position = [...hitPos];
+      transform.scale = [this.placementScale, this.placementScale, this.placementScale];
 
-    // 更新缩放 (实时预览)
-    transform.scale = [this.placementScale, this.placementScale, this.placementScale];
+      // 更新旋转逻辑 (三模态)
+      if (this.placementMode === 'sticker') {
+        const dummy = new THREE.Object3D();
+        dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
+        const targetNormal = new THREE.Vector3(hitNormal[0], hitNormal[1], hitNormal[2]);
+        const lookAtPos = new THREE.Vector3().addVectors(dummy.position, targetNormal);
+        dummy.lookAt(lookAtPos);
+        const q = dummy.quaternion;
+        transform.quaternion = [q.x, q.y, q.z, q.w];
+        transform.rotation = [0, 0, 0];
+      } else if (this.placementMode === 'standee') {
+        const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
+        const angle = Math.atan2(camPos[0] - hitPos[0], camPos[2] - hitPos[2]);
+        transform.quaternion = undefined;
+        transform.rotation = [0, angle * (180 / Math.PI) + this.placementRotationY, 0];
+      } else if (this.placementMode === 'model') {
+        transform.quaternion = undefined;
+        transform.rotation = [this.placementRotationX ? -90 : 0, this.placementRotationY, 0];
+      } else if (this.placementMode === 'billboard') {
+        const dummy = new THREE.Object3D();
+        dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
+        const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
+        dummy.lookAt(camPos[0], camPos[1], camPos[2]);
+        const q = dummy.quaternion;
+        transform.quaternion = [q.x, q.y, q.z, q.w];
+        transform.rotation = [0, 0, 0];
+      }
 
-    // 更新旋转逻辑 (三模态)
-    if (this.placementMode === 'sticker') {
-      // 贴纸：对齐法线
-      // 我们创建一个临时的 Object3D 来计算四元数
-      const dummy = new THREE.Object3D();
-      dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
-
-      // 法线对齐：PlaneGeometry 默认法线是 [0,0,1]
-      // 我们希望法线对齐到 hitNormal
-      const targetNormal = new THREE.Vector3(hitNormal[0], hitNormal[1], hitNormal[2]);
-      const lookAtPos = new THREE.Vector3().addVectors(dummy.position, targetNormal);
-      dummy.lookAt(lookAtPos);
-
-      const q = dummy.quaternion;
-      transform.quaternion = [q.x, q.y, q.z, q.w];
-      transform.rotation = [0, 0, 0]; // 优先使用四元数
-    } else if (this.placementMode === 'standee') {
-      // 立牌：垂直地平线，面向相机
-      const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
-      const angle = Math.atan2(camPos[0] - hitPos[0], camPos[2] - hitPos[2]);
-      transform.quaternion = undefined;
-      // 叠加手动旋转 Y
-      transform.rotation = [0, angle * (180 / Math.PI) + this.placementRotationY, 0];
-    } else if (this.placementMode === 'model') {
-      // 🔥 模型模式：标准放置 + 旋转控制
-      transform.quaternion = undefined;
-      // X轴翻转 + Y轴旋转
-      transform.rotation = [this.placementRotationX ? -90 : 0, this.placementRotationY, 0];
-
-      // 如果需要对齐法线，可以进一步组合 Quaternion，但通常放置模型希望垂直向上
-    } else if (this.placementMode === 'billboard') {
-      // 预览：全向面向相机 (包括俯仰)
-      const dummy = new THREE.Object3D();
-      dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
-      const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
-      dummy.lookAt(camPos[0], camPos[1], camPos[2]);
-
-      const q = dummy.quaternion;
-      transform.quaternion = [q.x, q.y, q.z, q.w];
-      transform.rotation = [0, 0, 0];
+      transform.markLocalDirty();
     }
   }
 
@@ -1568,6 +1560,65 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   public getSelectedEntityId(): string | null {
     return this.selectedEntityId;
+  }
+
+  // 🔥 交互革新：统一入口处理点击与交互
+  public handleInteraction(type: 'click' | 'rightClick', data: { x: number, y: number }) {
+    if (this.currentContext !== ValidationContext.CREATION) return;
+
+    // 1. 放置模式逻辑 (High Priority)
+    if (this.ghostEntityId) {
+      if (type === 'click') {
+        this.handleCommitPlacement(); // 左键放置
+      } else if (type === 'rightClick') {
+        this.handleCancelPlacement(); // 右键取消
+      }
+      return;
+    }
+
+    // 2. 选择模式逻辑 (Selection)
+    if (type === 'click') {
+      this.performSelectionRaycast(data.x, data.y);
+    }
+  }
+
+  private performSelectionRaycast(screenX: number, screenY: number) {
+    if (!this.physicsSystem) return;
+
+    const ray = this.cameraSystem.getRayFromScreen(screenX, screenY);
+    if (!ray) return;
+
+    const hit = this.physicsSystem.castRay(
+      { x: ray.origin.x, y: ray.origin.y, z: ray.origin.z },
+      { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z },
+      1000
+    ) as any; // 🔥 使用 any 暂时绕过 IDE 的跨文件类型扫描延迟
+
+    if (hit.hit && hit.entityId) {
+      // 排除地形的选中
+      if (hit.entityId === this.terrainEntity?.id) {
+        this.selectedEntityId = null;
+      } else {
+        this.selectedEntityId = hit.entityId;
+        console.log(`🎯 [Selection] Picked entity: ${hit.entityId}`);
+      }
+    } else {
+      this.selectedEntityId = null;
+    }
+  }
+
+  public handleDeleteSelectedEntity() {
+    if (!this.selectedEntityId) return;
+
+    // 禁止删除核心实体
+    if (this.selectedEntityId === this.terrainEntity?.id || this.selectedEntityId === this.cameraEntity?.id) {
+      return;
+    }
+
+    console.log(`🗑️ [Manager] Deleting entity: ${this.selectedEntityId}`);
+    this.entityManager.destroyEntity(this.selectedEntityId);
+    this.selectedEntityId = null;
+    this.storageManager.save();
   }
 
   /**

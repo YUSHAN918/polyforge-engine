@@ -36,6 +36,7 @@ export class PhysicsSystem implements System {
   private entityManager: any | null = null;
   private bodyMap: Map<string, RigidBody> = new Map();  // entityId -> RigidBody
   private colliderMap: Map<string, Collider> = new Map(); // entityId -> Collider
+  private colliderToEntity: Map<number, string> = new Map(); // 🔥 新增：反向映射 Collider Handle -> Entity ID
   private initialized = false;
   private gravity: [number, number, number] = [0, -9.81, 0];  // 默认重力
   private clock: any | null = null;
@@ -132,6 +133,7 @@ export class PhysicsSystem implements System {
 
     if (collider) {
       this.world.removeCollider(collider, false);
+      this.colliderToEntity.delete(collider.handle); // 🔥 删除句柄映射，防止泄露或冲突
       this.colliderMap.delete(entity.id);
     }
   }
@@ -191,6 +193,7 @@ export class PhysicsSystem implements System {
     this.bodyMap.set(entity.id, rigidBody);
     if (collider) {
       this.colliderMap.set(entity.id, collider);
+      this.colliderToEntity.set(collider.handle, entity.id); // 🔥 记录句柄映射 (用于射线拣选)
     }
 
     // 保存 Rapier 句柄到组件
@@ -213,6 +216,14 @@ export class PhysicsSystem implements System {
     // Initialize with a default to satisfy TypeScript strict assignment checks
     let colliderDesc: ColliderDesc = this.RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
     const { shape, size, offset } = physics.collider;
+
+    // 记录句柄映射 (用于射线拣选)
+    const registerCollider = (collider: Collider) => {
+      if (entity) {
+        this.colliderToEntity.set(collider.handle, entity.id);
+      }
+      return collider;
+    };
 
     // 根据形状创建碰撞体描述
     switch (shape) {
@@ -516,6 +527,7 @@ export class PhysicsSystem implements System {
     }
     this.bodyMap.clear();
     this.colliderMap.clear();
+    this.colliderToEntity.clear(); // 🔥 同时也清理映射
     this.initialized = false;
   }
 
@@ -573,7 +585,13 @@ export class PhysicsSystem implements System {
     direction: { x: number; y: number; z: number },
     maxToi: number = 100,
     excludeBodyHandle?: number
-  ): { hit: boolean; toi: number; point: { x: number; y: number; z: number }; normal?: { x: number; y: number; z: number } } {
+  ): {
+    hit: boolean;
+    toi: number;
+    point: { x: number; y: number; z: number };
+    normal?: { x: number; y: number; z: number };
+    entityId?: string; // 🔥 新增：命中的实体 ID
+  } {
     if (!this.world || !this.RAPIER) {
       return { hit: false, toi: 0, point: { x: 0, y: 0, z: 0 } };
     }
@@ -670,11 +688,15 @@ export class PhysicsSystem implements System {
 
       // Safe property access
       const timeOfImpact = (hit as any).toi ?? (hit as any).timeOfImpact;
+      const collider = (hit as any).collider;
+      const entityId = collider ? this.colliderToEntity.get(collider.handle) : undefined;
+
       return {
         hit: true,
         toi: timeOfImpact,
         point: ray.pointAt(timeOfImpact),
-        normal: (hit as any).normal // Extract normal if available
+        normal: (hit as any).normal, // Extract normal if available
+        entityId: entityId // 🔥 返回探测到的实体 ID
       };
     }
 

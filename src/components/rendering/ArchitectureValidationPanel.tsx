@@ -309,36 +309,39 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     return () => eventBus.off('gameplay:flight_mode:reset', handleFlightReset);
   }, []);
 
-  // 🎹 Dedicated Keyboard Shortcuts for Placement
+  // 🎹 交互输入核心 (Refactored Interaction Core)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleMouseDown = (e: MouseEvent) => {
       if (!manager) return;
 
-      // 🛡️ 隔离：仅在 CREATION 模式下激活编辑快捷键
-      if (currentContext !== ValidationContext.CREATION) return;
+      // 1. 过滤 UI 点击 (防止点击按钮时误触发场景操作)
+      // 如果点击目标是按钮、输入框或具有 'data-ui-ignore' 属性的元素，则忽略
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('input') || target.closest('.no-click-through')) return;
 
-      const isPlacing = manager.getPlacementState().isPlacing;
-      if (!isPlacing) return;
-
-      switch (e.key) {
-        case 'Tab':
-          e.preventDefault();
-          dispatch(EngineCommandType.TOGGLE_PLACEMENT_MODE);
-          break;
-        case 'Escape':
-          e.preventDefault();
-          dispatch(EngineCommandType.CANCEL_PLACEMENT);
-          break;
-        case 'Enter':
-          e.preventDefault();
-          dispatch(EngineCommandType.COMMIT_PLACEMENT);
-          setNotification({ message: '资产已固化至场景', type: 'success' });
-          break;
+      // 2. 转发给管理器
+      if (e.button === 0) { // Left Click
+        manager.handleInteraction('click', { x: e.clientX, y: e.clientY });
+      } else if (e.button === 2) { // Right Click
+        manager.handleInteraction('rightClick', { x: e.clientX, y: e.clientY });
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // 禁用右键菜单 (Context Menu) 以允许右键取消
+    const handleContextMenu = (e: MouseEvent) => {
+      // 仅在创造模式或放置状态下禁用右键菜单
+      if (currentContext === ValidationContext.CREATION) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, [manager, currentContext]);
 
   // FPS Loop
@@ -1448,66 +1451,18 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         )
       }
 
-      {/* 🚀 Placement Commander Overlay */}
+      {/* 🚀 New Minimalist Placement HUD */}
       {
         placementState.isPlacing && (
-          <div className="absolute right-[400px] top-6 w-64 bg-gray-950/90 border border-cyan-500/30 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.2)] p-4 backdrop-blur-xl animate-slideRight z-40">
-
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-cyan-400 font-black uppercase tracking-[0.2em]">放置模式 (PLACEMENT)</span>
-                <span className="text-white font-bold truncate text-xs">{placementState.assetName}</span>
-              </div>
-              <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-                <i className="fas fa-ghost text-cyan-400 animate-pulse"></i>
-              </div>
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-gray-950/80 backdrop-blur-md px-6 py-3 rounded-full border border-cyan-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-top-4 z-50 pointer-events-none">
+            <div className="flex items-center gap-2">
+              <i className="fas fa-cube text-cyan-400 animate-pulse"></i>
+              <span className="text-white font-bold text-xs">{placementState.assetName}</span>
             </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-900/50 rounded-xl p-3 border border-gray-800">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[9px] text-gray-500 uppercase font-bold">投影模式 (Mode)</span>
-                  <span className="text-[9px] bg-cyan-600 text-white px-1.5 py-0.5 rounded font-mono uppercase tracking-tighter">
-                    {placementState.mode === 'model' ? '实体(Model)' : placementState.mode === 'sticker' ? '贴花(Sticker)' : '立牌(Card)'}
-                  </span>
-                </div>
-                <p className="text-[8px] text-gray-400 leading-relaxed italic opacity-60">
-                  {placementState.mode === 'model' ? '物体将吸附于地形或实体表面。' :
-                    placementState.mode === 'sticker' ? '将图片平铺投射于表面。' :
-                      placementState.mode === 'standee' ? '建立垂直于地面的2D立牌。' :
-                        '始终面向相机视角。'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <span className="w-8 h-4 bg-gray-800 rounded flex items-center justify-center text-[7px] font-bold">TAB</span>
-                    <span className="text-[8px] uppercase">切换模式</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <span className="w-8 h-4 bg-gray-800 rounded flex items-center justify-center text-[7px] font-bold">ESC</span>
-                    <span className="text-[8px] uppercase">取消</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <span className="w-8 h-4 bg-gray-800 rounded flex items-center justify-center text-[7px] font-bold">R</span>
-                    <span className="text-[8px] uppercase">旋转</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <span className="w-8 h-4 bg-gray-800 rounded flex items-center justify-center text-[7px] font-bold">[ ]</span>
-                    <span className="text-[8px] uppercase">缩放</span>
-                  </div>
-                </div>
-                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl flex items-center justify-center group hover:bg-cyan-500/20 transition-all cursor-pointer" onClick={() => dispatch(EngineCommandType.COMMIT_PLACEMENT)}>
-                  <span className="text-[10px] text-cyan-400 font-black uppercase tracking-widest">放置</span>
-                  <i className="fas fa-chevron-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                </div>
-              </div>
-            </div>
-
-            {/* Decorative scanline */}
-            <div className="absolute inset-0 pointer-events-none rounded-2xl overflow-hidden">
-              <div className="absolute inset-0 bg-scanlines opacity-[0.03]"></div>
+            <div className="h-4 w-px bg-gray-700"></div>
+            <div className="flex gap-4 text-[10px] text-gray-300 font-mono uppercase">
+              <span className="flex items-center gap-1"><span className="text-cyan-400 font-bold">[左键]</span> 放置</span>
+              <span className="flex items-center gap-1"><span className="text-red-400 font-bold">[右键]</span> 取消</span>
             </div>
           </div>
         )
@@ -1565,6 +1520,19 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 );
               })()}
               <div className="h-px bg-gray-800 my-2"></div>
+
+              <button
+                onClick={() => {
+                  if (confirm('确定要从世界中移除此实体吗？')) {
+                    manager.handleDeleteSelectedEntity();
+                    setSelectedEntity(null);
+                  }
+                }}
+                className="w-full py-2 bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-500 rounded text-[10px] font-bold uppercase transition-all mb-2"
+              >
+                <i className="fas fa-trash-alt mr-2"></i> 物理移除 (Delete Entity)
+              </button>
+
               <div className="text-[8px] text-gray-400 leading-relaxed italic opacity-60">
                 "引擎审计通过。资产已就绪，可进行高保真部署。"
               </div>

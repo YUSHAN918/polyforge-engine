@@ -196,6 +196,8 @@ export class CameraSystem implements System {
 
       // 1. Handle Strategy Input (Camera Control)
       if (this.inputSystem) {
+        // 🚀 制作人反馈：放置期间锁死会导致无法重构构图
+        // 我们暂时移除全量锁死，改为由 InputSystem 的 interactionOrigin 自然隔离
         strategy.handleInput(camera, this.inputSystem, deltaTime);
       }
 
@@ -265,6 +267,31 @@ export class CameraSystem implements System {
    */
   public getCurrentPivot(): [number, number, number] {
     return [...this.currentState.pivot];
+  }
+
+  /**
+   * 🎯 核心投影：将屏幕坐标转换为 3D 射线 (NDC 适配)
+   */
+  public getRayFromScreen(clientX: number, clientY: number): { origin: THREE.Vector3, direction: THREE.Vector3 } | null {
+    if (!this.r3fCamera) return null;
+
+    // 1. 获取 Canvas 几何信息 (用于 NDC 转换)
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+
+    // 2. 转换为标准化设备坐标 (NDC: -1 to +1)
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+    // 3. 反向投影生成射线
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(x, y), this.r3fCamera);
+
+    return {
+      origin: raycaster.ray.origin.clone(),
+      direction: raycaster.ray.direction.clone()
+    };
   }
 
   // 注入依赖
