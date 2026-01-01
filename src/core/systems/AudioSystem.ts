@@ -61,6 +61,9 @@ export class AudioSystem implements System {
   // 主音量
   private masterVolume = 1.0;
 
+  // 全局播放倍速 (用于律动控制)
+  private globalPlaybackRate = 1.0;
+
   // 相机实体（用于 AudioListener 同步）
   private cameraEntity?: Entity;
 
@@ -103,6 +106,14 @@ export class AudioSystem implements System {
     }
 
     this.isUnlocked = true;
+  }
+
+  /**
+   * 设置全局播放倍速
+   */
+  public setPlaybackRate(rate: number): void {
+    this.globalPlaybackRate = rate;
+    console.log(`🎵 Global playback rate set to: ${rate}x`);
   }
 
   /**
@@ -266,12 +277,10 @@ export class AudioSystem implements System {
       nodeEntry.gainNode.gain.value = audio.volume;
     }
 
-    // 更新 playbackRate（pitch * timeScale）
-    if (nodeEntry.sourceNode && audio.affectedByTimeScale && this.clock) {
-      const timeScale = this.clock.getTimeScale();
-      nodeEntry.sourceNode.playbackRate.value = audio.pitch * timeScale;
-    } else if (nodeEntry.sourceNode) {
-      nodeEntry.sourceNode.playbackRate.value = audio.pitch;
+    // 更新 playbackRate（pitch * timeScale * globalPlaybackRate）
+    if (nodeEntry.sourceNode) {
+      const timeScale = (audio.affectedByTimeScale && this.clock) ? this.clock.getTimeScale() : 1.0;
+      nodeEntry.sourceNode.playbackRate.value = audio.pitch * timeScale * this.globalPlaybackRate;
     }
 
     // 更新空间音频
@@ -369,13 +378,9 @@ export class AudioSystem implements System {
     lastNode.connect(gainNode);
     gainNode.connect(this.masterGainNode);
 
-    // 设置 playbackRate（pitch * timeScale）
-    if (audio.affectedByTimeScale && this.clock) {
-      const timeScale = this.clock.getTimeScale();
-      sourceNode.playbackRate.value = audio.pitch * timeScale;
-    } else {
-      sourceNode.playbackRate.value = audio.pitch;
-    }
+    // 设置 playbackRate（pitch * timeScale * globalPlaybackRate）
+    const timeScale = (audio.affectedByTimeScale && this.clock) ? this.clock.getTimeScale() : 1.0;
+    sourceNode.playbackRate.value = audio.pitch * timeScale * this.globalPlaybackRate;
 
     // 播放
     sourceNode.start(0);

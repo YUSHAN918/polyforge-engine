@@ -85,7 +85,7 @@ export { commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, show
 export { inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory } from './inputDemo';
 export { physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus } from './physicsDemo';
 export { cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus } from './cameraDemo';
-export { audioDemo } from './demos/audioDemo';
+// export { audioDemo } from './demos/audioDemo';
 export { worldStateDemo } from './demos/worldStateDemo';
 export { renderDemo } from './demos/renderDemo';
 export { terrainDemo } from './demos/terrainDemo';
@@ -100,7 +100,7 @@ export { HDRImporter } from './assets/HDRImporter';
 export { FileSystemService } from './assets/FileSystemService';
 export { AssetType } from './assets/types';
 export type { AssetMetadata, AssetData, AssetFilter, ImportOptions, ModelMetadata, AudioMetadata, HDRMetadata, ScannedFile, ImportProgress, ProgressCallback } from './assets/types';
-export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo, hdrUploadDemo, assetBrowserDemo } from './assetDemo';
+// export { assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioUploadDemo, hdrUploadDemo, assetBrowserDemo } from './assetDemo';
 
 export { TerrainComponent } from './components/TerrainComponent';
 export type { TerrainConfig } from './components/TerrainComponent';

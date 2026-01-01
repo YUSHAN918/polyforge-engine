@@ -6,6 +6,7 @@
  * UI 只能通过 dispatch(command) 与此管理器交互。
  */
 
+import * as THREE from 'three';
 import { EntityManager } from './EntityManager';
 import { SystemManager } from './SystemManager';
 import { WorldStateManager, WorldState } from './WorldStateManager';
@@ -69,6 +70,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private lastSaveTime: number = 0;
   private currentContext: ValidationContext = ValidationContext.CREATION;
   private isDisposed: boolean = false;
+  private selectedEntityId: string | null = null;
+
+  // 放置系统状态 (Placement State)
+  private ghostEntityId: string | null = null;
+  private placementMode: 'standee' | 'sticker' | 'billboard' | 'model' = 'model';
+  private currentPlacementAsset: { id: string, name: string, type: 'model' | 'image' } | null = null;
+  private placementScale: number = 1.0;
+  private placementRotationY: number = 0;
+  private placementRotationX: boolean = false; // Shift+R 用于翻转
 
   constructor() {
     console.log('🏗️ [ArchitectureValidationManager] Initializing Shadow Core...');
@@ -121,7 +131,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // 6. Async Polish
     this.physicsSystem.initialize().then(() => console.log('⚡ Physics Warmup Complete'));
-    this.assetRegistry.initialize().then(() => console.log('📦 Assets Initialized'));
+    this.assetRegistry.initialize().then(async () => {
+      console.log('📦 Assets Initialized');
+      // 🚨 如果注册表为空，自动播种默认资产 (Seeding)
+      // 防止用户看到空荡荡的面板感到困惑
+      if (this.assetRegistry.getCacheStats().size === 0) {
+        console.log('🌱 Seeding default assets...');
+        await this.seedDefaultAssets();
+      }
+    });
 
     // 7. Auto Recovery
     this.tryRestoreOrInit();
@@ -323,6 +341,69 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.IMPORT_BUNDLE:
         await this.importBundle(command.file);
         break;
+
+      // --- Placement System ---
+      case EngineCommandType.ENTER_PLACEMENT_MODE:
+        await this.handleEnterPlacementMode(command.assetId, command.assetName);
+        break;
+      case EngineCommandType.ENTER_IMAGE_PLACEMENT_MODE:
+        await this.handleEnterImagePlacementMode(command.assetId, command.assetName);
+        break;
+      case EngineCommandType.TOGGLE_PLACEMENT_MODE:
+        this.handleTogglePlacementMode();
+        break;
+      case EngineCommandType.CANCEL_PLACEMENT:
+        this.handleCancelPlacement();
+        break;
+      case EngineCommandType.COMMIT_PLACEMENT:
+        this.handleCommitPlacement();
+        break;
+
+      case EngineCommandType.DELETE_ENTITY: // 🔥 新增删除指令
+        // 使用 this.ghostEntityId 判断是否正在放置中
+        const isPlacing = !!this.ghostEntityId;
+        if (this.selectedEntityId && !isPlacing) {
+          this.entityManager.destroyEntity(this.selectedEntityId);
+          this.selectedEntityId = null;
+          console.log('🗑️ [Manager] Selected entity deleted.');
+        }
+        break;
+
+      // 放置微调指令 (由 UI 快捷键触发)
+      case EngineCommandType.ROTATE_PLACEMENT:
+        // TypeScript Now Knows 'command' is RotatePlacementPayload
+        if (command.axis === 'x') this.placementRotationX = !this.placementRotationX;
+        else this.placementRotationY = (this.placementRotationY + 90) % 360;
+        break;
+
+      case EngineCommandType.SCALE_PLACEMENT:
+        // TypeScript Now Knows 'command' is ScalePlacementPayload
+        const delta = command.delta || 0;
+        this.placementScale = Math.max(0.1, Math.min(100, this.placementScale + delta));
+        break;
+
+      // --- Audio ---
+      case EngineCommandType.SET_PLAYBACK_RATE:
+        this.audioSystem.setPlaybackRate(command.rate);
+        break;
+
+      // --- Selection & Context (Isolation) ---
+      case EngineCommandType.SET_CONTEXT:
+        this.currentContext = (command as any).context === 'CREATION' ? ValidationContext.CREATION : ValidationContext.EXPERIENCE;
+        console.log(`📡 [Manager] Context switched to: ${this.currentContext}`);
+        if (this.currentContext === ValidationContext.EXPERIENCE) {
+          this.handleCancelPlacement(); // 切换到体验模式时强制取消放置
+        }
+        break;
+
+      case EngineCommandType.SELECT_ENTITY:
+        this.selectedEntityId = (command as any).entityId;
+        console.log(`📡 [Manager] Entity selected: ${this.selectedEntityId}`);
+        break;
+
+      case EngineCommandType.APPLY_ASSET_TO_SELECTION:
+        this.handleApplyAssetToSelection((command as any).assetId, (command as any).assetType);
+        break;
     }
   }
 
@@ -422,8 +503,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     return this.vegetationSystem;
   }
 
-  public getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
-    return this.physicsSystem.getDebugBuffers();
+  public getPlacementState() {
+    return {
+      isPlacing: !!this.ghostEntityId,
+      mode: this.placementMode,
+      assetName: this.currentPlacementAsset?.name || null
+    };
   }
 
   /**
@@ -1091,7 +1176,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   public update(): void {
     if (this.isDisposed) return;
-    this.systemManager.updateManual(1 / 60); // 🔥 Fixed: usage of updateManual as per Stability Strike
+    this.systemManager.updateManual(1 / 60);
+
+    // 🚀 [Placement System] 实时射线检测与幽灵同步 (仅在 CREATION 模式激活)
+    if (this.currentContext === ValidationContext.CREATION) {
+      this.handlePlacementTick();
+    }
 
     // 🔥 Anti-Drift: Reset input deltas at the end of frame processing
     if (this.inputSystem) {
@@ -1181,6 +1271,361 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
         console.log('🔄 [Manager] Camera re-aligned and tracking re-linked.');
       }
+    }
+  }
+
+  // ===================================================================================
+  // 🎮 Placement System Implementations
+  // ===================================================================================
+
+  private async handleEnterPlacementMode(assetId: string, assetName: string) {
+    this.handleCancelPlacement(); // 清理旧的放置状态
+
+    const id = `Ghost_${assetName}_${Date.now()}`;
+    const entity = this.entityManager.createEntity(`Ghost: ${assetName}`, id);
+    entity.persistent = false;
+
+    // 1. Transform
+    const transform = new TransformComponent();
+    this.entityManager.addComponent(id, transform);
+
+    // 2. Visual (Ghost Style)
+    const visual = new VisualComponent();
+    visual.geometry = { type: 'custom', assetId: assetId };
+    visual.material = {
+      type: 'physical',
+      color: '#00ffff', // 轨道青
+      opacity: 0.5,
+      transparent: true,
+      metalness: 0.2,
+      roughness: 0.2
+    };
+    visual.emissive = { color: '#00ffff', intensity: 1.0 };
+    visual.postProcessing = { bloom: true, outline: true };
+    this.entityManager.addComponent(id, visual);
+
+    this.ghostEntityId = id;
+    this.placementMode = 'model';
+    this.currentPlacementAsset = { id: assetId, name: assetName, type: 'model' };
+
+    // 🔥 初始化变换状态
+    this.placementScale = 1.0; // TODO: 这里可以在 AssetRegistry 中读取模型原始尺寸来做归一化
+    this.placementRotationY = 0;
+    this.placementRotationX = false;
+
+    console.log(`📡 [Placement] Entered Ghost Mode for model: ${assetName}`);
+  }
+
+  private async handleEnterImagePlacementMode(assetId: string, assetName: string) {
+    this.handleCancelPlacement();
+
+    const id = `Ghost_Image_${assetName}_${Date.now()}`;
+    const entity = this.entityManager.createEntity(`Ghost Image: ${assetName}`, id);
+    entity.persistent = false;
+
+    const transform = new TransformComponent();
+    this.entityManager.addComponent(id, transform);
+
+    const visual = new VisualComponent();
+    // 默认生成一个 1:1 的面片
+    visual.geometry = { type: 'plane', parameters: { width: 4, height: 4 } };
+    visual.material = {
+      type: 'standard',
+      color: '#ffffff',
+      textureAssetId: assetId,
+      opacity: 0.7,
+      transparent: true
+    };
+    visual.emissive = { color: '#ffffff', intensity: 0.5 };
+    visual.postProcessing = { bloom: true, outline: true };
+    this.entityManager.addComponent(id, visual);
+
+    this.ghostEntityId = id;
+    this.placementMode = 'sticker'; // 图片默认进入贴纸模式 (贴地)
+    this.currentPlacementAsset = { id: assetId, name: assetName, type: 'image' };
+
+    // 🔥 初始化变换状态
+    this.placementScale = 1.0;
+    this.placementRotationY = 0;
+    this.placementRotationX = false;
+
+    console.log(`📡 [Placement] Entered Ghost Mode for image: ${assetName}`);
+  }
+
+  private handleTogglePlacementMode() {
+    if (!this.ghostEntityId || !this.currentPlacementAsset) return;
+
+    if (this.currentPlacementAsset.type === 'image') {
+      const modes: Array<'sticker' | 'standee' | 'billboard'> = ['sticker', 'standee', 'billboard'];
+      const currentIndex = modes.indexOf(this.placementMode as any);
+      this.placementMode = modes[(currentIndex + 1) % modes.length];
+
+      // 更新 Visual 组件以适应新模式
+      const visual = this.entityManager.getEntity(this.ghostEntityId)?.getComponent<VisualComponent>('Visual');
+      if (visual) {
+        if (this.placementMode === 'standee') {
+          visual.offset = [0, 2, 0]; // 立牌中心抬高
+        } else {
+          visual.offset = [0, 0, 0];
+        }
+      }
+
+      console.log(`🔄 [Placement] Image mode toggled to: ${this.placementMode}`);
+    }
+  }
+
+  private handleCancelPlacement() {
+    if (this.ghostEntityId) {
+      this.entityManager.destroyEntity(this.ghostEntityId);
+      this.ghostEntityId = null;
+    }
+    this.currentPlacementAsset = null;
+  }
+
+  private handleCommitPlacement() {
+    if (!this.ghostEntityId || !this.currentPlacementAsset) return;
+
+    const ghost = this.entityManager.getEntity(this.ghostEntityId);
+    if (!ghost) return;
+
+    const transform = ghost.getComponent<TransformComponent>('Transform');
+    const visual = ghost.getComponent<VisualComponent>('Visual');
+    if (!transform || !visual) return;
+
+    // 固化实体
+    const solidId = `${this.currentPlacementAsset.name}_${Date.now()}`;
+    const solidEntity = this.entityManager.createEntity(this.currentPlacementAsset.name, solidId);
+    solidEntity.persistent = true;
+
+    // 复制变换
+    const solidTransform = new TransformComponent();
+    solidTransform.position = [...transform.position];
+    solidTransform.rotation = [...transform.rotation];
+    solidTransform.scale = [this.placementScale, this.placementScale, this.placementScale]; // 🔥 应用最终缩放
+    if (transform.quaternion) solidTransform.quaternion = [...transform.quaternion];
+    this.entityManager.addComponent(solidId, solidTransform);
+
+    // 复制视觉并去除幽灵效果
+    const solidVisual = new VisualComponent();
+    solidVisual.geometry = { ...visual.geometry };
+    solidVisual.material = {
+      ...visual.material,
+      opacity: 1.0,
+      transparent: visual.material.transparent || false, // 保留图片透明度
+      color: this.currentPlacementAsset.type === 'model' ? '#ffffff' : visual.material.color
+    };
+    solidVisual.emissive = { color: '#000000', intensity: 0 };
+    solidVisual.postProcessing = { bloom: false, outline: false };
+    solidVisual.offset = visual.offset ? [...visual.offset] : [0, 0, 0];
+    this.entityManager.addComponent(solidId, solidVisual);
+
+    // 如果是模型，且非贴纸，可能需要物理碰撞
+    if (this.currentPlacementAsset.type === 'model') {
+      const solidPhysics = new PhysicsComponent('static');
+      // 默认给个包围盒碰撞，未来可以基于模型数据生成更精准的
+      solidPhysics.setCollider('box', [1, 1, 1], [0, 0, 0]);
+      this.entityManager.addComponent(solidId, solidPhysics);
+    }
+
+    this.handleCancelPlacement();
+    this.storageManager.save();
+    console.log(`✅ [Placement] Committed: ${solidId}`);
+  }
+
+  private handlePlacementTick() {
+    if (!this.ghostEntityId) return;
+
+    const ghost = this.entityManager.getEntity(this.ghostEntityId);
+    const transform = ghost?.getComponent<TransformComponent>('Transform');
+    if (!transform) return;
+
+    // 获取射线
+    const camSys = this.cameraSystem as any;
+    if (!camSys.getRay) return;
+
+    // TODO: 这里需要从 InputSystem 获取鼠标位置来生成射线
+    // 目前简化处理，让 CameraSystem 内部处理从屏幕中心发射的射线，或者直接获取当前 Pivot
+    const pivot = camSys.getCurrentPivot();
+
+    // 实时射线检测以调整落位点
+    let hitPos = [...pivot] as [number, number, number];
+    let hitNormal = [0, 1, 0];
+    let isMeshHit = false;
+
+    // 模拟射线检测逻辑 (寻找地形或建筑表面)
+    if (this.physicsSystem) {
+      // 从相机位置向焦点发射射线，寻找更精确的落脚点
+      const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
+      const dir = [pivot[0] - camPos[0], pivot[1] - camPos[1], pivot[2] - camPos[2]];
+      const length = Math.sqrt(dir[0] ** 2 + dir[1] ** 2 + dir[2] ** 2);
+
+      // 归一化方向
+      const dirNorm = { x: dir[0] / length, y: dir[1] / length, z: dir[2] / length };
+
+      const hit = this.physicsSystem.castRay(
+        { x: camPos[0], y: camPos[1], z: camPos[2] },
+        dirNorm,
+        length + 100 // 增加探测距离
+      );
+
+      if (hit.hit) {
+        hitPos = [hit.point.x, hit.point.y, hit.point.z];
+        hitNormal = hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : [0, 1, 0];
+        isMeshHit = true;
+      } else {
+        // 🔥 射线检测兜底：如果不中，与 Y=0 平面做相交测试
+        // 这样即使指向天空，物体也会落在地平面上滑动，不会消失
+        if (dirNorm.y < -0.01) { // 必须是向下看
+          const t = -camPos[1] / dirNorm.y;
+          if (t > 0) {
+            hitPos = [
+              camPos[0] + dirNorm.x * t,
+              0,
+              camPos[2] + dirNorm.z * t
+            ];
+            hitNormal = [0, 1, 0];
+          }
+        }
+      }
+    }
+
+    // 更新位置
+    transform.position = hitPos;
+
+    // 更新缩放 (实时预览)
+    transform.scale = [this.placementScale, this.placementScale, this.placementScale];
+
+    // 更新旋转逻辑 (三模态)
+    if (this.placementMode === 'sticker') {
+      // 贴纸：对齐法线
+      // 我们创建一个临时的 Object3D 来计算四元数
+      const dummy = new THREE.Object3D();
+      dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
+
+      // 法线对齐：PlaneGeometry 默认法线是 [0,0,1]
+      // 我们希望法线对齐到 hitNormal
+      const targetNormal = new THREE.Vector3(hitNormal[0], hitNormal[1], hitNormal[2]);
+      const lookAtPos = new THREE.Vector3().addVectors(dummy.position, targetNormal);
+      dummy.lookAt(lookAtPos);
+
+      const q = dummy.quaternion;
+      transform.quaternion = [q.x, q.y, q.z, q.w];
+      transform.rotation = [0, 0, 0]; // 优先使用四元数
+    } else if (this.placementMode === 'standee') {
+      // 立牌：垂直地平线，面向相机
+      const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
+      const angle = Math.atan2(camPos[0] - hitPos[0], camPos[2] - hitPos[2]);
+      transform.quaternion = undefined;
+      // 叠加手动旋转 Y
+      transform.rotation = [0, angle * (180 / Math.PI) + this.placementRotationY, 0];
+    } else if (this.placementMode === 'model') {
+      // 🔥 模型模式：标准放置 + 旋转控制
+      transform.quaternion = undefined;
+      // X轴翻转 + Y轴旋转
+      transform.rotation = [this.placementRotationX ? -90 : 0, this.placementRotationY, 0];
+
+      // 如果需要对齐法线，可以进一步组合 Quaternion，但通常放置模型希望垂直向上
+    } else if (this.placementMode === 'billboard') {
+      // 预览：全向面向相机 (包括俯仰)
+      const dummy = new THREE.Object3D();
+      dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
+      const camPos = camSys.getCurrentPosition ? camSys.getCurrentPosition() : [0, 50, 50];
+      dummy.lookAt(camPos[0], camPos[1], camPos[2]);
+
+      const q = dummy.quaternion;
+      transform.quaternion = [q.x, q.y, q.z, q.w];
+      transform.rotation = [0, 0, 0];
+    }
+  }
+
+  public getPhysicsDebugBuffers(): { vertices: Float32Array; colors: Float32Array } | null {
+    if (!this.physicsSystem) return null;
+    return this.physicsSystem.getDebugBuffers();
+  }
+
+  // --- Utility Handlers ---
+
+  private handleApplyAssetToSelection(assetId: string, assetType: 'model' | 'image') {
+    if (!this.selectedEntityId) return;
+    const entity = this.entityManager.getEntity(this.selectedEntityId);
+    if (!entity) return;
+
+    const visual = entity.getComponent<VisualComponent>('Visual');
+    if (!visual) return;
+
+    if (assetType === 'model') {
+      visual.geometry = { type: 'model', assetId };
+    } else {
+      // 图片作为贴图应用
+      if (!visual.material) visual.material = { type: 'standard', color: '#ffffff' };
+      visual.material.textureAssetId = assetId;
+      visual.material.transparent = true;
+    }
+
+    console.log(`🎨 [Manager] Applied ${assetType} (${assetId}) to entity: ${this.selectedEntityId}`);
+    this.storageManager.save();
+  }
+
+  public getSelectedEntityId(): string | null {
+    return this.selectedEntityId;
+  }
+
+  /**
+   * 🚨 紧急播种：当资产库为空时，注入默认基础资产
+   */
+  private async seedDefaultAssets(): Promise<void> {
+    try {
+      // 1. 生成渐变贴图 (Gradient Texture)
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const grd = ctx.createLinearGradient(0, 0, 512, 512);
+        grd.addColorStop(0, '#0f172a');
+        grd.addColorStop(1, '#0891b2');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('PolyForge', 256, 256);
+
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            await this.assetRegistry.registerAsset({
+              name: 'Default HoloTexture',
+              type: 'texture' as any,
+              category: 'textures',
+              tags: ['system', 'default', 'holo'],
+              size: blob.size
+            }, blob);
+          }
+        }, 'image/png');
+      }
+
+      // 2. 生成沉默音频 (Silent Audio)
+      const wavHeader = new Uint8Array([
+        0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45,
+        0x66, 0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+        0x44, 0xac, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x02, 0x00, 0x10, 0x00,
+        0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00
+      ]);
+      const audioBlob = new Blob([wavHeader], { type: 'audio/wav' });
+      await this.assetRegistry.registerAsset({
+        name: 'System Silence',
+        type: 'audio' as any,
+        category: 'audio',
+        tags: ['system', 'default'],
+        size: audioBlob.size
+      }, audioBlob);
+
+      // 3. 标记完成
+      console.log('🌱 [Seeding] Default assets injected.');
+
+    } catch (e) {
+      console.warn('🌱 [Seeding] Failed to seed default assets:', e);
     }
   }
 }

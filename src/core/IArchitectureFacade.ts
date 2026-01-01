@@ -29,6 +29,12 @@ export interface ValidationStats {
     physicsBodies: number;
 }
 
+export interface PlacementState {
+    isPlacing: boolean;
+    mode: 'sticker' | 'standee' | 'billboard' | 'model';
+    assetName: string | null;
+}
+
 export interface IArchitectureFacade {
     /**
      * 启动/初始化
@@ -74,7 +80,17 @@ export interface IArchitectureFacade {
     getStorageManager(): ArchitectureStorageManager;
 
     /**
-   * 销毁/清理
+     * 获取当前放置系统状态
+     */
+    getPlacementState(): PlacementState;
+
+    /**
+     * 获取当前选中的实体 ID
+     */
+    getSelectedEntityId(): string | null;
+
+    /**
+     * 销毁/清理
    */
     dispose(): void;
 

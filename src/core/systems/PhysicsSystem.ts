@@ -573,7 +573,7 @@ export class PhysicsSystem implements System {
     direction: { x: number; y: number; z: number },
     maxToi: number = 100,
     excludeBodyHandle?: number
-  ): { hit: boolean; toi: number; point: { x: number; y: number; z: number } } {
+  ): { hit: boolean; toi: number; point: { x: number; y: number; z: number }; normal?: { x: number; y: number; z: number } } {
     if (!this.world || !this.RAPIER) {
       return { hit: false, toi: 0, point: { x: 0, y: 0, z: 0 } };
     }
@@ -636,7 +636,14 @@ export class PhysicsSystem implements System {
     // 或者，更进一步：Rapier 的 RigidBody 有 setCollisionGroups。
     // 我们暂时只实现基础 Raycast。
 
-    hit = this.world.castRay(ray, maxToi, true);
+    // 尝试使用带法线的检测
+    // @ts-ignore - Rapier types might vary
+    if (this.world.castRayAndGetNormal) {
+      // @ts-ignore
+      hit = this.world.castRayAndGetNormal(ray, maxToi, true);
+    } else {
+      hit = this.world.castRay(ray, maxToi, true);
+    }
 
     if (hit) {
       // 只有当命中点的刚体句柄不是要排除的句柄时才算数
@@ -666,11 +673,12 @@ export class PhysicsSystem implements System {
       return {
         hit: true,
         toi: timeOfImpact,
-        point: ray.pointAt(timeOfImpact)
+        point: ray.pointAt(timeOfImpact),
+        normal: (hit as any).normal // Extract normal if available
       };
     }
 
-    return { hit: false, toi: 0, point: { x: 0, y: 0, z: 0 } };
+    return { hit: false, toi: 0, point: { x: 0, y: 0, z: 0 }, normal: undefined };
   }
 
   /**

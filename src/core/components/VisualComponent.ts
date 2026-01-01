@@ -9,7 +9,7 @@ import { Component, ComponentData } from '../types';
  * 几何体数据
  */
 export interface GeometryData {
-  type: 'box' | 'sphere' | 'cylinder' | 'cone' | 'plane' | 'custom';
+  type: 'box' | 'sphere' | 'cylinder' | 'cone' | 'plane' | 'custom' | 'model';
   parameters?: {
     width?: number;
     height?: number;

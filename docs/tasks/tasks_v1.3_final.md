@@ -139,6 +139,16 @@
   - 文件过大时显示黄色警告
   - _需求: 13.4_
 
+- [/] Phase 16.5: Asset Placement & UX Refinement [P0] <!-- NEW -->
+    - [ ] **UI Localization**: Translate `ArchitectureValidationPanel` to Chinese
+    - [ ] **UI Fixes**: Fix overlapping elements in Asset Panel
+    - [ ] **Adaptive Zoom**: Implement distance-based zoom speed in Camera System
+    - [ ] **Placement Logic**:
+        - [ ] Fix "Cannot Delete" issue for placed assets
+        - [ ] Add/Fix Rotation controls (solve "Lying Down" models)
+        - [ ] Add Scale controls (solve "Too Small/Big" models)
+        - [ ] Improve Mouse Following logic
+
 ## Phase 14: Architecture Validation View 架构验证观测窗口 ✅
 
 - [x] 14.1 实现 ArchitectureValidationManager（ECS 实例生命周期管理）
@@ -182,8 +192,9 @@
   - 在 App.tsx 中集成管理器
   - 添加 useEffect 监听 AppMode.ARCHITECTURE_VALIDATOR 模式切换
   - 创建管理器实例并启动更新循环
-  - 传递 archValidationManager prop 到 GameCanvas
-  - 条件渲染 ArchitectureValidationPanel
+  - [x] Fix compilation errors (Command Types & Usage) <!-- id: 5 -->
+  - [x] Fix JSX syntax errors in ArchitectureValidationPanel <!-- id: 6 -->
+  - [ ] Verify fix in browser <!-- id: 7 -->
   - 修改 GameCanvas.tsx 添加条件渲染 EngineBridge
   - _完成日期: 2025-12-23_
 

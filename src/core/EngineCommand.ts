@@ -61,7 +61,27 @@ export enum EngineCommandType {
 
     // Bundling
     EXPORT_BUNDLE = 'EXPORT_BUNDLE',
-    IMPORT_BUNDLE = 'IMPORT_BUNDLE'
+    IMPORT_BUNDLE = 'IMPORT_BUNDLE',
+
+    // Placement System (WYSIWYG)
+    ENTER_PLACEMENT_MODE = 'ENTER_PLACEMENT_MODE',
+    ENTER_IMAGE_PLACEMENT_MODE = 'ENTER_IMAGE_PLACEMENT_MODE',
+    TOGGLE_PLACEMENT_MODE = 'TOGGLE_PLACEMENT_MODE',
+    CANCEL_PLACEMENT = 'CANCEL_PLACEMENT',
+    COMMIT_PLACEMENT = 'COMMIT_PLACEMENT',
+
+    // Audio Extra
+    SET_PLAYBACK_RATE = 'SET_PLAYBACK_RATE',
+
+    // Selection & Context (Isolation)
+    SELECT_ENTITY = 'SELECT_ENTITY',
+    APPLY_ASSET_TO_SELECTION = 'APPLY_ASSET_TO_SELECTION',
+    SET_CONTEXT = 'SET_CONTEXT',
+
+    // Editing Operations
+    DELETE_ENTITY = 'DELETE_ENTITY',
+    ROTATE_PLACEMENT = 'ROTATE_PLACEMENT',
+    SCALE_PLACEMENT = 'SCALE_PLACEMENT'
 }
 
 // --- Payloads ---
@@ -122,6 +142,23 @@ export interface ResetScenePayload { type: EngineCommandType.RESET_SCENE; }
 export interface ExportBundlePayload { type: EngineCommandType.EXPORT_BUNDLE; name: string; }
 export interface ImportBundlePayload { type: EngineCommandType.IMPORT_BUNDLE; file: File; }
 
+export interface EnterPlacementPayload { type: EngineCommandType.ENTER_PLACEMENT_MODE; assetId: string; assetName: string; }
+export interface EnterImagePlacementPayload { type: EngineCommandType.ENTER_IMAGE_PLACEMENT_MODE; assetId: string; assetName: string; }
+export interface TogglePlacementModePayload { type: EngineCommandType.TOGGLE_PLACEMENT_MODE; }
+export interface CancelPlacementPayload { type: EngineCommandType.CANCEL_PLACEMENT; }
+export interface CommitPlacementPayload { type: EngineCommandType.COMMIT_PLACEMENT; }
+
+export interface SetPlaybackRatePayload { type: EngineCommandType.SET_PLAYBACK_RATE; rate: number; }
+
+export interface SelectEntityPayload { type: EngineCommandType.SELECT_ENTITY; entityId: string | null; }
+export interface ApplyAssetPayload { type: EngineCommandType.APPLY_ASSET_TO_SELECTION; assetId: string; assetType: 'model' | 'image'; }
+export interface ApplyAssetPayload { type: EngineCommandType.APPLY_ASSET_TO_SELECTION; assetId: string; assetType: 'model' | 'image'; }
+export interface SetContextPayload { type: EngineCommandType.SET_CONTEXT; context: 'CREATION' | 'EXPERIENCE'; }
+
+export interface DeleteEntityPayload { type: EngineCommandType.DELETE_ENTITY; }
+export interface RotatePlacementPayload { type: EngineCommandType.ROTATE_PLACEMENT; axis?: 'x' | 'y'; }
+export interface ScalePlacementPayload { type: EngineCommandType.SCALE_PLACEMENT; delta: number; }
+
 // --- Union Type ---
 
 export type EngineCommand =
@@ -163,4 +200,18 @@ export type EngineCommand =
     | ResetScenePayload
     | ExportBundlePayload
     | ImportBundlePayload
-    | SetTerrainSizePayload;
+    | EnterPlacementPayload
+    | EnterImagePlacementPayload
+    | TogglePlacementModePayload
+    | CancelPlacementPayload
+    | CommitPlacementPayload
+    | SetPlaybackRatePayload
+    | SelectEntityPayload
+    | ApplyAssetPayload
+    | SetContextPayload
+    | ApplyAssetPayload
+    | SetContextPayload
+    | SetTerrainSizePayload
+    | DeleteEntityPayload
+    | RotatePlacementPayload
+    | ScalePlacementPayload;

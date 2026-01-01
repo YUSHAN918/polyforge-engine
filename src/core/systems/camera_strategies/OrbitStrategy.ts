@@ -101,12 +101,23 @@ export class OrbitStrategy implements ICameraStrategy {
 
         // 3. Zoom: Mouse Wheel (Re-added, essential)
         if (wheel !== 0) {
-            // 切换为线性缩放 (Linear Zoom)，确保推、拉数值绝对一致
-            // 步进值从 0.5 调优至 0.2，确保极致丝滑对称
-            const zoomSpeed = 0.2;
-            camera.distance += wheel * zoomSpeed;
-            // 解锁距离限制：保留 0.1 的物理安全下限防止坐标归零，移除最大距离限制
-            camera.distance = Math.max(0.1, camera.distance);
+            // 切换为几何缩放 (Geometric Zoom)
+            // 解决痛点：线性缩放会导致最后一步“吸附”到地面。几何缩放使用乘法，永远趋近于0但不到达0。
+            const zoomSensitivity = 0.1; // 缩放灵敏度
+            const zoomFactor = Math.pow(0.95, Math.abs(wheel) * zoomSensitivity); // 每次滚动的倍率 (0.95 ^ delta)
+
+            if (wheel < 0) {
+                // Zoom In (Distance decreases)
+                camera.distance *= zoomFactor;
+            } else {
+                // Zoom Out (Distance increases)
+                camera.distance /= zoomFactor;
+            }
+
+            // 软限制：防止无限接近致微观穿模，保留 0.2 的极小安全距离
+            // 此时因为是乘法，接近0.2时变化极微，不会有“吸附感”
+            camera.distance = Math.max(0.2, camera.distance);
+            camera.distance = Math.min(1000, camera.distance); // 放宽上限
         }
     }
 

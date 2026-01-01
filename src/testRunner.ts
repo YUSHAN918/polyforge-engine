@@ -3,7 +3,7 @@
  * 简单的测试运行器，用于在浏览器控制台中运行测试
  */
 
-import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, assetDemo, listAssets, clearAssets, assetStats, modelUploadDemo, audioDemo, worldStateDemo, renderDemo, terrainDemo, vegetationDemo } from './core';
+import { hierarchyDemo, clockDemo, setSpeed, pauseGame, resumeGame, togglePause, getClockStatus, commandDemo, spawnBox, moveBox, deleteLastBox, undoLast, redoLast, showHistory, clearHistory, inputDemo, getBoxPosition, switchPreset, showInputStatus, showCommandHistory, physicsDemo, stopPhysics, startPhysics, resetPhysics, setGravity, spawnPhysicsBox, showPhysicsStatus, cameraDemo, stopCameraDemo, startCameraDemo, switchCameraMode, applyCameraPreset, getCameraSnapshot, moveCameraTarget, rotateCameraView, setCameraDistance, showCameraStatus, worldStateDemo, renderDemo, terrainDemo, vegetationDemo } from './core';
 import { quickDemo } from './core/quickDemo';
 import { runSystemDemo, runHeartbeatDemo } from './core/systemDemo';
 import { runSerializationDemo, runSnapshotDemo } from './core/serializationDemo';
@@ -26,16 +26,16 @@ export function runAllTests(): void {
   try {
     // Phase 1 测试
     runEntityManagerTests();
-    
+
     // Phase 3 测试
     runHierarchyTests();
-    
+
     // Phase 4 测试
     runClockTests();
-    
+
     // Phase 5 测试
     runCommandTests();
-    
+
     console.log('%c✅ All tests passed!', 'font-size: 16px; font-weight: bold; color: #4CAF50;');
   } catch (error) {
     console.error('%c❌ Tests failed!', 'font-size: 16px; font-weight: bold; color: #F44336;');
@@ -205,7 +205,8 @@ export function runCameraDemoWrapper(): void {
 export function runAssetDemoWrapper(): void {
   console.clear();
   try {
-    assetDemo();
+    // assetDemo();
+    console.warn('Asset Demo has been deprecated. Please use the standalone Bundle System UI.');
   } catch (error) {
     console.error('Asset demo failed:', error);
   }
@@ -227,22 +228,22 @@ if (typeof window !== 'undefined') {
   (window as any).inputDemo = runInputDemoWrapper; // 🆕 阶段 6
   (window as any).physicsDemo = runPhysicsDemoWrapper; // 🆕 阶段 8
   (window as any).cameraDemo = runCameraDemoWrapper; // 🆕 阶段 10
-  (window as any).assetDemo = runAssetDemoWrapper; // 🆕 阶段 7
-  
+  // (window as any).assetDemo = runAssetDemoWrapper; // 🆕 阶段 7
+
   // 🆕 Phase 11: 环境和地形系统
-  (window as any).audioDemo = audioDemo; // 🆕 Phase 9
+  // (window as any).audioDemo = audioDemo; // 🆕 Phase 9
   (window as any).worldStateDemo = worldStateDemo; // 🆕 Phase 11.1
   (window as any).renderDemo = renderDemo; // 🆕 Phase 12
   (window as any).terrainDemo = terrainDemo; // 🆕 Phase 11.2
   (window as any).vegetationDemo = vegetationDemo; // 🆕 Phase 11.3
-  
+
   // 时钟控制函数
   (window as any).setSpeed = setSpeed;
   (window as any).pauseGame = pauseGame;
   (window as any).resumeGame = resumeGame;
   (window as any).togglePause = togglePause;
   (window as any).getClockStatus = getClockStatus;
-  
+
   // 命令控制函数
   (window as any).spawnBox = spawnBox;
   (window as any).moveBox = moveBox;
@@ -251,13 +252,13 @@ if (typeof window !== 'undefined') {
   (window as any).redoLast = redoLast;
   (window as any).showHistory = showHistory;
   (window as any).clearHistory = clearHistory;
-  
+
   // 输入控制函数
   (window as any).getBoxPosition = getBoxPosition;
   (window as any).switchPreset = switchPreset;
   (window as any).showInputStatus = showInputStatus;
   (window as any).showCommandHistory = showCommandHistory;
-  
+
   // 物理控制函数
   (window as any).stopPhysics = stopPhysics;
   (window as any).startPhysics = startPhysics;
@@ -265,7 +266,7 @@ if (typeof window !== 'undefined') {
   (window as any).setGravity = setGravity;
   (window as any).spawnPhysicsBox = spawnPhysicsBox;
   (window as any).showPhysicsStatus = showPhysicsStatus;
-  
+
   // 相机控制函数
   (window as any).stopCameraDemo = stopCameraDemo;
   (window as any).startCameraDemo = startCameraDemo;
@@ -276,17 +277,17 @@ if (typeof window !== 'undefined') {
   (window as any).rotateCameraView = rotateCameraView;
   (window as any).setCameraDistance = setCameraDistance;
   (window as any).showCameraStatus = showCameraStatus;
-  
+
   // 资产控制函数
-  (window as any).listAssets = listAssets;
-  (window as any).clearAssets = clearAssets;
-  (window as any).assetStats = assetStats;
-  (window as any).modelUploadDemo = modelUploadDemo;
-  
+  // (window as any).listAssets = listAssets;
+  // (window as any).clearAssets = clearAssets;
+  // (window as any).assetStats = assetStats;
+  // (window as any).modelUploadDemo = modelUploadDemo;
+
   // ============================================================================
   // 🆕 Phase 11.2: 标准化全局控制器（上帝接口）
   // ============================================================================
-  
+
   /**
    * 地形控制器 - window.terrainControls
    */
@@ -301,7 +302,7 @@ if (typeof window !== 'undefined') {
         if (config.hardness !== undefined) (window as any).terrainDemoControls.setBrushHardness(config.hardness);
       }
     },
-    
+
     // 地形生成
     generateRandom: (amplitude: number = 5) => {
       console.log(`%c🎲 Generating random terrain (amplitude: ${amplitude})`, 'color: #FF9800; font-weight: bold;');
@@ -309,7 +310,7 @@ if (typeof window !== 'undefined') {
         (window as any).terrainDemoControls.randomize(amplitude);
       }
     },
-    
+
     // 重置地形
     reset: () => {
       console.log(`%c🏜️ Resetting terrain to flat`, 'color: #FF9800; font-weight: bold;');
@@ -317,7 +318,7 @@ if (typeof window !== 'undefined') {
         (window as any).terrainDemoControls.flatten();
       }
     },
-    
+
     // 创建山峰
     createMountain: () => {
       console.log(`%c⛰️ Creating mountain`, 'color: #FF9800; font-weight: bold;');
@@ -325,7 +326,7 @@ if (typeof window !== 'undefined') {
         (window as any).terrainDemoControls.createMountain();
       }
     },
-    
+
     // 创建山谷
     createValley: () => {
       console.log(`%c🏞️ Creating valley`, 'color: #FF9800; font-weight: bold;');
@@ -333,7 +334,7 @@ if (typeof window !== 'undefined') {
         (window as any).terrainDemoControls.createValley();
       }
     },
-    
+
     // 查看地形信息
     getInfo: () => {
       if ((window as any).terrainDemoControls) {
@@ -341,7 +342,7 @@ if (typeof window !== 'undefined') {
       }
     },
   };
-  
+
   /**
    * 世界控制器 - window.worldControls
    */
@@ -353,13 +354,13 @@ if (typeof window !== 'undefined') {
         (window as any).worldStateControls.setTimeOfDay(hour);
       }
     },
-    
+
     // 设置天气（预留接口）
     setWeather: (type: string) => {
       console.log(`%c🌤️ Setting weather to: ${type}`, 'color: #2196F3; font-weight: bold;');
       console.log('%c  (Weather system not yet implemented)', 'color: #999;');
     },
-    
+
     // 设置光照强度
     setLightIntensity: (intensity: number) => {
       console.log(`%c💡 Setting light intensity to ${intensity}`, 'color: #2196F3; font-weight: bold;');
@@ -367,7 +368,7 @@ if (typeof window !== 'undefined') {
         (window as any).worldStateControls.setLightIntensity(intensity);
       }
     },
-    
+
     // 切换昼夜循环
     toggleDayNightCycle: () => {
       console.log(`%c🌓 Toggling day/night cycle`, 'color: #2196F3; font-weight: bold;');
@@ -375,7 +376,7 @@ if (typeof window !== 'undefined') {
         (window as any).worldStateControls.toggleDayNightCycle();
       }
     },
-    
+
     // 查看状态
     getState: () => {
       if ((window as any).worldStateControls) {
@@ -383,7 +384,7 @@ if (typeof window !== 'undefined') {
       }
     },
   };
-  
+
   /**
    * 渲染控制器 - window.renderControls
    */
@@ -395,7 +396,7 @@ if (typeof window !== 'undefined') {
         (window as any).renderDemoControls.togglePostProcessing();
       }
     },
-    
+
     // 切换辉光效果
     toggleBloom: () => {
       console.log(`%c🌟 Toggling bloom effect`, 'color: #9C27B0; font-weight: bold;');
@@ -403,7 +404,7 @@ if (typeof window !== 'undefined') {
         (window as any).renderDemoControls.toggleBloom();
       }
     },
-    
+
     // 设置辉光强度
     setBloomStrength: (strength: number) => {
       console.log(`%c🌟 Setting bloom strength to ${strength}`, 'color: #9C27B0; font-weight: bold;');
@@ -411,7 +412,7 @@ if (typeof window !== 'undefined') {
         (window as any).renderDemoControls.setBloomStrength(strength);
       }
     },
-    
+
     // 切换抗锯齿
     toggleSMAA: () => {
       console.log(`%c🔲 Toggling SMAA`, 'color: #9C27B0; font-weight: bold;');
@@ -419,7 +420,7 @@ if (typeof window !== 'undefined') {
         (window as any).renderDemoControls.toggleSMAA();
       }
     },
-    
+
     // 查看设置
     getSettings: () => {
       if ((window as any).renderDemoControls) {
@@ -427,11 +428,11 @@ if (typeof window !== 'undefined') {
       }
     },
   };
-  
+
   // ============================================================================
   // 🎨 启动菜单（带颜色、易读、对齐美感）
   // ============================================================================
-  
+
   console.log('');
   console.log('%c╔══════════════════════════════════════════════════════════════════╗', 'color: #4CAF50; font-weight: bold;');
   console.log('%c║                                                                  ║', 'color: #4CAF50; font-weight: bold;');
@@ -439,12 +440,12 @@ if (typeof window !== 'undefined') {
   console.log('%c║                                                                  ║', 'color: #4CAF50; font-weight: bold;');
   console.log('%c╚══════════════════════════════════════════════════════════════════╝', 'color: #4CAF50; font-weight: bold;');
   console.log('');
-  
+
   console.log('%c┌─────────────────────────────────────────────────────────────────┐', 'color: #2196F3;');
   console.log('%c│  🎮 标准化全局控制器（上帝接口）                                │', 'color: #2196F3; font-weight: bold;');
   console.log('%c└─────────────────────────────────────────────────────────────────┘', 'color: #2196F3;');
   console.log('');
-  
+
   console.log('%c🏔️  地形控制器 - window.terrainControls', 'color: #FF9800; font-weight: bold;');
   console.log('%c  ├─ setBrush({radius, strength, hardness})', 'color: #666;', '  设置笔刷参数');
   console.log('%c  ├─ generateRandom(amplitude)             ', 'color: #666;', '  生成随机地形');
@@ -453,7 +454,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  ├─ createValley()                        ', 'color: #666;', '  创建山谷');
   console.log('%c  └─ getInfo()                             ', 'color: #666;', '  查看地形信息');
   console.log('');
-  
+
   console.log('%c🌾  植被控制器 - window.vegetationControls', 'color: #4CAF50; font-weight: bold;');
   console.log('%c  ├─ spawnGrass(density)                   ', 'color: #666;', '  生成草地（推荐: 5000）');
   console.log('%c  ├─ spawnFlowers(density)                 ', 'color: #666;', '  生成花朵（推荐: 1000）');
@@ -463,7 +464,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  ├─ flattenTerrain()                      ', 'color: #666;', '  重置为平坦');
   console.log('%c  └─ getInfo()                             ', 'color: #666;', '  查看植被信息');
   console.log('');
-  
+
   console.log('%c🌍  世界控制器 - window.worldControls', 'color: #2196F3; font-weight: bold;');
   console.log('%c  ├─ setHour(n)                            ', 'color: #666;', '  设置时间（0-24）');
   console.log('%c  ├─ setWeather(type)                      ', 'color: #666;', '  设置天气（预留）');
@@ -471,7 +472,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  ├─ toggleDayNightCycle()                 ', 'color: #666;', '  切换昼夜循环');
   console.log('%c  └─ getState()                            ', 'color: #666;', '  查看世界状态');
   console.log('');
-  
+
   console.log('%c✨  渲染控制器 - window.renderControls', 'color: #9C27B0; font-weight: bold;');
   console.log('%c  ├─ togglePostProcessing()                ', 'color: #666;', '  切换后处理');
   console.log('%c  ├─ toggleBloom()                         ', 'color: #666;', '  切换辉光效果');
@@ -479,12 +480,12 @@ if (typeof window !== 'undefined') {
   console.log('%c  ├─ toggleSMAA()                          ', 'color: #666;', '  切换抗锯齿');
   console.log('%c  └─ getSettings()                         ', 'color: #666;', '  查看渲染设置');
   console.log('');
-  
+
   console.log('%c┌─────────────────────────────────────────────────────────────────┐', 'color: #FF5722;');
   console.log('%c│  🚀 快速启动演示                                                │', 'color: #FF5722; font-weight: bold;');
   console.log('%c└─────────────────────────────────────────────────────────────────┘', 'color: #FF5722;');
   console.log('');
-  
+
   console.log('%c  await window.terrainDemo()               ', 'color: #FF9800; font-weight: bold;', '  🏔️  地形系统演示');
   console.log('%c  await window.vegetationDemo()            ', 'color: #FF9800; font-weight: bold;', '  🌾  植被系统演示 🆕');
   console.log('%c  await window.worldStateDemo()            ', 'color: #FF9800; font-weight: bold;', '  🌍  环境管理演示');
@@ -492,7 +493,7 @@ if (typeof window !== 'undefined') {
   console.log('%c  await window.audioDemo()                 ', 'color: #FF9800; font-weight: bold;', '  🔊  音频系统演示');
   console.log('%c  await window.cameraDemo()                ', 'color: #FF9800; font-weight: bold;', '  📷  相机系统演示');
   console.log('');
-  
+
   console.log('%c┌─────────────────────────────────────────────────────────────────┐', 'color: #607D8B;');
   console.log('%c│  💡 提示                                                         │', 'color: #607D8B; font-weight: bold;');
   console.log('%c└─────────────────────────────────────────────────────────────────┘', 'color: #607D8B;');
@@ -504,7 +505,7 @@ if (typeof window !== 'undefined') {
   console.log('');
   console.log('%c  🎯 推荐：先运行 await window.vegetationDemo() 体验完整功能！  ', 'color: #4CAF50; font-weight: bold;');
   console.log('');
-  
+
   // 保留原有的详细菜单（折叠显示）
   console.groupCollapsed('%c📋 查看完整命令列表', 'color: #2196F3; font-weight: bold;');
   console.log('%c  window.quickDemo()           ', 'color: #FF9800;', '- Quick demo (recommended)');
