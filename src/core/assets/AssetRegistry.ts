@@ -507,6 +507,27 @@ export class AssetRegistry {
   }
 
   /**
+   * 更新资产元数据 (支持部分更新)
+   * 🔥 用于保存默认物理配置等
+   */
+  async updateAssetMetadata(id: string, partial: Partial<AssetMetadata>): Promise<void> {
+    this.ensureInitialized();
+    const existing = await this.getMetadata(id);
+    if (!existing) throw new Error(`Asset not found: ${id}`);
+
+    const updated = { ...existing, ...partial };
+
+    // 1. Save to DB
+    await this.storage.saveMetadata(updated);
+
+    // 2. Update Cache
+    this.metadataCache.set(id, updated);
+
+    console.log(`[AssetRegistry] Asset metadata updated: ${id}`, partial);
+    eventBus.emit('ASSET_REGISTRY_CHANGED');
+  }
+
+  /**
    * 删除资产
    * 确保同时删除 metadata 库和 files 库中的条目
    * 清理该资产在内存中的所有 cache 引用

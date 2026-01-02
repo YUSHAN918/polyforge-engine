@@ -83,12 +83,25 @@ export enum EngineCommandType {
     ROTATE_PLACEMENT = 'ROTATE_PLACEMENT',
     SCALE_PLACEMENT = 'SCALE_PLACEMENT',
     SET_COLLIDER_SCALE = 'SET_COLLIDER_SCALE',
-    TOGGLE_COLLIDER_EDITING = 'TOGGLE_COLLIDER_EDITING'
+    TOGGLE_COLLIDER_EDITING = 'TOGGLE_COLLIDER_EDITING',
+    SET_COLLIDER_OFFSET_Y = 'SET_COLLIDER_OFFSET_Y',
+    SET_COLLIDER_ROTATION_Y = 'SET_COLLIDER_ROTATION_Y',
+    SAVE_ASSET_PHYSICS_CONFIG = 'SAVE_ASSET_PHYSICS_CONFIG',
+    AUTO_FIT_COLLIDER = 'AUTO_FIT_COLLIDER'
 }
 
 // --- Payloads ---
 
 export interface SetTimePayload { type: EngineCommandType.SET_TIME_OF_DAY; hour: number; }
+export interface SetLightPayload { type: EngineCommandType.SET_LIGHT_INTENSITY; intensity: number; }
+// ... (keep existing) ...
+export interface SetColliderRotationYPayload { type: EngineCommandType.SET_COLLIDER_ROTATION_Y; rotation: number; }
+export interface SaveAssetPhysicsConfigPayload { type: EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG; }
+export interface AutoFitColliderPayload { type: EngineCommandType.AUTO_FIT_COLLIDER; entityId: string | null; }
+
+// --- Union Type ---
+
+
 export interface SetLightPayload { type: EngineCommandType.SET_LIGHT_INTENSITY; intensity: number; }
 export interface SetBloomStrengthPayload { type: EngineCommandType.SET_BLOOM_STRENGTH; strength: number; }
 export interface SetBloomThresholdPayload { type: EngineCommandType.SET_BLOOM_THRESHOLD; threshold: number; }
@@ -154,7 +167,7 @@ export interface SetPlaybackRatePayload { type: EngineCommandType.SET_PLAYBACK_R
 
 export interface SelectEntityPayload { type: EngineCommandType.SELECT_ENTITY; entityId: string | null; }
 export interface ApplyAssetPayload { type: EngineCommandType.APPLY_ASSET_TO_SELECTION; assetId: string; assetType: 'model' | 'image'; }
-export interface ApplyAssetPayload { type: EngineCommandType.APPLY_ASSET_TO_SELECTION; assetId: string; assetType: 'model' | 'image'; }
+// Duplicate removed.
 export interface SetContextPayload { type: EngineCommandType.SET_CONTEXT; context: 'CREATION' | 'EXPERIENCE'; }
 
 export interface DeleteEntityPayload { type: EngineCommandType.DELETE_ENTITY; }
@@ -162,6 +175,9 @@ export interface RotatePlacementPayload { type: EngineCommandType.ROTATE_PLACEME
 export interface ScalePlacementPayload { type: EngineCommandType.SCALE_PLACEMENT; delta: number; }
 export interface SetColliderScalePayload { type: EngineCommandType.SET_COLLIDER_SCALE; scale: number; }
 export interface ToggleColliderEditingPayload { type: EngineCommandType.TOGGLE_COLLIDER_EDITING; enabled: boolean; }
+export interface SetColliderOffsetYPayload { type: EngineCommandType.SET_COLLIDER_OFFSET_Y; offset: number; }
+export interface SetColliderRotationYPayload { type: EngineCommandType.SET_COLLIDER_ROTATION_Y; rotation: number; }
+export interface SaveAssetPhysicsConfigPayload { type: EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG; }
 
 // --- Union Type ---
 
@@ -218,4 +234,8 @@ export type EngineCommand =
     | RotatePlacementPayload
     | ScalePlacementPayload
     | SetColliderScalePayload
-    | ToggleColliderEditingPayload;
+    | ToggleColliderEditingPayload
+    | SetColliderOffsetYPayload
+    | SetColliderRotationYPayload
+    | SaveAssetPhysicsConfigPayload
+    | AutoFitColliderPayload;

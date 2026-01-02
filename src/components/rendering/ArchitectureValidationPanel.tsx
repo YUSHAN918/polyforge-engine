@@ -99,6 +99,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [terrainDepth, setTerrainDepth] = useState(50);
   const [colliderScale, setColliderScale] = useState(1.0); // 🔥 Physics compensation
   const [isEditingCollider, setIsEditingCollider] = useState(false); // 🧱 MVP: Collider Edit Mode State
+  const [colliderOffsetY, setColliderOffsetY] = useState(0.0); // 🧱 Collider Vertical Offset
+  const [colliderRotation, setColliderRotation] = useState(0.0); // 🧱 Collider Y-Axis Rotation
 
 
   // Asset Controls
@@ -178,6 +180,18 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       eventBus.off('MODEL_EXPORT_COMPLETE', onExportComplete);
     };
   }, [manager]); // Re-bind if manager changes (usually once)
+
+  // 🔥 Physics Config Sync Listener
+  useEffect(() => {
+    const handleSync = (e: CustomEvent) => {
+      const { scale, offsetY, rotationY } = e.detail;
+      if (scale !== undefined) setColliderScale(scale);
+      if (offsetY !== undefined) setColliderOffsetY(offsetY);
+      if (rotationY !== undefined) setColliderRotation(rotationY);
+    };
+    window.addEventListener('PHYSICS_CONFIG_UPDATED', handleSync as EventListener);
+    return () => window.removeEventListener('PHYSICS_CONFIG_UPDATED', handleSync as EventListener);
+  }, []);
 
   const fpsRef = useRef<HTMLSpanElement>(null);
   const lastTimeRef = useRef(performance.now());
@@ -267,6 +281,8 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           const phys = entity?.getComponent<any>('Physics');
           if (phys) {
             setColliderScale(phys.colliderScale ?? 1.0);
+            setColliderOffsetY(phys.colliderLocalOffset?.[1] ?? 0.0);
+            setColliderRotation(phys.colliderLocalRotation?.[1] ?? 0.0);
           }
         }
       } catch (e) {
@@ -280,6 +296,11 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       // 11. Pull Selection State
       if (manager.getSelectedEntityId) {
         setSelectedEntity(manager.getSelectedEntityId());
+      }
+
+      // 12. Pull Collider Editing State
+      if (manager.isColliderEditingEnabled) {
+        setIsEditingCollider(manager.isColliderEditingEnabled());
       }
     }, 500); // 2Hz Sync
 
@@ -1595,30 +1616,105 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 );
               })()}
 
-              {/* 🔥 Physics Compensation Slider */}
-              <div className="space-y-1 mt-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">物理边界修正 (Collider Scale)</span>
-                  <span className="text-blue-400 font-mono text-[10px]">{colliderScale.toFixed(2)}x</span>
+              {/* 🔥 isEditingCollider: Advanced Controls */}
+
+              {isEditingCollider && (
+                <div className="space-y-3 mt-2 pt-2 border-t border-dashed border-gray-800 animate-in fade-in slide-in-from-top-1 duration-200">
+
+                  {/* Quick Actions */}
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => {
+                        dispatch(EngineCommandType.AUTO_FIT_COLLIDER, { entityId: selectedEntity });
+                      }}
+                      className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-[9px] font-bold border border-gray-700 transition-colors"
+                    >
+                      <i className="fas fa-magic mr-1"></i> 一键贴合 (Auto-Fit)
+                    </button>
+                    <span className="text-[8px] text-gray-500 italic">
+                      按 <span className="text-orange-400 font-bold">G</span> 后用 <span className="text-white font-bold">W/S</span> 调整高度
+                    </span>
+                  </div>
+
+                  {/* Scale */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tight">整体缩放 (Scale)</span>
+                      <span className="text-orange-400 font-mono text-[10px]">{colliderScale.toFixed(2)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="5.0"
+                      step="0.05"
+                      value={colliderScale}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setColliderScale(val);
+                        dispatch(EngineCommandType.SET_COLLIDER_SCALE, { scale: val });
+                      }}
+                      className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                  </div>
+
+                  {/* Offset Y */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tight">垂直偏移 (Offset Y)</span>
+                      <span className="text-orange-400 font-mono text-[10px]">{colliderOffsetY.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-10.0"
+                      max="10.0"
+                      step="0.05"
+                      value={colliderOffsetY}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setColliderOffsetY(val);
+                        dispatch(EngineCommandType.SET_COLLIDER_OFFSET_Y, { offset: val });
+                      }}
+                      className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                  </div>
+
+                  {/* Rotation Y */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-orange-400 font-bold uppercase tracking-tight">Y轴旋转 (Rotation Y)</span>
+                      <span className="text-orange-400 font-mono text-[10px]">{Math.round(colliderRotation * 57.29)}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="6.28"
+                      step="0.1"
+                      value={colliderRotation}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setColliderRotation(val);
+                        dispatch(EngineCommandType.SET_COLLIDER_ROTATION_Y, { rotation: val });
+                      }}
+                      className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={() => {
+                      if (confirm('确认保存此物理配置为默认设置？这将影响未来放置的所有相同资产。')) {
+                        dispatch(EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG, {});
+                        setNotification({ message: '物理配置已保存', type: 'success' });
+                      }
+                    }}
+                    className="w-full py-1.5 bg-orange-900/40 hover:bg-orange-800/60 border border-orange-500/30 text-orange-200 rounded text-[9px] font-bold uppercase transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <i className="fas fa-save group-hover:scale-110 transition-transform"></i>
+                    保存为默认 (Save Defaults)
+                  </button>
+
                 </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="5.0"
-                  step="0.05"
-                  value={colliderScale}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    setColliderScale(val);
-                    dispatch(EngineCommandType.SET_COLLIDER_SCALE, { scale: val });
-                  }}
-                  className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                />
-                <div className="flex justify-between text-[8px] text-gray-600">
-                  <span>紧致 (Tight)</span>
-                  <span>宽松 (Loose)</span>
-                </div>
-              </div>
+              )}
 
               <div className="h-px bg-gray-800 my-2"></div>
 
@@ -1641,7 +1737,6 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           </div>
         )
       }
-
     </div>
   );
 };

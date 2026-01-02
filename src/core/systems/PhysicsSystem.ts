@@ -314,11 +314,16 @@ export class PhysicsSystem implements System {
         colliderDesc = this.RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
     }
 
-    // 设置偏移 (叠加原有 offset 与 MVP 局部偏移)
+    // 获取实际变换缩放 (支持非均匀缩放对 Offset 的影响)
+    const tScale = transform ? transform.scale : [1, 1, 1];
+
+    // 设置偏移 (Base Offset 需跟随 Scale + 叠加 MVP 局部偏移)
+    // 🔥 Normalization Fix: 用户定义的 colliderLocalOffset 必须参与缩放，
+    // 以确保其定义在 Local Space 而非 World Space
     colliderDesc.translation = {
-      x: offset[0] + (physics.colliderLocalOffset?.[0] || 0),
-      y: offset[1] + (physics.colliderLocalOffset?.[1] || 0),
-      z: offset[2] + (physics.colliderLocalOffset?.[2] || 0)
+      x: (offset[0] + (physics.colliderLocalOffset?.[0] || 0)) * tScale[0],
+      y: (offset[1] + (physics.colliderLocalOffset?.[1] || 0)) * tScale[1],
+      z: (offset[2] + (physics.colliderLocalOffset?.[2] || 0)) * tScale[2]
     };
 
     // 设置旋转 (应用 MVP 局部旋转)

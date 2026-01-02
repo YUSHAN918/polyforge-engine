@@ -36,7 +36,7 @@ import { BundleProgress } from './bundling/types';
 import { IArchitectureFacade, ValidationStats } from './IArchitectureFacade';
 import { EngineCommand, EngineCommandType } from './EngineCommand';
 import { eventBus } from './EventBus';
-import { CreateEntityCommand, UpdateWorldStateCommand } from './CommandManager';
+import { CreateEntityCommand, UpdateWorldStateCommand, ModifyComponentCommand } from './CommandManager';
 
 export enum ValidationContext {
   CREATION = 'CREATION',
@@ -84,6 +84,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private isGrabbing: boolean = false;
   private grabbedEntityId: string | null = null;
   private grabHeightOffset: number = 0;
+  private grabStartMouseY: number = 0; // 🔥 Collider Editing: Screen Space Y Anchor
+  private grabStartColliderOffset: number = 0; // 🔥 Collider Editing: Initial Offset
 
   private originalGrabPosition: [number, number, number] | null = null; // For cancelling grab
   private scalePressTicks: number = 0; // 🔥 Scale Acceleration Counter
@@ -217,6 +219,55 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
           const oldTime = this.worldStateManager.getState().timeOfDay;
           const cmd = new UpdateWorldStateCommand(this.worldStateManager, 'timeOfDay', oldTime, command.hour);
           this.commandManager.execute(cmd);
+          break;
+        }
+
+        case EngineCommandType.SET_COLLIDER_SCALE: {
+          if (this.selectedEntityId) {
+            const entity = this.entityManager.getEntity(this.selectedEntityId);
+            const physics = entity?.getComponent<PhysicsComponent>('Physics');
+            if (physics) {
+              const cmd = new ModifyComponentCommand(
+                this.entityManager, this.selectedEntityId, 'Physics', 'colliderScale',
+                physics.colliderScale ?? 1.0, command.scale
+              );
+              this.commandManager.execute(cmd);
+            }
+          }
+          await this.dispatchInternal(command);
+          break;
+        }
+
+        case EngineCommandType.SET_COLLIDER_OFFSET_Y: {
+          if (this.selectedEntityId) {
+            const entity = this.entityManager.getEntity(this.selectedEntityId);
+            const physics = entity?.getComponent<PhysicsComponent>('Physics');
+            if (physics) {
+              // 注意：ModifyComponentCommand 支持嵌套数组路径 'colliderLocalOffset[1]'
+              const cmd = new ModifyComponentCommand(
+                this.entityManager, this.selectedEntityId, 'Physics', 'colliderLocalOffset[1]',
+                physics.colliderLocalOffset[1], command.offset
+              );
+              this.commandManager.execute(cmd);
+            }
+          }
+          await this.dispatchInternal(command);
+          break;
+        }
+
+        case EngineCommandType.SET_COLLIDER_ROTATION_Y: {
+          if (this.selectedEntityId) {
+            const entity = this.entityManager.getEntity(this.selectedEntityId);
+            const physics = entity?.getComponent<PhysicsComponent>('Physics');
+            if (physics) {
+              const cmd = new ModifyComponentCommand(
+                this.entityManager, this.selectedEntityId, 'Physics', 'colliderLocalRotation[1]',
+                physics.colliderLocalRotation[1], command.rotation
+              );
+              this.commandManager.execute(cmd);
+            }
+          }
+          await this.dispatchInternal(command);
           break;
         }
 
@@ -449,6 +500,93 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
             phys.colliderScale = c.scale;
             this.physicsSystem.rebuildBody(this.selectedEntityId);
             console.log(`🧊 [Manager] Collider scale adjusted to: ${c.scale}`);
+          }
+        }
+        break;
+      }
+
+      case EngineCommandType.SET_COLLIDER_OFFSET_Y: {
+        if (this.selectedEntityId) {
+          const c = command as any;
+          const entity = this.entityManager.getEntity(this.selectedEntityId);
+          const phys = entity?.getComponent<PhysicsComponent>('Physics');
+          if (phys) {
+            phys.colliderLocalOffset[1] = c.offset;
+            this.physicsSystem.rebuildBody(this.selectedEntityId);
+            // console.log(`🧊 [Manager] Collider Offset Y: ${c.offset}`);
+          }
+        }
+        break;
+      }
+
+      case EngineCommandType.SET_COLLIDER_ROTATION_Y: {
+        if (this.selectedEntityId) {
+          const c = command as any;
+          const entity = this.entityManager.getEntity(this.selectedEntityId);
+          const phys = entity?.getComponent<PhysicsComponent>('Physics');
+          if (phys) {
+            phys.colliderLocalRotation[1] = c.rotation;
+            this.physicsSystem.rebuildBody(this.selectedEntityId);
+            // console.log(`🧊 [Manager] Collider Rotation Y: ${c.rotation}`);
+          }
+        }
+        break;
+      }
+
+      case EngineCommandType.AUTO_FIT_COLLIDER: {
+        if (this.selectedEntityId) {
+          const entity = this.entityManager.getEntity(this.selectedEntityId);
+          const visual = entity?.getComponent<VisualComponent>('Visual');
+          const phys = entity?.getComponent<PhysicsComponent>('Physics');
+
+          if (phys && visual?.geometry?.assetId) {
+            const meta = this.assetRegistry.getMetadataSync(visual.geometry.assetId);
+            if (meta?.modelStats?.boundingBox) {
+              const { min, max } = meta.modelStats.boundingBox;
+              // Calculate geometric center relative to pivot
+              const idealOffsetY = (min[1] + max[1]) / 2;
+
+              // Apply to Component
+              phys.colliderScale = 1.0;
+              phys.colliderLocalOffset[1] = idealOffsetY;
+              phys.colliderLocalRotation[1] = 0;
+
+              this.physicsSystem.rebuildBody(this.selectedEntityId);
+
+              // 🔥 Sync UI: Emit event to update React state
+              // "PHYSICS_CONFIG_UPDATED"
+              window.dispatchEvent(new CustomEvent('PHYSICS_CONFIG_UPDATED', {
+                detail: {
+                  scale: 1.0,
+                  offsetY: idealOffsetY,
+                  rotationY: 0
+                }
+              }));
+
+              console.log(`📐 [Manager] Auto-Fitted Collider. CenterY: ${idealOffsetY}`);
+            }
+          }
+        }
+        break;
+      }
+
+      case EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG: {
+        if (this.selectedEntityId) {
+          const entity = this.entityManager.getEntity(this.selectedEntityId);
+          const phys = entity?.getComponent<PhysicsComponent>('Physics');
+          const vis = entity?.getComponent<VisualComponent>('Visual');
+
+          if (phys && vis && vis.geometry.assetId) {
+            const config = {
+              colliderScale: phys.colliderScale,
+              colliderOffset: [...phys.colliderLocalOffset] as [number, number, number],
+              colliderRotation: [...phys.colliderLocalRotation] as [number, number, number]
+            };
+            // Save to Asset Registry
+            this.assetRegistry.updateAssetMetadata(vis.geometry.assetId, { physicsConfig: config });
+            console.log(`💾 [Manager] Saved Physics Config for Asset: ${vis.geometry.assetId}`, config);
+          } else {
+            console.warn('⚠️ [Manager] Cannot save physics config: Missing components or Asset ID.');
           }
         }
         break;
@@ -1560,6 +1698,16 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         solidPhysics.setCollider('box', [1, 1, 1], [0, 0, 0]);
         console.warn(`⚠️ [Manager] BBox missing for ${assetName}, falling back to unit box.`);
       }
+
+      // 🔥 智能继承：如果存在用户保存的物理配置，通过覆盖默认值
+      const savedConfig = metadata?.physicsConfig;
+      if (savedConfig) {
+        if (savedConfig.colliderScale) solidPhysics.colliderScale = savedConfig.colliderScale;
+        if (savedConfig.colliderOffset) solidPhysics.colliderLocalOffset = [...savedConfig.colliderOffset] as [number, number, number];
+        if (savedConfig.colliderRotation) solidPhysics.colliderLocalRotation = [...savedConfig.colliderRotation] as [number, number, number];
+        console.log(`🧠 [Placement] Applied Saved Physics Config for ${assetName}`, savedConfig);
+      }
+
       this.entityManager.addComponent(solidId, solidPhysics);
     }
 
@@ -1879,14 +2027,51 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       if (isUp) {
         if (checkCooldown('MOVE_UP', MOVE_COOLDOWN)) {
-          this.grabHeightOffset += dynamicHeightStep;
-          this.applyGrabHeightImpact();
+          if (this.isEditingCollider && this.grabbedEntityId) {
+            const entity = this.entityManager.getEntity(this.grabbedEntityId);
+            const phys = entity?.getComponent<PhysicsComponent>('Physics');
+            if (phys) {
+              // Collider offset needs finer step usually
+              phys.colliderLocalOffset[1] += (dynamicHeightStep * 0.1);
+              this.physicsSystem.rebuildBody(this.grabbedEntityId);
+
+              // 🔥 Sync UI: Throttle is handled by checkCooldown check (~100ms)
+              window.dispatchEvent(new CustomEvent('PHYSICS_CONFIG_UPDATED', {
+                detail: {
+                  scale: phys.colliderScale,
+                  offsetY: phys.colliderLocalOffset[1],
+                  rotationY: phys.colliderLocalRotation[1]
+                }
+              }));
+            }
+          } else {
+            this.grabHeightOffset += dynamicHeightStep;
+            this.applyGrabHeightImpact();
+          }
         }
       }
       if (isDown) {
         if (checkCooldown('MOVE_DOWN', MOVE_COOLDOWN)) {
-          this.grabHeightOffset -= dynamicHeightStep;
-          this.applyGrabHeightImpact();
+          if (this.isEditingCollider && this.grabbedEntityId) {
+            const entity = this.entityManager.getEntity(this.grabbedEntityId);
+            const phys = entity?.getComponent<PhysicsComponent>('Physics');
+            if (phys) {
+              phys.colliderLocalOffset[1] -= (dynamicHeightStep * 0.1);
+              this.physicsSystem.rebuildBody(this.grabbedEntityId);
+
+              // 🔥 Sync UI
+              window.dispatchEvent(new CustomEvent('PHYSICS_CONFIG_UPDATED', {
+                detail: {
+                  scale: phys.colliderScale,
+                  offsetY: phys.colliderLocalOffset[1],
+                  rotationY: phys.colliderLocalRotation[1]
+                }
+              }));
+            }
+          } else {
+            this.grabHeightOffset -= dynamicHeightStep;
+            this.applyGrabHeightImpact();
+          }
         }
       }
     }
@@ -2004,6 +2189,20 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.grabHeightOffset = 0;
     this.originalGrabPosition = [...transform.position];
 
+    // 🔥 Collider Mode: Initialize Screen Space Grab
+    if (this.isEditingCollider) {
+      // Use Raw or NDC Y. Input system usually gives Normalized Mouse (-1 to 1).
+      // Let's grab the current mouse Y from InputSystem
+      const mouse = this.inputSystem.mousePosition; // {x, y} in NDC usually
+      this.grabStartMouseY = mouse.y;
+
+      const phys = entity.getComponent<PhysicsComponent>('Physics');
+      if (phys) {
+        this.grabStartColliderOffset = phys.colliderLocalOffset[1];
+      }
+      console.log(`🔧 [Manager] Collider Grab Started. StartY: ${mouse.y}, StartOffset: ${this.grabStartColliderOffset}`);
+    }
+
     // Disable Physics collision temporarily to avoid knocking things over while dragging?
     // Or set to Kinematic?
     // For KISS, let's just move the Transform. Physics system usually follows Transform if set.
@@ -2043,15 +2242,26 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     if (!this.grabbedEntityId || !this.inputSystem || !this.cameraSystem) return;
 
     const mouse = this.inputSystem.mousePosition;
+    const entity = this.entityManager.getEntity(this.grabbedEntityId);
+    const transform = entity?.getComponent<TransformComponent>('Transform');
+
+    if (this.isEditingCollider && entity) {
+      // 🔥 Collider Mode: G-Key just locks into "Keyboard Adjustment Mode".
+      // Mouse movement is IGNORED. Use W/S to adjust Y offset.
+      return;
+    }
+
+    // Standard Grab Logic (Raycast)
     const ray = this.cameraSystem.getRayFromScreen(mouse.x, mouse.y);
     if (!ray) return;
 
-    // Logic borrowed from PlacementSystem (Raycast against Physics World)
+    // ... existing raycast logic ...
     let targetPos = [0, 0, 0];
     let hitFound = false;
 
     // 1. Raycast
     if (this.physicsSystem) {
+      // ...
       // Filter out the grabbed entity itself to avoid self-collision
       // PhysicsSystem.castRay doesn't support filter easily yet without ID.
       // Assuming castRay hits other static geometry (Terrain).
@@ -2087,31 +2297,15 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     targetPos[1] += this.grabHeightOffset;
 
     // Update Entity
-    const entity = this.entityManager.getEntity(this.grabbedEntityId);
-    const transform = entity?.getComponent<TransformComponent>('Transform');
+    // (entity and transform are already defined at top of function)
     if (transform) {
-      if (this.isEditingCollider) {
-        // 🔥 MVP: 如果处于碰撞盒编辑模式，重定向抓取目标为局部偏移 (Focus on Y)
-        const physics = entity?.getComponent<PhysicsComponent>('Physics');
-        if (physics) {
-          // 我们只需要 Y 轴的偏移量。
-          // offset = hitPoint.y - modelBase.y
-          const modelY = transform.position[1];
-          const newOffsetY = targetPos[1] - modelY; // grabHeightOffset 已经包含在 targetPos[1] 中了 (line 2087)
-          physics.colliderLocalOffset[1] = newOffsetY;
+      transform.position = targetPos as [number, number, number];
+      transform.markLocalDirty();
 
-          // 立即重建物理身体以预览效果
-          this.physicsSystem.rebuildBody(this.grabbedEntityId as string);
-        }
-      } else {
-        transform.position = targetPos as [number, number, number];
-        transform.markLocalDirty();
-
-        // Force sync physics for smooth visual (if it has a body)
-        const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId as string);
-        if (rb) {
-          rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
-        }
+      // Force sync physics for smooth visual (if it has a body)
+      const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId as string);
+      if (rb) {
+        rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
       }
     }
   }
@@ -2124,6 +2318,24 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   }
 
   private adjustKeyboardScale(delta: number) {
+    if (this.isEditingCollider && this.selectedEntityId) {
+      // 🔥 碰撞盒独立缩放模式
+      const entity = this.entityManager.getEntity(this.selectedEntityId);
+      const physics = entity?.getComponent<PhysicsComponent>('Physics');
+      if (physics) {
+        const oldScale = physics.colliderScale ?? 1.0;
+        const newScale = Math.max(0.1, Math.min(5.0, oldScale + delta));
+
+        // 使用 dispatch 走正规指令流程
+        this.dispatch({
+          type: EngineCommandType.SET_COLLIDER_SCALE,
+          scale: newScale
+        } as any);
+        console.log(`⌨️ [Keyboard] Scaling Collider Only: ${newScale.toFixed(2)}`);
+      }
+      return;
+    }
+
     if (this.isPlacing()) {
       this.dispatch({ type: EngineCommandType.SCALE_PLACEMENT, delta } as any);
     } else if (this.selectedEntityId) {
@@ -2134,7 +2346,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       if (transform) {
         const oldScale = transform.scale[0];
         const newScale = Math.max(0.1, oldScale + delta);
-        const scaleRatio = newScale / oldScale;
+        // const scaleRatio = newScale / oldScale;
 
         // 1. 更新视觉缩放
         transform.scale = [newScale, newScale, newScale];
