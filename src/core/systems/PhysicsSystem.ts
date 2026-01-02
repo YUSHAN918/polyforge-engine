@@ -314,8 +314,22 @@ export class PhysicsSystem implements System {
         colliderDesc = this.RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
     }
 
-    // 设置偏移
-    colliderDesc.translation = { x: offset[0], y: offset[1], z: offset[2] };
+    // 设置偏移 (叠加原有 offset 与 MVP 局部偏移)
+    colliderDesc.translation = {
+      x: offset[0] + (physics.colliderLocalOffset?.[0] || 0),
+      y: offset[1] + (physics.colliderLocalOffset?.[1] || 0),
+      z: offset[2] + (physics.colliderLocalOffset?.[2] || 0)
+    };
+
+    // 设置旋转 (应用 MVP 局部旋转)
+    if (physics.colliderLocalRotation) {
+      const q = this.eulerToQuaternion(
+        physics.colliderLocalRotation[0],
+        physics.colliderLocalRotation[1],
+        physics.colliderLocalRotation[2]
+      );
+      colliderDesc.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w });
+    }
 
     // 设置物理材质
     colliderDesc.setFriction(physics.friction);

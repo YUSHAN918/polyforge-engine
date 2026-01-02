@@ -89,6 +89,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private scalePressTicks: number = 0; // 🔥 Scale Acceleration Counter
   private movePressTicks: number = 0;  // 🔥 Move Acceleration Counter
   private flightMode: boolean = false; // ✈️ 飞行模式状态
+  private isEditingCollider: boolean = false; // 🧱 碰撞盒编辑模式
   private tickCounter: number = 0; // 🔥 Performance Throttle
 
   constructor() {
@@ -479,6 +480,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SELECT_ENTITY:
         this.selectedEntityId = (command as any).entityId;
         console.log(`📡 [Manager] Entity selected: ${this.selectedEntityId}`);
+        break;
+
+      case EngineCommandType.TOGGLE_COLLIDER_EDITING:
+        this.isEditingCollider = (command as any).enabled;
+        console.log(`🧱 [Manager] Collider Editing Mode: ${this.isEditingCollider ? 'ON' : 'OFF'}`);
         break;
 
       case EngineCommandType.APPLY_ASSET_TO_SELECTION:
@@ -1960,7 +1966,21 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
     } else {
       // Standard Entity (Selected or Grabbed)
-      if (transform) {
+      if (entity && transform) {
+        // 🔥 MVP: 如果处于碰撞盒编辑模式，重定向旋转目标
+        if (this.isEditingCollider) {
+          const physics = entity.getComponent<PhysicsComponent>('Physics');
+          if (physics) {
+            const idx = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+            physics.colliderLocalRotation[idx] = (physics.colliderLocalRotation[idx] + degrees) % 360;
+
+            // 立即重建物理身体以预览效果
+            this.physicsSystem.rebuildBody(targetId);
+            console.log(`🧱 [Manager] Edited COLLIDER Rotation ${axis.toUpperCase()} by ${degrees}°. New: ${physics.colliderLocalRotation}`);
+            return;
+          }
+        }
+
         const idx = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
         transform.rotation[idx] = (transform.rotation[idx] + degrees) % 360;
         transform.markLocalDirty();
@@ -2070,13 +2090,28 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const entity = this.entityManager.getEntity(this.grabbedEntityId);
     const transform = entity?.getComponent<TransformComponent>('Transform');
     if (transform) {
-      transform.position = targetPos as [number, number, number];
-      transform.markLocalDirty();
+      if (this.isEditingCollider) {
+        // 🔥 MVP: 如果处于碰撞盒编辑模式，重定向抓取目标为局部偏移 (Focus on Y)
+        const physics = entity?.getComponent<PhysicsComponent>('Physics');
+        if (physics) {
+          // 我们只需要 Y 轴的偏移量。
+          // offset = hitPoint.y - modelBase.y
+          const modelY = transform.position[1];
+          const newOffsetY = targetPos[1] - modelY; // grabHeightOffset 已经包含在 targetPos[1] 中了 (line 2087)
+          physics.colliderLocalOffset[1] = newOffsetY;
 
-      // Force sync physics for smooth visual (if it has a body)
-      const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId);
-      if (rb) {
-        rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
+          // 立即重建物理身体以预览效果
+          this.physicsSystem.rebuildBody(this.grabbedEntityId as string);
+        }
+      } else {
+        transform.position = targetPos as [number, number, number];
+        transform.markLocalDirty();
+
+        // Force sync physics for smooth visual (if it has a body)
+        const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId as string);
+        if (rb) {
+          rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
+        }
       }
     }
   }
@@ -2171,6 +2206,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     } catch (e) {
       console.warn('🌱 [Seeding] Failed to seed default assets:', e);
     }
+  }
+
+  public isColliderEditingEnabled(): boolean {
+    return this.isEditingCollider;
   }
 }
 

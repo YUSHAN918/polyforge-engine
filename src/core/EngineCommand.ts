@@ -82,7 +82,8 @@ export enum EngineCommandType {
     DELETE_ENTITY = 'DELETE_ENTITY',
     ROTATE_PLACEMENT = 'ROTATE_PLACEMENT',
     SCALE_PLACEMENT = 'SCALE_PLACEMENT',
-    SET_COLLIDER_SCALE = 'SET_COLLIDER_SCALE'
+    SET_COLLIDER_SCALE = 'SET_COLLIDER_SCALE',
+    TOGGLE_COLLIDER_EDITING = 'TOGGLE_COLLIDER_EDITING'
 }
 
 // --- Payloads ---
@@ -160,6 +161,7 @@ export interface DeleteEntityPayload { type: EngineCommandType.DELETE_ENTITY; }
 export interface RotatePlacementPayload { type: EngineCommandType.ROTATE_PLACEMENT; axis?: 'x' | 'y'; }
 export interface ScalePlacementPayload { type: EngineCommandType.SCALE_PLACEMENT; delta: number; }
 export interface SetColliderScalePayload { type: EngineCommandType.SET_COLLIDER_SCALE; scale: number; }
+export interface ToggleColliderEditingPayload { type: EngineCommandType.TOGGLE_COLLIDER_EDITING; enabled: boolean; }
 
 // --- Union Type ---
 
@@ -215,4 +217,5 @@ export type EngineCommand =
     | DeleteEntityPayload
     | RotatePlacementPayload
     | ScalePlacementPayload
-    | SetColliderScalePayload;
+    | SetColliderScalePayload
+    | ToggleColliderEditingPayload;

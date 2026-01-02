@@ -62,6 +62,8 @@ export class PhysicsComponent implements Component {
 
   // 物理微调系数 (用于补偿非紧致模型或制作人特定需求)
   public colliderScale: number = 1.0;
+  public colliderLocalOffset: [number, number, number] = [0, 0, 0]; // 碰撞盒局部偏移
+  public colliderLocalRotation: [number, number, number] = [0, 0, 0]; // 碰撞盒局部旋转 (欧拉角)
 
   constructor(
     bodyType: BodyType = 'dynamic',
@@ -101,6 +103,8 @@ export class PhysicsComponent implements Component {
       lockPosition: this.lockPosition,
       useGravity: this.useGravity,
       colliderScale: this.colliderScale,
+      colliderLocalOffset: this.colliderLocalOffset,
+      colliderLocalRotation: this.colliderLocalRotation,
       // 注意：不序列化 Rapier 句柄，这些是运行时数据
     };
   }
@@ -122,6 +126,8 @@ export class PhysicsComponent implements Component {
     this.lockPosition = data.lockPosition || [false, false, false];
     this.useGravity = data.useGravity ?? true;
     this.colliderScale = data.colliderScale ?? 1.0;
+    this.colliderLocalOffset = data.colliderLocalOffset || [0, 0, 0];
+    this.colliderLocalRotation = data.colliderLocalRotation || [0, 0, 0];
   }
 
   /**

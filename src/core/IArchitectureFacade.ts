@@ -123,9 +123,6 @@ export interface IArchitectureFacade {
     /**
      * 获取飞行模式状态
      */
-    /**
-     * 获取飞行模式状态
-     */
     isFlightModeEnabled(): boolean;
 
     /**
@@ -157,4 +154,8 @@ export interface IArchitectureFacade {
      * 设置阴影覆盖距离 (手动 override ASA)
      */
     setShadowDistance(distance: number): void;
+    /**
+     * 获取碰撞盒编辑模式状态
+     */
+    isColliderEditingEnabled(): boolean;
 }

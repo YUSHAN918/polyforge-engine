@@ -98,6 +98,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [terrainWidth, setTerrainWidth] = useState(50);
   const [terrainDepth, setTerrainDepth] = useState(50);
   const [colliderScale, setColliderScale] = useState(1.0); // 🔥 Physics compensation
+  const [isEditingCollider, setIsEditingCollider] = useState(false); // 🧱 MVP: Collider Edit Mode State
 
 
   // Asset Controls
@@ -1522,14 +1523,16 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       {/* 📊 Model Audit Card (WYSIWYG Inspector) */}
       {
         selectedEntity && currentContext === ValidationContext.CREATION && !placementState.isPlacing && (
-          <div className="absolute right-[400px] bottom-6 w-64 bg-gray-950/90 border border-blue-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-fadeIn z-40">
+          <div className={`absolute right-[400px] bottom-6 w-64 bg-gray-950/90 border ${isEditingCollider ? 'border-orange-500/50 shadow-orange-500/10' : 'border-blue-500/30'} rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-fadeIn z-40 transition-all duration-500`}>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                <i className="fas fa-microchip text-blue-400"></i>
+              <div className={`w-10 h-10 rounded-xl ${isEditingCollider ? 'bg-orange-500/10 border-orange-500/20' : 'bg-blue-500/10 border-blue-500/20'} border flex items-center justify-center transition-colors`}>
+                <i className={`fas ${isEditingCollider ? 'fa-pen-ruler text-orange-400' : 'fa-microchip text-blue-400'}`}></i>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center justify-between w-[160px]">
-                  <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest">模型审计 (Audit)</span>
+                  <span className={`text-[10px] ${isEditingCollider ? 'text-orange-400' : 'text-blue-400'} font-black uppercase tracking-widest transition-colors`}>
+                    {isEditingCollider ? '碰撞编辑 (Collider)' : '模型审计 (Audit)'}
+                  </span>
                   <button
                     onClick={() => {
                       setSelectedEntity(null);
@@ -1540,8 +1543,26 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                     <i className="fas fa-times"></i>
                   </button>
                 </div>
-                <span className="text-white font-bold text-xs truncate max-w-[140px]">{selectedEntity}</span>
+                <span className="text-white font-bold text-xs truncate max-w-[140px] transition-all">{selectedEntity}</span>
               </div>
+            </div>
+
+            {/* 🔥 Collider Editing Mode Switch */}
+            <div className={`flex items-center justify-between p-2 rounded-lg mb-3 border transition-all ${isEditingCollider ? 'bg-orange-950/20 border-orange-500/30' : 'bg-gray-900/50 border-gray-800'}`}>
+              <div className="flex flex-col">
+                <span className={`text-[9px] font-black uppercase ${isEditingCollider ? 'text-orange-400' : 'text-gray-500'}`}>编辑碰撞盒 (Edit)</span>
+                <span className="text-[7px] text-gray-600 font-mono tracking-tighter">GRAB/ROT TARGET: COLLIDER</span>
+              </div>
+              <button
+                onClick={() => {
+                  const next = !isEditingCollider;
+                  setIsEditingCollider(next);
+                  dispatch(EngineCommandType.TOGGLE_COLLIDER_EDITING, { enabled: next });
+                }}
+                className={`w-10 h-5 rounded-full relative transition-all duration-300 ${isEditingCollider ? 'bg-orange-600 shadow-[0_0_10px_rgba(234,88,12,0.5)]' : 'bg-gray-800'}`}
+              >
+                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-300 ${isEditingCollider ? 'left-6' : 'left-1'}`}></div>
+              </button>
             </div>
 
             <div className="space-y-2">
