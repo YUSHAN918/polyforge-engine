@@ -3,6 +3,7 @@ import { CameraComponent } from '../../components/CameraComponent';
 import { TransformComponent } from '../../components/TransformComponent';
 import { InputSystem } from '../InputSystem';
 import { Entity } from '../../Entity';
+import * as THREE from 'three';
 
 export class FirstPersonStrategy implements ICameraStrategy {
     public readonly name = 'firstPerson';
@@ -49,43 +50,22 @@ export class FirstPersonStrategy implements ICameraStrategy {
             };
         }
 
-        let pos: [number, number, number] = [0, 0, 0];
-        const headSocket = target.getSocket(camera.firstPersonSocket);
+        // 统一计算逻辑：无论是否有 Socket，都强制应用防穿模偏移
+        // The implementation ignores specific socket transforms for now to ensure stable execution
+        const t = transform;
+        const rawPos = (target.parent && t.getWorldPosition) ? t.getWorldPosition() : t.position;
 
-        if (headSocket) {
-            // Need getSocketWorldPosition logic... 
-            // Since we don't have access to CameraSystem's helper method easily without passing it in,
-            // we might need to duplicate it or move it to a utility.
-            // For now, let's implement a simplified local version or assume TransformComponent has what we need?
-            // Actually, socket world position calculation relies on the entity transform hierarchy.
-            // Let's implement a safe approximation here or assume the socket logic is simple.
-            // Or better: The CameraSystem.ts has `getSocketWorldPosition`. 
-            // We should probably rely on the transform component's world matrix + socket local matrix.
-            // But for simplicity in this refactor step, let's just use the logic from CameraSystem.
+        // 🔥 FPS Anti-Clipping: Push camera forward to clear the customized capsule/mesh
+        // Use camera's own yaw (since it drives the character)
+        // Offset: 0.6m forward (clears most humanoid meshes with radius 0.5), 1.7m height (natural eye level)
+        const radYaw = THREE.MathUtils.degToRad(camera.yaw);
+        const forwardOffset = 0.6;
 
-            // We can use transform.getWorldPosition() + rotation applied to socket offset.
-            // BUT head socket might be animated? No, sockets are static offsets usually unless bone attached.
-
-            const worldPos = transform.getWorldPosition();
-            // Apply rotation?
-            // Let's revert to a simpler approach: Just use Entity Root + Offset if socket logic is too complex to decouple right now.
-            // Wait, I can just copy the math.
-
-            // Simplified for now to ensure stability:
-            pos = [
-                worldPos[0],
-                worldPos[1] + 1.7,
-                worldPos[2]
-            ];
-        } else {
-            const t = transform;
-            const rawPos = (target.parent && t.getWorldPosition) ? t.getWorldPosition() : t.position;
-            pos = [
-                rawPos[0],
-                rawPos[1] + 1.7,
-                rawPos[2]
-            ];
-        }
+        const pos: [number, number, number] = [
+            rawPos[0] - Math.sin(radYaw) * forwardOffset,
+            rawPos[1] + 1.7,
+            rawPos[2] - Math.cos(radYaw) * forwardOffset
+        ];
 
         return {
             position: [
