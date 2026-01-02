@@ -16,12 +16,13 @@ export class PlacementSystem implements System {
     private cameraSystem: any;
     private inputSystem: any;
     private physicsSystem: any;
-    private tickCounter: number = 0;
+    private isGrabbedPredicate?: (id: string) => boolean;
 
-    constructor(cameraSystem: any, inputSystem: any, physicsSystem: any) {
+    constructor(cameraSystem: any, inputSystem: any, physicsSystem: any, isGrabbedPredicate?: (id: string) => boolean) {
         this.cameraSystem = cameraSystem;
         this.inputSystem = inputSystem;
         this.physicsSystem = physicsSystem;
+        this.isGrabbedPredicate = isGrabbedPredicate;
     }
 
     public initialize(entityManager: any): void {
@@ -31,9 +32,7 @@ export class PlacementSystem implements System {
     update(deltaTime: number, entities: Entity[]): void {
         if (entities.length === 0) return;
 
-        // 性能优化：降低射线检测频率
-        this.tickCounter++;
-        if (this.tickCounter % 2 !== 0) return;
+        if (entities.length === 0) return;
 
         for (const entity of entities) {
             const placement = entity.getComponent<PlacementComponent>('Placement');
@@ -43,6 +42,7 @@ export class PlacementSystem implements System {
 
             const mouse = this.inputSystem.mousePosition;
             const ray = this.cameraSystem.getRayFromScreen ? this.cameraSystem.getRayFromScreen(mouse.x, mouse.y) : null;
+
             if (!ray) continue;
 
             let hitPos = [0, 0, 0] as [number, number, number];
@@ -76,28 +76,70 @@ export class PlacementSystem implements System {
                 }
             }
 
-            if (isHit) {
-                transform.position = [...hitPos];
+            if (isHit && !placement.isPlaced) {
+                // 贴纸模式增加微小法线位移，防止 Z-Fighting
+                const offset = (placement.mode === 'sticker') ? 0.05 : 0;
+                transform.position = [
+                    hitPos[0] + hitNormal[0] * offset,
+                    hitPos[1] + hitNormal[1] * offset,
+                    hitPos[2] + hitNormal[2] * offset
+                ];
+
                 const s = placement.scale;
                 transform.scale = [s, s, s];
 
-                // 旋转逻辑 (移植并微调自 Manager)
-                if (placement.mode === 'model') {
-                    transform.quaternion = undefined;
-                    transform.rotation = [placement.rotationX ? -90 : 0, placement.rotationY, 0];
-                } else if (placement.mode === 'billboard') {
+                // 预览阶段的特殊旋转（如贴纸对齐法线）
+                if (placement.mode === 'sticker') {
                     const dummy = new THREE.Object3D();
-                    dummy.position.set(hitPos[0], hitPos[1], hitPos[2]);
-                    const camPos = this.cameraSystem.getCurrentPosition ? this.cameraSystem.getCurrentPosition() : [0, 50, 50];
-                    dummy.lookAt(camPos[0], camPos[1], camPos[2]);
+                    dummy.position.set(transform.position[0], transform.position[1], transform.position[2]);
+                    const target = new THREE.Vector3(
+                        transform.position[0] + hitNormal[0],
+                        transform.position[1] + hitNormal[1],
+                        transform.position[2] + hitNormal[2]
+                    );
+                    dummy.lookAt(target);
+                    // 贴纸增加绕法线旋转的控制支持
+                    if (placement.rotationY !== 0) {
+                        // 弧度转度数或直接旋转。THREE 使用弧度。
+                        // 这里的 dummy 仅用于获取四元数，所以 rotateZ 使用弧度是正确的。
+                        dummy.rotateZ(placement.rotationY * Math.PI / 180);
+                    }
                     const q = dummy.quaternion;
                     transform.quaternion = [q.x, q.y, q.z, q.w];
-                    transform.rotation = [0, 0, 0];
+                    // transform.rotation = [0, 0, 0]; // 🔥 重要：严禁在此覆盖 rotation，会毁掉刚写入的 quaternion
                 }
-                // ... 其他模式（standee, sticker）可按需恢复
-
-                transform.markLocalDirty();
             }
+
+            // --- 旋转行为 (核心隔离逻辑) ---
+            // 🔥 关键修正：如果物体正在被 Manager 抓取，跳过此系统的旋转覆盖，防止跳动
+            if (this.isGrabbedPredicate && this.isGrabbedPredicate(entity.id)) {
+                // Yield control to Manager for rotations during Grab
+            } else if (placement.mode === 'billboard') {
+                const dummy = new THREE.Object3D();
+                const pos = transform.position;
+                dummy.position.set(pos[0], pos[1], pos[2]);
+                const camPos = this.cameraSystem.getCurrentPosition ? this.cameraSystem.getCurrentPosition() : [0, 50, 50];
+                dummy.lookAt(camPos[0], camPos[1], camPos[2]);
+                const q = dummy.quaternion;
+                transform.quaternion = [q.x, q.y, q.z, q.w];
+                // transform.rotation = [0, 0, 0]; // 🔥 重要：物理同步优先使用四元数，禁止覆盖
+            } else if (placement.mode === 'standee') {
+                // 立牌：强制清除四元数，使用欧拉角
+                transform.quaternion = undefined;
+                transform.rotation = [0, placement.rotationY, 0];
+            } else if (placement.mode === 'sticker') {
+                // 已放置贴纸的位姿已在 SET_IMAGE_MODE 指令周期处理完毕，此处无需轮询恢复
+            } else if (placement.mode === 'model' && !placement.isPlaced) {
+                transform.quaternion = undefined;
+                transform.rotation = [placement.rotationX ? -90 : 0, placement.rotationY, 0];
+            }
+
+            // --- 物理同步 (确保碰撞体随动态旋转实时更新) ---
+            if (placement.isPlaced && this.physicsSystem?.syncTransformToPhysics) {
+                this.physicsSystem.syncTransformToPhysics(entity);
+            }
+
+            transform.markLocalDirty();
         }
     }
 

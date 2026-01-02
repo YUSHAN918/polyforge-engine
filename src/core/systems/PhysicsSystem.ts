@@ -430,14 +430,24 @@ export class PhysicsSystem implements System {
   public syncTransformToPhysics(entity: Entity): void {
     if (!this.world) return;
 
-    // ... Implementation skipped for brevity if not needed right now
-    // Actually, let's keep it safe.
     const rigidBody = this.bodyMap.get(entity.id);
     const transform = entity.getComponent<TransformComponent>('Transform');
     if (rigidBody && transform) {
+      // 1. 同步平移
       rigidBody.setTranslation({ x: transform.position[0], y: transform.position[1], z: transform.position[2] }, true);
-      const q = this.eulerToQuaternion(transform.rotation[0], transform.rotation[1], transform.rotation[2]);
-      rigidBody.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+
+      // 2. 同步旋转 (🔥 修正: 优先使用四元数，适配 Billboard 模式)
+      if (transform.quaternion) {
+        rigidBody.setRotation({
+          x: transform.quaternion[0],
+          y: transform.quaternion[1],
+          z: transform.quaternion[2],
+          w: transform.quaternion[3]
+        }, true);
+      } else {
+        const q = this.eulerToQuaternion(transform.rotation[0], transform.rotation[1], transform.rotation[2]);
+        rigidBody.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+      }
     }
   }
 

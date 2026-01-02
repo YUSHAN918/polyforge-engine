@@ -87,7 +87,8 @@ export enum EngineCommandType {
     SET_COLLIDER_OFFSET_Y = 'SET_COLLIDER_OFFSET_Y',
     SET_COLLIDER_ROTATION_Y = 'SET_COLLIDER_ROTATION_Y',
     SAVE_ASSET_PHYSICS_CONFIG = 'SAVE_ASSET_PHYSICS_CONFIG',
-    AUTO_FIT_COLLIDER = 'AUTO_FIT_COLLIDER'
+    AUTO_FIT_COLLIDER = 'AUTO_FIT_COLLIDER',
+    SET_IMAGE_MODE = 'SET_IMAGE_MODE'
 }
 
 // --- Payloads ---
@@ -178,6 +179,7 @@ export interface ToggleColliderEditingPayload { type: EngineCommandType.TOGGLE_C
 export interface SetColliderOffsetYPayload { type: EngineCommandType.SET_COLLIDER_OFFSET_Y; offset: number; }
 export interface SetColliderRotationYPayload { type: EngineCommandType.SET_COLLIDER_ROTATION_Y; rotation: number; }
 export interface SaveAssetPhysicsConfigPayload { type: EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG; }
+export interface SetImageModePayload { type: EngineCommandType.SET_IMAGE_MODE; entityId: string; mode: 'billboard' | 'standee' | 'sticker'; }
 
 // --- Union Type ---
 
@@ -238,4 +240,5 @@ export type EngineCommand =
     | SetColliderOffsetYPayload
     | SetColliderRotationYPayload
     | SaveAssetPhysicsConfigPayload
-    | AutoFitColliderPayload;
+    | AutoFitColliderPayload
+    | SetImageModePayload;

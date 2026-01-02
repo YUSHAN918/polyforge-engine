@@ -11,6 +11,9 @@ import { IArchitectureFacade } from '../../core/IArchitectureFacade'; // Use Int
 import { EngineCommandType } from '../../core/EngineCommand';
 import { TerrainComponent } from '../../core/components/TerrainComponent';
 import { CameraMode, CameraComponent } from '../../core/components/CameraComponent';
+import { VisualComponent } from '../../core/components/VisualComponent';
+import { PlacementComponent } from '../../core/components/PlacementComponent';
+import { Entity } from '../../core/Entity';
 import * as THREE from 'three';
 import { FileSystemService } from '../../core/assets/FileSystemService';
 import { eventBus } from '../../core/EventBus';
@@ -118,6 +121,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [placementState, setPlacementState] = useState({ isPlacing: false, mode: 'model' as any, assetName: null as string | null });
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0); // 🔥 UI 刷新脉冲
 
   const exportService = useRef(new ModelExportService());
 
@@ -130,6 +134,10 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   }, [notification]);
   // --- Event Listeners ---
   useEffect(() => {
+    const onEngineStateChanged = () => {
+      setRevision(prev => prev + 1);
+    };
+
     const onPresetChanged = () => {
       // Force immediate update from system state
       if (manager && manager.getCameraSystem()) {
@@ -172,12 +180,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     eventBus.on('BUNDLE_PROGRESS', onBundleProgress);
     eventBus.on('MODEL_EXPORT_COMPLETE', onExportComplete);
 
+    eventBus.on('ENGINE_STATE_CHANGED', onEngineStateChanged);
+
     return () => {
       eventBus.off('camera:preset:changed', onPresetChanged);
       eventBus.off('camera:preset:fallback', onPresetFallback);
       eventBus.off('camera:preset:error', onError);
       eventBus.off('BUNDLE_PROGRESS', onBundleProgress);
       eventBus.off('MODEL_EXPORT_COMPLETE', onExportComplete);
+      eventBus.off('ENGINE_STATE_CHANGED', onEngineStateChanged);
     };
   }, [manager]); // Re-bind if manager changes (usually once)
 
@@ -1587,34 +1598,13 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             </div>
 
             <div className="space-y-2">
-              {(() => {
-                const entity = manager.getEntityManager().getEntity(selectedEntity);
-                const visual = entity?.getComponent<any>('Visual');
-                const geom = visual?.geometry;
-                const isModel = geom?.type === 'model';
-                const assetId = visual?.assetId;
-                const assetMetadata = assetId ? manager.getAssetRegistry().getMetadataSync(assetId) : null;
-                const realFaces = assetMetadata?.modelStats?.faces;
-
-                return (
-                  <>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">几何类型 (Geometry)</span>
-                      <span className="text-cyan-400 font-mono uppercase">{geom?.type || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">{realFaces ? '多边形总数 (Faces)' : '多边形估算 (Polygons)'}</span>
-                      <span className="text-cyan-400 font-mono">
-                        {realFaces ? realFaces.toLocaleString() : (isModel || geom?.type === 'custom' ? '~42.5k' : '24')}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500">材质插槽 (Materials)</span>
-                      <span className="text-cyan-400 font-mono">{visual?.material ? '1' : '0'}</span>
-                    </div>
-                  </>
-                );
-              })()}
+              {/* 🔥 Entity Details Overlay - Separated for Focus Stability */}
+              <EntityDetailsSection
+                selectedEntity={selectedEntity}
+                manager={manager}
+                dispatch={dispatch}
+                revision={revision}
+              />
 
               {/* 🔥 isEditingCollider: Advanced Controls */}
 
@@ -1740,3 +1730,84 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     </div>
   );
 };
+
+// ===================================================================================
+// 🛡️ Sub-Components (Separated for focus/re-render stability)
+// ===================================================================================
+
+/**
+ * 实体详情段落 - 独立组件化以防止外部 stats 更新导致失焦 (如图片模式选择下拉框)
+ */
+interface EntityDetailsSectionProps {
+  selectedEntity: string | null;
+  manager: IArchitectureFacade;
+  dispatch: (type: EngineCommandType, payload: any) => void;
+  revision: number; // 🔥 强制刷新的脉冲
+}
+const EntityDetailsSection = React.memo(({ selectedEntity, manager, dispatch, revision }: EntityDetailsSectionProps) => {
+  const entity = manager.getEntityManager().getEntity(selectedEntity);
+  if (!entity) return null;
+
+  const visual = entity.getComponent('Visual') as VisualComponent | undefined;
+  const placement = entity.getComponent('Placement') as PlacementComponent | undefined;
+  const geom = visual?.geometry;
+  const isModel = geom?.type === 'model';
+  const assetId = geom?.assetId || visual?.material?.textureAssetId;
+  const assetMetadata = assetId ? manager.getAssetRegistry().getMetadataSync(assetId) : null;
+  const realFaces = assetMetadata?.modelStats?.faces;
+  const imgWidth = assetMetadata?.textureMetadata?.width;
+  const imgHeight = assetMetadata?.textureMetadata?.height;
+
+  return (
+    <>
+      <div className="flex justify-between text-[10px]">
+        <span className="text-gray-500">几何类型 (Geometry)</span>
+        <span className="text-cyan-400 font-mono uppercase">{geom?.type || 'Unknown'}</span>
+      </div>
+      <div className="flex justify-between text-[10px]">
+        <span className="text-gray-500">{realFaces ? '多边形总数 (Faces)' : '多边形估算 (Polygons)'}</span>
+        <span className="text-cyan-400 font-mono">
+          {realFaces ? realFaces.toLocaleString() : (isModel || geom?.type === 'custom' ? '~42.5k' : '24')}
+        </span>
+      </div>
+      {(imgWidth && imgHeight) && (
+        <div className="flex justify-between text-[10px]">
+          <span className="text-gray-500">原始规格 (Image Stats)</span>
+          <span className="text-cyan-400 font-mono">{imgWidth} x {imgHeight}</span>
+        </div>
+      )}
+      <div className="flex justify-between text-[10px]">
+        <span className="text-gray-500">材质插槽 (Materials)</span>
+        <span className="text-cyan-400 font-mono">{visual?.material ? '1' : '0'}</span>
+      </div>
+
+      {/* 🔥 Image Asset Behavior Select */}
+      {geom?.type === 'plane' && visual?.material?.textureAssetId && (
+        <div className="flex items-center justify-between p-2 mt-2 bg-blue-950/30 border border-blue-500/30 rounded-lg animate-in fade-in zoom-in-95 duration-300">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-blue-400 font-bold uppercase tracking-tight">显示模式 (Mode)</span>
+            <span className="text-[7px] text-blue-600 font-mono italic">IMAGE MODALITY</span>
+          </div>
+          <select
+            value={placement?.mode || 'billboard'}
+            onMouseDown={(e) => e.stopPropagation()} // 🔥 阻止事件冒泡防止 Canvas 捕获
+            onChange={(e) => {
+              dispatch(EngineCommandType.SET_IMAGE_MODE, {
+                entityId: selectedEntity,
+                mode: e.target.value
+              });
+            }}
+            className="bg-black/40 text-blue-400 text-[10px] border border-blue-900 rounded p-1 outline-none focus:border-blue-400 transition-all cursor-pointer hover:bg-black/60 font-bold"
+          >
+            <option value="billboard"> 看板 (Billboard)</option>
+            <option value="standee"> 立牌 (Standee)</option>
+            <option value="sticker"> 贴纸 (Sticker)</option>
+          </select>
+        </div>
+      )}
+    </>
+  );
+}, (prev, next) => {
+  // 🔥 FIX: Must re-render when revision changes (Engine State Update) or entity changes
+  return prev.selectedEntity === next.selectedEntity && prev.revision === next.revision;
+});

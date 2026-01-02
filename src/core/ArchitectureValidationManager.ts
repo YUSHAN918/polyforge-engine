@@ -34,7 +34,7 @@ import { BundleSystem } from './bundling/BundleSystem';
 import { BundleOptions } from './bundling/BundleBuilder';
 import { BundleProgress } from './bundling/types';
 import { IArchitectureFacade, ValidationStats } from './IArchitectureFacade';
-import { EngineCommand, EngineCommandType } from './EngineCommand';
+import { EngineCommand, EngineCommandType, SetImageModePayload } from './EngineCommand';
 import { eventBus } from './EventBus';
 import { CreateEntityCommand, UpdateWorldStateCommand, ModifyComponentCommand } from './CommandManager';
 
@@ -73,6 +73,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   private autoSaveInterval: number = 5000;
   private lastSaveTime: number = 0;
   private currentContext: ValidationContext = ValidationContext.CREATION;
+  private stateRevision: number = 0; // 🔥 状态脉冲：每当内部数据变动时递增，用于强制 UI 刷新
   private isDisposed: boolean = false;
   private selectedEntityId: string | null = null;
   private hoveredEntityId: string | null = null;
@@ -127,7 +128,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.cameraSystem = new CameraSystem();
     this.physicsSystem = new PhysicsSystem();
     this.physicsSystem.setEntityManager(this.entityManager); // Critical Fix for Physics
-    this.placementSystem = new PlacementSystem(this.cameraSystem, this.inputSystem, this.physicsSystem);
+    this.placementSystem = new PlacementSystem(this.cameraSystem, this.inputSystem, this.physicsSystem, (id) => this.isEntityGrabbed(id));
     this.audioSystem = new AudioSystem();
 
     // 4. Wiring
@@ -539,31 +540,37 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
           const visual = entity?.getComponent<VisualComponent>('Visual');
           const phys = entity?.getComponent<PhysicsComponent>('Physics');
 
-          if (phys && visual?.geometry?.assetId) {
-            const meta = this.assetRegistry.getMetadataSync(visual.geometry.assetId);
-            if (meta?.modelStats?.boundingBox) {
-              const { min, max } = meta.modelStats.boundingBox;
-              // Calculate geometric center relative to pivot
-              const idealOffsetY = (min[1] + max[1]) / 2;
-
-              // Apply to Component
+          if (phys && visual) {
+            if (visual.geometry.type === 'model' && visual.geometry.assetId) {
+              const meta = this.assetRegistry.getMetadataSync(visual.geometry.assetId);
+              if (meta?.modelStats?.boundingBox) {
+                const { min, max } = meta.modelStats.boundingBox;
+                const idealOffsetY = (min[1] + max[1]) / 2;
+                phys.colliderScale = 1.0;
+                phys.colliderLocalOffset[1] = idealOffsetY;
+                phys.colliderLocalRotation[1] = 0;
+                this.physicsSystem.rebuildBody(this.selectedEntityId);
+                window.dispatchEvent(new CustomEvent('PHYSICS_CONFIG_UPDATED', {
+                  detail: { scale: 1.0, offsetY: idealOffsetY, rotationY: 0 }
+                }));
+                console.log(`📐 [Manager] Auto-Fitted Model Collider. CenterY: ${idealOffsetY}`);
+              }
+            } else if (visual.geometry.type === 'plane') {
+              // 🖼️ 图片一键贴合：重置偏移并确保比例 1:1 (基于 Visual 参数)
               phys.colliderScale = 1.0;
-              phys.colliderLocalOffset[1] = idealOffsetY;
-              phys.colliderLocalRotation[1] = 0;
+              phys.colliderLocalOffset = [0, 0, 0];
+              phys.colliderLocalRotation = [0, 0, 0];
+
+              // 自动适配 plane 的 width/height
+              const w = visual.geometry.parameters?.width || 1;
+              const h = visual.geometry.parameters?.height || 1;
+              phys.setCollider('box', [w, h, 0.1], [0, 0, 0]);
 
               this.physicsSystem.rebuildBody(this.selectedEntityId);
-
-              // 🔥 Sync UI: Emit event to update React state
-              // "PHYSICS_CONFIG_UPDATED"
               window.dispatchEvent(new CustomEvent('PHYSICS_CONFIG_UPDATED', {
-                detail: {
-                  scale: 1.0,
-                  offsetY: idealOffsetY,
-                  rotationY: 0
-                }
+                detail: { scale: 1.0, offsetY: 0, rotationY: 0 }
               }));
-
-              console.log(`📐 [Manager] Auto-Fitted Collider. CenterY: ${idealOffsetY}`);
+              console.log(`📐 [Manager] Auto-Fitted Image Collider to [${w}, ${h}, 0.1]`);
             }
           }
         }
@@ -596,6 +603,38 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       case EngineCommandType.SET_PLAYBACK_RATE:
         this.audioSystem.setPlaybackRate(command.rate);
         break;
+
+      // --- Image Mode ---
+      case EngineCommandType.SET_IMAGE_MODE: {
+        const c = command as SetImageModePayload;
+        const entity = this.entityManager.getEntity(c.entityId);
+        if (entity) {
+          let placement = entity.getComponent<PlacementComponent>('Placement');
+          if (!placement) {
+            const visual = entity.getComponent<VisualComponent>('Visual');
+            placement = new PlacementComponent(visual?.material.textureAssetId || '', entity.name);
+            this.entityManager.addComponent(c.entityId, placement);
+          }
+          placement.mode = c.mode;
+          // 🔥 架构加固：切换模式时立即物理清理旋转冲突状态
+          const transform = entity.getComponent<TransformComponent>('Transform');
+          if (transform) {
+            if (c.mode === 'billboard') {
+              // 看板：保留现状，由 System 接管
+            } else {
+              // 立牌或贴纸：立即清除四元数，交由 Euler 或对齐逻辑处理
+              transform.quaternion = undefined;
+              if (c.mode === 'sticker') transform.rotation = [90, placement.rotationY, 0];
+              else if (c.mode === 'standee') transform.rotation = [0, placement.rotationY, 0];
+            }
+            transform.markLocalDirty();
+          }
+          console.log(`🖼️ [Manager] Image mode set to: ${c.mode} for ${c.entityId}`);
+          this.stateRevision++; // 🔥 递增脉冲
+          eventBus.emit('ENGINE_STATE_CHANGED'); // 🔥 核心修复：通知 UI 刷新
+        }
+        break;
+      }
 
       // --- Selection & Context (Isolation) ---
       case EngineCommandType.SET_CONTEXT:
@@ -637,6 +676,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   public getEnvironmentState(): WorldState {
     return this.worldStateManager.getState();
+  }
+
+  public getStateRevision(): number {
+    return this.stateRevision;
+  }
+
+  public isEntityGrabbed(entityId: string): boolean {
+    return this.isGrabbing && this.grabbedEntityId === entityId;
   }
 
   public getSerializationService(): SerializationService {
@@ -1597,7 +1644,52 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.entityManager.addComponent(id, transform);
 
     const visual = new VisualComponent();
-    visual.geometry = { type: 'plane', parameters: { width: 4, height: 4 } };
+
+    // 🔥 健壮的尺寸探测：优先读取元数据，缺失则加载图片探测
+    let width = 4, height = 4;
+    try {
+      const meta = await this.assetRegistry.getMetadata(assetId);
+      let imgWidth = meta?.textureMetadata?.width;
+      let imgHeight = meta?.textureMetadata?.height;
+
+      if (!imgWidth || !imgHeight) {
+        // 尝试从 Blob 实时探测 (兼容存量数据)
+        const blob = await this.assetRegistry.getAsset(assetId);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const i = new Image();
+            i.onload = () => resolve(i);
+            i.onerror = reject;
+            i.src = url;
+          });
+          imgWidth = img.width;
+          imgHeight = img.height;
+          URL.revokeObjectURL(url);
+
+          // 顺便回写元数据，解决下次读取问题
+          this.assetRegistry.updateAssetMetadata(assetId, {
+            textureMetadata: {
+              width: imgWidth,
+              height: imgHeight,
+              format: 'png',
+              isPowerOfTwo: false
+            }
+          });
+        }
+      }
+
+      if (imgWidth && imgHeight) {
+        const ratio = imgWidth / imgHeight;
+        if (ratio > 1) height = width / ratio;
+        else width = height * ratio;
+        console.log(`🖼️ [Placement] Aspect ratio fixed (Robust): ${width}x${height}`);
+      }
+    } catch (e) {
+      console.warn(`[Placement] Failed to detect texture dimensions for ${assetName}, defaults to 4x4`, e);
+    }
+
+    visual.geometry = { type: 'plane', parameters: { width, height } };
     visual.material = {
       type: 'standard',
       color: '#ffffff',
@@ -1608,6 +1700,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     visual.emissive = { color: '#ffffff', intensity: 0.5 };
     visual.postProcessing = { bloom: true, outline: true };
     this.entityManager.addComponent(id, visual);
+
+    // 🔥 修复 Ghost 不跟随：必须补全 Transform，但需防止重复添加
+    if (!this.entityManager.getEntity(id)?.getComponent('Transform')) {
+      this.entityManager.addComponent(id, new TransformComponent());
+    }
 
     // 🛡️ ECS 隔离加固
     const placement = new PlacementComponent(assetId, assetName);
@@ -1665,21 +1762,41 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const solidId = await this.entityManager.duplicateEntity(this.ghostEntityId, assetName);
     if (!solidId) return;
 
-    // 🚀 [Compliant Transition] Remove Preview/Ghost specific traits
-    this.entityManager.removeComponent(solidId, 'Placement');
-
     // Switch Visual from Ghost Style to Standard Solid
     const solidEntity = this.entityManager.getEntity(solidId);
+
+    // 🚀 [Compliant Transition] Remove Preview/Ghost specific traits
+    if (this.currentPlacementAsset.type === 'model') {
+      this.entityManager.removeComponent(solidId, 'Placement');
+    } else if (this.currentPlacementAsset.type === 'image') {
+      // 🖼️ 图片资产：保留 PlacementComponent 用于 Billboard/Standee 动态旋转
+      const solidPlacement = solidEntity?.getComponent<PlacementComponent>('Placement');
+      if (solidPlacement) {
+        solidPlacement.isPlaced = true;
+      }
+    }
+
     if (solidEntity) {
       solidEntity.persistent = true;
       const visual = solidEntity.getComponent<VisualComponent>('Visual');
       if (visual) {
-        visual.material = {
-          type: 'physical',
-          color: '#ffffff',
-          roughness: 0.5,
-          transparent: visual.material.transparent || false
-        };
+        // 🔥 核心修正：仅针对模型或普通物件重置物理材质，图片需保留 textureAssetId
+        if (this.currentPlacementAsset.type === 'image') {
+          visual.material = {
+            ...visual.material,
+            type: 'standard', // 提交后转为标准材质提高光影兼容性
+            color: '#ffffff',
+            transparent: true,
+            opacity: 1.0
+          };
+        } else {
+          visual.material = {
+            type: 'physical',
+            color: '#ffffff',
+            roughness: 0.5,
+            transparent: visual.material.transparent || false
+          };
+        }
         visual.postProcessing = { bloom: false, outline: false };
         visual.emissive = { color: '#000000', intensity: 0 };
       }
@@ -1709,6 +1826,19 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       }
 
       this.entityManager.addComponent(solidId, solidPhysics);
+    } else if (this.currentPlacementAsset.type === 'image') {
+      // 🖼️ 为图片资产创建薄盒碰撞体 (Thin Box)
+      const solidPhysics = new PhysicsComponent('static');
+      const visual = solidEntity?.getComponent<VisualComponent>('Visual');
+
+      // 读取面片尺寸
+      const w = visual?.geometry.parameters?.width || 4;
+      const h = visual?.geometry.parameters?.height || 4;
+
+      // 设置极薄的 Box 碰撞体，使其可被射线拣选
+      solidPhysics.setCollider('box', [w, h, 0.1], [0, 0, 0]);
+      this.entityManager.addComponent(solidId, solidPhysics);
+      console.log(`🖼️ [Manager] Image collider created: [${w}, ${h}, 0.1]`);
     }
 
     // 4. Final Sync & Selection
@@ -1743,6 +1873,24 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       if (!visual.material) visual.material = { type: 'standard', color: '#ffffff' };
       visual.material.textureAssetId = assetId;
       visual.material.transparent = true;
+
+      // 🔥 联动修正：如果原本就是面片几何体，自动调整其比例
+      if (visual.geometry.type === 'plane') {
+        this.assetRegistry.getMetadata(assetId).then(meta => {
+          if (meta?.textureMetadata?.width && meta?.textureMetadata?.height) {
+            const ratio = meta.textureMetadata.width / meta.textureMetadata.height;
+            const currentW = (visual.geometry.parameters as any).width || 4;
+            const currentH = (visual.geometry.parameters as any).height || 4;
+            let newW = currentW, newH = currentH;
+
+            if (ratio > 1) newH = newW / ratio;
+            else newW = newH * ratio;
+
+            visual.geometry.parameters = { width: newW, height: newH };
+            console.log(`🎨 [Manager] Syncing Plane Aspect Ratio to: ${newW}x${newH}`);
+          }
+        });
+      }
     }
 
     console.log(`🎨 [Manager] Applied ${assetType} (${assetId}) to entity: ${this.selectedEntityId}`);
@@ -2131,7 +2279,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const transform = entity?.getComponent<TransformComponent>('Transform');
     // For Placement Component (Ghost), we might need to update placement config?
     // Actually PlacementSystem logic reads transform? No, PlacementSystem overwrites transform based on placement component logic.
-    // So for Ghost, we MUST update PlacementComponent config.
+    // So for Ghost, we MUST update PlacementComponent.
 
     if (this.isPlacing()) {
       const placement = entity?.getComponent<PlacementComponent>('Placement');
@@ -2234,6 +2382,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.grabbedEntityId = null;
     this.originalGrabPosition = null;
     this.grabHeightOffset = 0;
+    this.stateRevision++; // 🔥 抓取结束，递增脉冲强制刷新 UI（可能存在模式变更联动）
+    eventBus.emit('ENGINE_STATE_CHANGED');
 
     console.log(`✋ [Manager] Grab Mode Exited. Confirmed: ${confirm}`);
   }
@@ -2257,6 +2407,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // ... existing raycast logic ...
     let targetPos = [0, 0, 0];
+    let hitNormal = [0, 1, 0];
     let hitFound = false;
 
     // 1. Raycast
@@ -2276,6 +2427,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         // Simple check: if hit entity is NOT the grabbed one
         if (hit.entityId !== this.grabbedEntityId) {
           targetPos = [hit.point.x, hit.point.y, hit.point.z];
+          if (hit.normal) hitNormal = [hit.normal.x, hit.normal.y, hit.normal.z];
           hitFound = true;
         }
       }
@@ -2300,12 +2452,37 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // (entity and transform are already defined at top of function)
     if (transform) {
       transform.position = targetPos as [number, number, number];
+
+      // 🔥 贴纸模式：移动时重新计算贴合方向
+      const placement = entity.getComponent<PlacementComponent>('Placement');
+      if (placement && placement.mode === 'sticker' && hitFound) {
+        const dummy = new THREE.Object3D();
+        dummy.position.set(targetPos[0], targetPos[1], targetPos[2]);
+        const target = new THREE.Vector3(
+          targetPos[0] + hitNormal[0],
+          targetPos[1] + hitNormal[1],
+          targetPos[2] + hitNormal[2]
+        );
+        dummy.lookAt(target);
+        if (placement.rotationY !== 0) {
+          // 🔥 修正：rotationY 是度数，dummy.rotateZ 需要弧度
+          dummy.rotateZ(placement.rotationY * Math.PI / 180);
+          const q = dummy.quaternion;
+          transform.quaternion = [q.x, q.y, q.z, q.w];
+          // 🔥 修正：不再写入 rotation = [0,0,0]，避免覆盖四元数
+        }
+      }
+
       transform.markLocalDirty();
 
       // Force sync physics for smooth visual (if it has a body)
       const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId as string);
       if (rb) {
         rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
+        if (transform.quaternion) {
+          const q = transform.quaternion;
+          rb.setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] }, true);
+        }
       }
     }
   }
@@ -2423,6 +2600,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   public isColliderEditingEnabled(): boolean {
     return this.isEditingCollider;
   }
+
+  // ============================================================================
+  // End of class ArchitectureValidationManager
 }
 
 

@@ -21,6 +21,7 @@ import { TransformComponent } from '../../core/components/TransformComponent';
 import { VisualComponent } from '../../core/components/VisualComponent';
 import { TerrainComponent } from '../../core/components/TerrainComponent';
 import { VegetationComponent } from '../../core/components/VegetationComponent';
+import { PlacementComponent } from '../../core/components/PlacementComponent'; // 🔥 Added import
 import { WorldStateManager } from '../../core/WorldStateManager';
 import { getAssetRegistry } from '../../core/assets/AssetRegistry';
 import { AssetType } from '../../core/assets/types';
@@ -55,17 +56,20 @@ const EntityRenderer = React.memo<{
   worldState?: any;
   terrainSystem?: any;
   vegetationSystem?: any;
-  getCameraMode?: () => string; // 🔥 Added prop definition
-}>(({ entity, worldState, terrainSystem, vegetationSystem, getCameraMode }) => { // 🔥 Destructure getCameraMode
+  getCameraMode?: () => string;
+  revision: number; // 🔥 Force re-render on ECS change
+}>(({ entity, worldState, terrainSystem, vegetationSystem, getCameraMode, revision }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [meshes, setMeshes] = useState<THREE.Mesh[]>([]);
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   // 获取组件
   const transform = entity.getComponent<TransformComponent>('Transform');
   const visual = entity.getComponent<VisualComponent>('Visual');
   const terrain = entity.getComponent<TerrainComponent>('Terrain');
   const vegetation = entity.getComponent<VegetationComponent>('Vegetation');
+  const placement = entity.getComponent<PlacementComponent>('Placement'); // 🔥 Extract for dependency
 
   // 加载模型资产
   useEffect(() => {
@@ -122,6 +126,45 @@ const EntityRenderer = React.memo<{
       console.error(`Failed to load model asset: ${visual.geometry.assetId}`, error);
     });
   }, [visual?.geometry.assetId, terrain, vegetation]);
+
+  // 加载纹理资产
+  useEffect(() => {
+    if (!visual?.material.textureAssetId) {
+      if (texture) {
+        texture.dispose();
+        setTexture(null);
+      }
+      return;
+    }
+
+    const loadTexture = async () => {
+      const assetRegistry = getAssetRegistry();
+
+      // 🔥 修复资产丢失：等待 Registry 初始化 (Context Switch Safety)
+      // 必须在 getAsset 之前调用，否则 getAsset 会抛错
+      await assetRegistry.waitForInitialization();
+
+      const blob = await assetRegistry.getAsset(visual.material.textureAssetId!);
+      if (!blob) return;
+
+      const url = URL.createObjectURL(blob);
+      const loader = new THREE.TextureLoader();
+
+      loader.load(url, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.needsUpdate = true;
+        setTexture(tex);
+        URL.revokeObjectURL(url);
+        console.log(`[EntityRenderer] Texture loaded: ${visual.material.textureAssetId}`);
+      });
+    };
+
+    loadTexture().catch(console.error);
+
+    return () => {
+      // 这里的清理逻辑需要小心，因为 texture 可能在异步加载中
+    };
+  }, [visual?.material.textureAssetId]);
 
   // 🔥 核心修复：使用 useFrame 实时同步变换 (解决 React 不重绘物理结果的问题)
   // 通过 useFrame 直接推送到 Three.js 对象，避开 React 脏检查和重渲染
@@ -207,10 +250,28 @@ const EntityRenderer = React.memo<{
           mesh.material.envMapIntensity = lightIntensity;
         }
 
+        // 🔥 Z-Fighting 终极修复：材质级多边形偏移 (仅针对 Sticker)
+        const placement = entity.getComponent('Placement') as any;
+        const isSticker = placement?.mode === 'sticker';
+
+        if (isSticker) {
+          mesh.material.polygonOffset = true;
+          mesh.material.polygonOffsetFactor = -4.0; // 激进的 GPU 深度拉近
+          mesh.material.polygonOffsetUnits = -4.0;
+          mesh.material.depthWrite = false; // 🚫 禁止写入深度，单纯做 Decal
+          mesh.material.transparent = true;
+        } else if (visual.material.textureAssetId) {
+          // 对于普通 Billboard/Standee，恢复默认
+          mesh.material.polygonOffset = false;
+          mesh.material.polygonOffsetFactor = 0;
+          mesh.material.polygonOffsetUnits = 0;
+          mesh.material.depthWrite = !visual.material.transparent;
+        }
+
         mesh.material.needsUpdate = true;
       }
     });
-  }, [visual, meshes, worldState, terrain, vegetation]);
+  }, [visual, meshes, worldState, terrain, vegetation, placement?.mode, revision]);
 
   // 渲染逻辑分发
   // 如果是地形实体,使用 TerrainVisual 渲染
@@ -285,11 +346,14 @@ const EntityRenderer = React.memo<{
 
             {/* 材质 */}
             <meshStandardMaterial
+              map={texture}
               color={visual.material.color}
               metalness={visual.material.metalness ?? 0.5}
               roughness={visual.material.roughness ?? 0.5}
               opacity={visual.material.opacity ?? 1.0}
-              transparent={visual.material.transparent ?? false}
+              transparent={visual.material.transparent || !!texture}
+              alphaTest={texture ? 0.5 : 0}
+              side={THREE.DoubleSide}
               emissive={visual.emissive.color}
               emissiveIntensity={visual.emissive.intensity}
               envMapIntensity={worldState?.lightIntensity || 1.0}
@@ -300,7 +364,15 @@ const EntityRenderer = React.memo<{
 
       {/* 递归渲染子实体 */}
       {entity.children.map((child) => (
-        <EntityRenderer key={child.id} entity={child} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} getCameraMode={getCameraMode} />
+        <EntityRenderer
+          key={child.id}
+          entity={child}
+          worldState={worldState}
+          terrainSystem={terrainSystem}
+          vegetationSystem={vegetationSystem}
+          getCameraMode={getCameraMode}
+          revision={revision} // 🔥 Pass revision to children
+        />
       ))}
     </group>
   );
@@ -410,11 +482,23 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
   const [worldState, setWorldState] = useState<any>(null);
   const [hdrEnvMap, setHdrEnvMap] = useState<THREE.Texture | null>(null);
   const [sunPosition, setSunPosition] = useState<[number, number, number]>([20, 20, 10]); // 🔥 修复:使用 state 管理太阳位置
+  const [revision, setRevision] = useState(0); // 🔥 全局修订版本号 (ECS => React Sync)
 
   const { scene, gl, camera } = useThree();
   const sunLightRef = useRef<THREE.DirectionalLight>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const shadowCameraRef = useRef<THREE.PerspectiveCamera | null>(null); // 🔥 影子引擎专属相机引用
+
+  // 🔥 监听 ECS 状态变更 (Components, Mode, etc.)
+  useEffect(() => {
+    const handleEngineStateChanged = () => {
+      setRevision((prev) => prev + 1);
+    };
+    eventBus.on('ENGINE_STATE_CHANGED', handleEngineStateChanged);
+    return () => {
+      eventBus.off('ENGINE_STATE_CHANGED', handleEngineStateChanged);
+    };
+  }, []);
 
   // Helper to get current camera mode safely
   const getCameraMode = () => {
@@ -953,7 +1037,15 @@ export const EngineBridge: React.FC<EngineBridgeProps> = ({
 
       {/* 渲染所有根实体 */}
       {rootEntities.map((entity) => (
-        <EntityRenderer key={entity.id} entity={entity} worldState={worldState} terrainSystem={terrainSystem} vegetationSystem={vegetationSystem} getCameraMode={getCameraMode} />
+        <EntityRenderer
+          key={entity.id}
+          entity={entity}
+          worldState={worldState}
+          terrainSystem={terrainSystem}
+          vegetationSystem={vegetationSystem}
+          getCameraMode={getCameraMode}
+          revision={revision} // 🔥 Pass revision to force update
+        />
       ))}
 
       {/* 物理调试渲染 */}

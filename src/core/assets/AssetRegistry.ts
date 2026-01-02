@@ -102,6 +102,27 @@ export class AssetRegistry {
   }
 
   /**
+   * 等待初始化完成 (Promise)
+   * 修复 AssetRegistry not initialized 时序问题的关键方法
+   */
+  public async waitForInitialization(): Promise<void> {
+    if (this.initialized) return;
+
+    // 如果正在初始化但未完成，或者还没开始，我们简单轮询等待
+    // (更优雅的方式是使用 Promise resolver，但这里简单起见)
+    return new Promise((resolve) => {
+      const check = () => {
+        if (this.initialized) {
+          resolve();
+        } else {
+          setTimeout(check, 50);
+        }
+      };
+      check();
+    });
+  }
+
+  /**
    * 生成唯一 ID
    */
   private generateId(): string {
@@ -412,6 +433,7 @@ export class AssetRegistry {
           tags: options.tags || ['imported', 'texture', metadata.format],
           size: blob.size,
           thumbnail,
+          textureMetadata: metadata,
         },
         blob
       );

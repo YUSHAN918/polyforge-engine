@@ -29,6 +29,7 @@ export interface AssetMetadata {
   createdAt: number;       // 创建时间戳
   thumbnail?: string;      // Base64 缩略图（可选）
   modelStats?: ModelMetadata; // 模型特定数据（可选）
+  textureMetadata?: TextureMetadata; // 🔥 图片特定数据（可选）
   physicsConfig?: {        // 🔥 用户自定义的默认物理配置（覆盖原始 BBox）
     colliderScale?: number;
     colliderOffset?: [number, number, number];
