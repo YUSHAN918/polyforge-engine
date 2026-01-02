@@ -139,15 +139,15 @@
   - 文件过大时显示黄色警告
   - _需求: 13.4_
 
-- [/] Phase 16.5: Asset Placement & UX Refinement [P0] <!-- NEW -->
-    - [ ] **UI Localization**: Translate `ArchitectureValidationPanel` to Chinese
-    - [ ] **UI Fixes**: Fix overlapping elements in Asset Panel
-    - [ ] **Adaptive Zoom**: Implement distance-based zoom speed in Camera System
-    - [ ] **Placement Logic**:
-        - [ ] Fix "Cannot Delete" issue for placed assets
-        - [ ] Add/Fix Rotation controls (solve "Lying Down" models)
-        - [ ] Add Scale controls (solve "Too Small/Big" models)
-        - [ ] Improve Mouse Following logic
+- [/] Phase 16.5: 资产放置与交互体验优化 [P0] <!-- NEW -->
+    - [ ] **界面本地化**：将 `ArchitectureValidationPanel` 完整翻译为中文
+    - [ ] **UI 修复**：修复资产面板中的元素重叠问题
+    - [ ] **自适应缩放**：在相机系统中实现基于距离的缩放速度调节
+    - [ ] **放置逻辑优化**：
+        - [ ] 修复已放置资产“无法删除”的问题
+        - [ ] 增加/修复旋转功能（解决部分模型“躺平”在地的显示问题）
+        - [ ] 增加缩放功能（解决模型导入后大小不一的问题）
+        - [ ] 优化鼠标跟随逻辑（解决放置时的视觉跳变）
 
 ## Phase 14: Architecture Validation View 架构验证观测窗口 ✅
 

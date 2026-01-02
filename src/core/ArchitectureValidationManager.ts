@@ -80,6 +80,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
   // 放置系统状态
   private ghostEntityId: string | null = null;
   private currentPlacementAsset: { id: string, name: string, type: 'model' | 'image' } | null = null;
+  // 🔥 G-Key Grab State
+  private isGrabbing: boolean = false;
+  private grabbedEntityId: string | null = null;
+  private grabHeightOffset: number = 0;
+
+  private originalGrabPosition: [number, number, number] | null = null; // For cancelling grab
+  private scalePressTicks: number = 0; // 🔥 Scale Acceleration Counter
+  private movePressTicks: number = 0;  // 🔥 Move Acceleration Counter
   private flightMode: boolean = false; // ✈️ 飞行模式状态
   private tickCounter: number = 0; // 🔥 Performance Throttle
 
@@ -1285,9 +1293,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     //   }
     // }
 
-    // 🔥 Keyboard Input Handler (ESC, SCALE, ROTATE)
+    // 🔥 Keyboard Input Handler (ESC, SCALE, ROTATE, GRAB)
     if (this.currentContext === ValidationContext.CREATION) {
       this.handleKeyboardInputs();
+    }
+
+    // 🔥 Grab Mode Update Loop
+    if (this.isGrabbing && this.grabbedEntityId) {
+      this.updateGrabPosition();
     }
 
     // 🔥 Anti-Drift: Reset input deltas at the end of frame processing
@@ -1595,7 +1608,17 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       return;
     }
 
-    // 2. 选择模式逻辑 (Selection)
+    // 2. 抓取模式逻辑 (High Priority)
+    if (this.isGrabbing) {
+      if (type === 'click') {
+        this.exitGrabMode(true); // 左键确认放置
+      } else if (type === 'rightClick') {
+        this.exitGrabMode(false); // 右键取消
+      }
+      return;
+    }
+
+    // 3. 选择模式逻辑 (Selection)
     if (type === 'click') {
       this.performSelectionRaycast(data.x, data.y);
     }
@@ -1741,55 +1764,328 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     }
   }
 
-  /**
-   * ⌨️ 键盘交互核心：处理编辑器快捷键 (ESC, R, [, ])
-   */
+  // ⌨️ 键盘交互核心：处理编辑器快捷键
+  private inputCooldowns: Map<string, number> = new Map(); // 🔥 Simple throttle map
+
   private handleKeyboardInputs() {
     if (!this.inputSystem) return;
 
-    // 1. ESC: 取消放置或取消选中
+    const now = performance.now();
+    const checkCooldown = (key: string, delay: number) => {
+      const last = this.inputCooldowns.get(key) || 0;
+      if (now - last > delay) {
+        this.inputCooldowns.set(key, now);
+        return true;
+      }
+      return false;
+    };
+
+    // 1. ESC: 取消放置 / 取消抓取 / 取消选中
     if (this.inputSystem.isActionPressed('CANCEL_PLACEMENT')) {
-      if (this.isPlacing()) {
-        this.handleCancelPlacement();
-        console.log('⌨️ [Keyboard] Placement Cancelled');
-      } else if (this.selectedEntityId) {
-        const oldId = this.selectedEntityId;
-        this.selectedEntityId = null;
-        this.updateSelectionOutline(oldId, null);
-        console.log('⌨️ [Keyboard] Selection Cleared');
-      }
-    }
-
-    // 2. ENTER: 确认放置
-    if (this.inputSystem.isActionPressed('COMMIT_PLACEMENT')) {
-      if (this.isPlacing()) {
-        this.handleCommitPlacement();
-        console.log('⌨️ [Keyboard] Placement Committed');
-      }
-    }
-
-    // 3. R: 旋转当前 Ghost 或 选中物体
-    if (this.inputSystem.isActionPressed('ROTATE_ENTITY')) {
-      if (this.isPlacing()) {
-        this.dispatch({ type: EngineCommandType.ROTATE_PLACEMENT, axis: 'y' } as any);
-      } else if (this.selectedEntityId) {
-        const entity = this.entityManager.getEntity(this.selectedEntityId);
-        const transform = entity?.getComponent<TransformComponent>('Transform');
-        if (transform) {
-          transform.rotation[1] = (transform.rotation[1] + 90) % 360;
-          transform.markLocalDirty();
-          console.log(`⌨️ [Keyboard] Rotating Selected Entity: ${transform.rotation[1]}°`);
+      if (checkCooldown('ESCAPE', 300)) { // Debounce ESC
+        if (this.isPlacing()) {
+          this.handleCancelPlacement();
+          console.log('⌨️ [Keyboard] Placement Cancelled');
+        } else if (this.isGrabbing) {
+          this.exitGrabMode(false);
+          console.log('⌨️ [Keyboard] Grab Cancelled (Reverted)');
+        } else if (this.selectedEntityId) {
+          const oldId = this.selectedEntityId;
+          this.selectedEntityId = null;
+          this.updateSelectionOutline(oldId, null);
+          console.log('⌨️ [Keyboard] Selection Cleared');
         }
       }
     }
 
-    // 4. [ / ]: 缩放
-    if (this.inputSystem.isActionPressed('SCALE_UP')) {
-      this.adjustKeyboardScale(0.1);
+    // 2. ENTER: 确认放置 / 确认抓取
+    if (this.inputSystem.isActionPressed('COMMIT_PLACEMENT')) {
+      if (checkCooldown('ENTER', 300)) {
+        if (this.isPlacing()) {
+          this.handleCommitPlacement();
+          console.log('⌨️ [Keyboard] Placement Committed');
+        } else if (this.isGrabbing) {
+          this.exitGrabMode(true);
+          console.log('⌨️ [Keyboard] Grab Committed');
+        }
+      }
     }
-    if (this.inputSystem.isActionPressed('SCALE_DOWN')) {
-      this.adjustKeyboardScale(-0.1);
+
+    // 3. 旋转控制 (Q/E/R - 30° Stepped)
+    // Cooldown: 200ms (5 ticks per second max) - Allows tap and slow hold
+    const ROT_STEP = 30;
+    const ROT_COOLDOWN = 200;
+
+    // Q: 逆时针 (Y轴)
+    if (this.inputSystem.isActionPressed('ROTATE_CCW')) {
+      if (checkCooldown('ROTATE_CCW', ROT_COOLDOWN)) {
+        this.rotateSelectedEntity('y', ROT_STEP);
+      }
     }
+    // E: 顺时针 (Y轴)
+    if (this.inputSystem.isActionPressed('ROTATE_CW')) {
+      if (checkCooldown('ROTATE_CW', ROT_COOLDOWN)) {
+        this.rotateSelectedEntity('y', -ROT_STEP);
+      }
+    }
+    // R: 纵向旋转 (X轴) - 解决躺平
+    if (this.inputSystem.isActionPressed('ROTATE_ENTITY')) {
+      if (checkCooldown('ROTATE_ENTITY', ROT_COOLDOWN)) {
+        this.rotateSelectedEntity('x', ROT_STEP);
+      }
+    }
+
+    // 4. G: 抓取移动
+    if (this.inputSystem.isActionPressed('GRAB_ENTITY')) {
+      if (checkCooldown('GRAB_ENTITY', 300)) {
+        // Toggle Grab Mode
+        if (this.selectedEntityId && !this.isPlacing() && !this.isGrabbing) {
+          this.enterGrabMode(this.selectedEntityId);
+        }
+      }
+    }
+
+    // 5. W/S: 高度微调 (仅 G 模式) - 动态加速
+    if (this.isGrabbing) {
+      const MOVE_COOLDOWN = 100;
+      const isUp = this.inputSystem.isActionPressed('MOVE_UP');
+      const isDown = this.inputSystem.isActionPressed('MOVE_DOWN');
+
+      // 计数器逻辑
+      if (isUp || isDown) {
+        this.movePressTicks = (this.movePressTicks || 0) + 1;
+      } else {
+        this.movePressTicks = 0;
+      }
+
+      // 动态步长计算 (激进曲线):
+      // 0-0.25s: 0.25 (精准)
+      // 0.25s-0.75s: 1.0 (快速)
+      // 0.75s+: 3.0 (极速)
+      let dynamicHeightStep = 0.25;
+      const ticks = this.movePressTicks || 0;
+
+      if (ticks > 45) {
+        dynamicHeightStep = 3.0; // 极速上天
+      } else if (ticks > 15) {
+        dynamicHeightStep = 1.0; // 快速
+      }
+
+      if (isUp) {
+        if (checkCooldown('MOVE_UP', MOVE_COOLDOWN)) {
+          this.grabHeightOffset += dynamicHeightStep;
+          this.applyGrabHeightImpact();
+        }
+      }
+      if (isDown) {
+        if (checkCooldown('MOVE_DOWN', MOVE_COOLDOWN)) {
+          this.grabHeightOffset -= dynamicHeightStep;
+          this.applyGrabHeightImpact();
+        }
+      }
+    }
+
+    // 6. [ / ]: 缩放 (动态加速 - 激进版)
+    const SCALE_COOLDOWN = 100;
+    const isScalingUp = this.inputSystem.isActionPressed('SCALE_UP');
+    const isScalingDown = this.inputSystem.isActionPressed('SCALE_DOWN');
+
+    // 计数器逻辑
+    if (isScalingUp || isScalingDown) {
+      this.scalePressTicks = (this.scalePressTicks || 0) + 1;
+    } else {
+      this.scalePressTicks = 0;
+    }
+
+    // 动态步长计算 (激进曲线):
+    // 0-15帧 (0.25s): 0.1 (精准)
+    // 15-30帧 (0.5s): 0.5 (中速)
+    // 30-45帧 (0.75s): 1.0 (快速)
+    // 45+帧   (1.0s+): 3.0 (极速)
+    let dynamicStep = 0.1;
+    const ticks = this.scalePressTicks || 0;
+
+    if (ticks > 45) {
+      dynamicStep = 3.0; // 极速
+    } else if (ticks > 30) {
+      dynamicStep = 1.0; // 快速
+    } else if (ticks > 15) {
+      dynamicStep = 0.5; // 中速
+    }
+
+    if (isScalingUp) {
+      if (checkCooldown('SCALE_UP', SCALE_COOLDOWN)) {
+        this.adjustKeyboardScale(dynamicStep);
+        // console.log(`🚀 Scale UP: Step=${dynamicStep}, Ticks=${ticks}`);
+      }
+    }
+    if (isScalingDown) {
+      if (checkCooldown('SCALE_DOWN', SCALE_COOLDOWN)) {
+        this.adjustKeyboardScale(-dynamicStep);
+        // console.log(`🚀 Scale DOWN: Step=${dynamicStep}, Ticks=${ticks}`);
+      }
+    }
+  }
+
+  // --- Transform Helpers ---
+
+  private rotateSelectedEntity(axis: 'x' | 'y' | 'z', degrees: number) {
+    // Priority: Grabbed > Placement Ghost > Selected
+    const targetId = this.isGrabbing ? this.grabbedEntityId :
+      (this.isPlacing() ? this.ghostEntityId : this.selectedEntityId);
+
+    if (!targetId) return;
+
+    const entity = this.entityManager.getEntity(targetId);
+    const transform = entity?.getComponent<TransformComponent>('Transform');
+    // For Placement Component (Ghost), we might need to update placement config?
+    // Actually PlacementSystem logic reads transform? No, PlacementSystem overwrites transform based on placement component logic.
+    // So for Ghost, we MUST update PlacementComponent config.
+
+    if (this.isPlacing()) {
+      const placement = entity?.getComponent<PlacementComponent>('Placement');
+      if (placement) {
+        if (axis === 'y') placement.rotationY = (placement.rotationY + degrees) % 360;
+        // Temporarily map X axis rotation to rotationX bool toggle for minimal change, 
+        // OR upgrade PlacementComponent to support full angles if needed.
+        // Current PlacementSystem: rotationX ? -90 : 0. 
+        // Let's stick to the minimal plan: R toggles "Laying Down" vs "Upright" if we want simple step?
+        // Or better: Let's allow real X rotation on the ghost transform if possible?
+        // Problem: PlacementSystem.update() OVERWRITES transform.rotation every frame.
+        // So modifying transform directly is futile for Ghost.
+        // We must modify PlacementComponent.
+
+        // For now, let's keep R as the existing toggle for Ghost to avoid breaking PlacementSystem complexity
+        if (axis === 'x') placement.rotationX = !placement.rotationX;
+      }
+    } else {
+      // Standard Entity (Selected or Grabbed)
+      if (transform) {
+        const idx = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+        transform.rotation[idx] = (transform.rotation[idx] + degrees) % 360;
+        transform.markLocalDirty();
+
+        // Sync Physics Body Rotation if exists
+        if (this.physicsSystem && !this.isPlacing()) { // Physics handled differently during placement
+          this.physicsSystem.rebuildBody(targetId);
+        }
+        console.log(`🔄 [Manager] Rotated ${axis.toUpperCase()} by ${degrees}°. New: ${transform.rotation}`);
+      }
+    }
+  }
+
+  private enterGrabMode(entityId: string) {
+    const entity = this.entityManager.getEntity(entityId);
+    const transform = entity?.getComponent<TransformComponent>('Transform');
+    if (!entity || !transform) return;
+
+    this.isGrabbing = true;
+    this.grabbedEntityId = entityId;
+    this.grabHeightOffset = 0;
+    this.originalGrabPosition = [...transform.position];
+
+    // Disable Physics collision temporarily to avoid knocking things over while dragging?
+    // Or set to Kinematic?
+    // For KISS, let's just move the Transform. Physics system usually follows Transform if set.
+    // But for Static bodies, we need to rebuild or force update. 
+    // Dynamic bodies might fight back.
+    // Let's force kinematic behavior manually by updating position every frame.
+
+    console.log(`✊ [Manager] Grab Mode Entered: ${entityId}`);
+  }
+
+  private exitGrabMode(confirm: boolean) {
+    if (!this.grabbedEntityId) return;
+
+    const entity = this.entityManager.getEntity(this.grabbedEntityId);
+    const transform = entity?.getComponent<TransformComponent>('Transform');
+
+    if (!confirm && this.originalGrabPosition && transform) {
+      // Revert
+      transform.position = [...this.originalGrabPosition];
+      transform.markLocalDirty();
+    }
+
+    // Re-enable physics / Finalize position
+    if (this.physicsSystem) {
+      this.physicsSystem.rebuildBody(this.grabbedEntityId);
+    }
+
+    this.isGrabbing = false;
+    this.grabbedEntityId = null;
+    this.originalGrabPosition = null;
+    this.grabHeightOffset = 0;
+
+    console.log(`✋ [Manager] Grab Mode Exited. Confirmed: ${confirm}`);
+  }
+
+  private updateGrabPosition() {
+    if (!this.grabbedEntityId || !this.inputSystem || !this.cameraSystem) return;
+
+    const mouse = this.inputSystem.mousePosition;
+    const ray = this.cameraSystem.getRayFromScreen(mouse.x, mouse.y);
+    if (!ray) return;
+
+    // Logic borrowed from PlacementSystem (Raycast against Physics World)
+    let targetPos = [0, 0, 0];
+    let hitFound = false;
+
+    // 1. Raycast
+    if (this.physicsSystem) {
+      // Filter out the grabbed entity itself to avoid self-collision
+      // PhysicsSystem.castRay doesn't support filter easily yet without ID.
+      // Assuming castRay hits other static geometry (Terrain).
+
+      const hit = this.physicsSystem.castRay(
+        { x: ray.origin.x, y: ray.origin.y, z: ray.origin.z },
+        { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z },
+        1000
+      ) as any;
+
+      if (hit.hit) {
+        // Simple check: if hit entity is NOT the grabbed one
+        if (hit.entityId !== this.grabbedEntityId) {
+          targetPos = [hit.point.x, hit.point.y, hit.point.z];
+          hitFound = true;
+        }
+      }
+    }
+
+    // 2. Fallback to Y=0 Plane
+    if (!hitFound && ray.direction.y < -0.01) {
+      const t = -ray.origin.y / ray.direction.y;
+      if (t > 0) {
+        targetPos = [
+          ray.origin.x + ray.direction.x * t,
+          0,
+          ray.origin.z + ray.direction.z * t
+        ];
+      }
+    }
+
+    // Apply Height Offset
+    targetPos[1] += this.grabHeightOffset;
+
+    // Update Entity
+    const entity = this.entityManager.getEntity(this.grabbedEntityId);
+    const transform = entity?.getComponent<TransformComponent>('Transform');
+    if (transform) {
+      transform.position = targetPos as [number, number, number];
+      transform.markLocalDirty();
+
+      // Force sync physics for smooth visual (if it has a body)
+      const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId);
+      if (rb) {
+        rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
+      }
+    }
+  }
+
+  private applyGrabHeightImpact() {
+    // Just a little feedback helper
+    // console.log(`↕️ Height Offset: ${this.grabHeightOffset.toFixed(2)}`);
+    // Trigger update immediately to feel responsive
+    this.updateGrabPosition();
   }
 
   private adjustKeyboardScale(delta: number) {

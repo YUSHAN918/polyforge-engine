@@ -365,10 +365,18 @@ export class InputSystem implements System {
     const actions = new Map<string, InputAction>();
 
     // 移动
+    // 移动 (WASD 映射需保留以供 CameraSystem 使用，W/S 将在 G 模式下被拦截复用)
     actions.set('MOVE_FORWARD', { name: 'MOVE_FORWARD', keys: ['w', 'arrowup'] });
     actions.set('MOVE_BACKWARD', { name: 'MOVE_BACKWARD', keys: ['s', 'arrowdown'] });
     actions.set('MOVE_LEFT', { name: 'MOVE_LEFT', keys: ['a', 'arrowleft'] });
     actions.set('MOVE_RIGHT', { name: 'MOVE_RIGHT', keys: ['d', 'arrowright'] });
+
+    // 变换控制 (Creation Mode)
+    actions.set('ROTATE_CCW', { name: 'ROTATE_CCW', keys: ['q'] });      // 逆时针
+    actions.set('ROTATE_CW', { name: 'ROTATE_CW', keys: ['e'] });        // 顺时针
+    actions.set('GRAB_ENTITY', { name: 'GRAB_ENTITY', keys: ['g'] });    // 抓取
+    actions.set('MOVE_UP', { name: 'MOVE_UP', keys: ['w'] });            // 抬高 (复用 W)
+    actions.set('MOVE_DOWN', { name: 'MOVE_DOWN', keys: ['s'] });        // 降低 (复用 S)
 
     // 撤销/重做
     actions.set('UNDO', { name: 'UNDO', keys: ['z'], modifiers: ['ctrl'] });
