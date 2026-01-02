@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 统一设计文档
 
-**版本**: v1.3.1  
-**最后更新**: 2025-12-29  
-**状态**: 16/17 阶段完成 (94.1%)
+**版本**: v1.3.2  
+**最后更新**: 2026-01-02  
+**状态**: 17/19 阶段完成 (89.5%)
 
 ---
 
@@ -272,14 +272,18 @@ interface CameraComponent extends Component {
 **WorldStateManager**:
 ```typescript
 class WorldStateManager {
-  private timeOfDay: number = 12.0;
-  private dayDuration: number = 60.0;
-  private isDayNightCycleEnabled: boolean = false;
+  private state: WorldState; // 统一状态树
   
+  // 植被全局配置 (2026-01-02 新增)
+  // vegetationScale: 1.0
+  // vegetationWindStrength: 0.6
+  // grassHeightMultiplier: 1.0
+  // flowerHeightMultiplier: 1.0
+
   update(deltaTime: number): void;
   setTimeOfDay(hour: number): void;
-  getLightIntensity(): number;
-  getColorTemperature(): number;
+  getState(): WorldState;
+  setState(partial: Partial<WorldState>): void;
 }
 ```
 
@@ -314,8 +318,9 @@ class VegetationSystem extends System {
   spawnVegetation(terrainEntity: string, density: number, type: VegetationType): void;
   clearVegetation(entityId: string): void;
   update(deltaTime: number): void {
-    // 1. 更新风场
-    // 2. 更新实例矩阵
+    // 1. [性能优化] 禁用每帧缩放检测，改由 UI 驱动 (2026-01-02)
+    // 2. 更新风场 (Shader 侧执行)
+    // 3. 仅在 markDirty 时更新实例矩阵
   }
 }
 ```
@@ -502,8 +507,15 @@ abstract class System {
 
 - VegetationSystem 使用 InstancedMesh
 - 支持 10000+ 实例
+- **分级更新 (2026-01-02)**：
+    - 缩放变更：触发 `markDirty` 全量重新生成
+    - 风力变更：通过 Shader Uniform 同步，无需重新生成
 
-### 4. 内存管理
+### 4. 场景交互熔断 (2026-01-02)
+
+- **射线检测过滤**：在 `performSelectionRaycast` 中，击中地形或植被时立即中断，防止触发昂贵的场景图遍历和 Outline 收集逻辑。
+
+### 5. 内存管理
 
 - 对象池（AudioSystem 音源节点池）
 - 及时清理（URL.revokeObjectURL）

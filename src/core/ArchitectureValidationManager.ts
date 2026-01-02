@@ -307,9 +307,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         this.clearVegetation();
         break;
       case EngineCommandType.SET_GRASS_SCALE:
+        // 🔥 同时更新 WorldStateManager 和现有实体
+        this.worldStateManager.setState({ vegetationScale: command.scale });
         this.updateVegetationConfig(c => { c.scale = command.scale; return true; });
         break;
       case EngineCommandType.SET_WIND_STRENGTH:
+        // 🔥 同时更新 WorldStateManager 和现有实体
+        this.worldStateManager.setState({ vegetationWindStrength: command.strength });
         this.updateVegetationConfig(c => { c.windStrength = command.strength; return false; });
         break;
       case EngineCommandType.SET_GRASS_COLOR:
@@ -1029,12 +1033,17 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         this.physicsSystem.onEntityAdded(terrainEntity);
       }
 
-      // 3. 强制标记所有植被实体为脏，触发重新分布 (防止扩容后出现空地)
-      const vegEntities = this.entityManager.getEntitiesWithComponents(['Vegetation']);
-      vegEntities.forEach(entity => {
-        const veg = entity.getComponent<VegetationComponent>('Vegetation');
-        if (veg) veg.isDirty = true;
-      });
+      // 3. 🔥 [性能优化 2026-01-02] 禁用自动植被重新分布
+      // 原因：扩大地形时，标记所有植被为 dirty 会导致下一帧重新生成所有实例
+      // 在大场景（如 10+ 植被实体，每个数万实例）中，这会导致严重卡顿（FPS 掉到 0）
+      // 解决方案：用户应该在扩大地形前先清除植被（CLEAR ALL），扩大后再重新生成
+      // 这样可以获得更好的性能和控制
+
+      // const vegEntities = this.entityManager.getEntitiesWithComponents(['Vegetation']);
+      // vegEntities.forEach(entity => {
+      //   const veg = entity.getComponent<VegetationComponent>('Vegetation');
+      //   if (veg) veg.isDirty = true;
+      // });
 
       console.log(`🌍 [ArchitectureValidationManager] Global Resize: ${width}x${depth}`);
     }
@@ -1046,8 +1055,13 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       const v = e.getComponent<VegetationComponent>('Vegetation');
       if (v) {
         const shouldSetScaleDirty = updater(v.config);
-        v.markDirty();
-        if (shouldSetScaleDirty) v.isScaleDirty = true;
+        // 🔥 只有缩放更新才需要标记 isDirty（重新生成实例）
+        // 风力、颜色等更新通过 Shader Uniform 即时生效，无需重新生成
+        if (shouldSetScaleDirty) {
+          v.markDirty();
+          v.isScaleDirty = true;
+        }
+        // 如果不是缩放更新（如风力），不触发 markDirty，性能优化
       }
     });
   }
@@ -1262,12 +1276,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.systemManager.updateManual(deltaTime);
 
     // 🚀 [Placement System] 幽灵实体更新已由 PlacementSystem 自动处理
-    if (this.currentContext === ValidationContext.CREATION) {
-      // 🔥 新增：悬停检测 (每隔一定帧数执行，节省开销)
-      if (this.tickCounter % 5 === 0 && !this.ghostEntityId) {
-        this.performHoverRaycast();
-      }
-    }
+    // 🔥 [DISABLED 2026-01-02] 悬停检测已禁用以优化性能
+    // 制作人反馈：疯狂点击鼠标会触发严重掉帧（2 FPS）
+    // 诊断结果：performHoverRaycast 与 performSelectionRaycast 叠加导致射线检测雪崩
+    // if (this.currentContext === ValidationContext.CREATION) {
+    //   if (this.tickCounter % 5 === 0 && !this.ghostEntityId) {
+    //     this.performHoverRaycast();
+    //   }
+    // }
 
     // 🔥 Keyboard Input Handler (ESC, SCALE, ROTATE)
     if (this.currentContext === ValidationContext.CREATION) {
@@ -1595,19 +1611,39 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       { x: ray.origin.x, y: ray.origin.y, z: ray.origin.z },
       { x: ray.direction.x, y: ray.direction.y, z: ray.direction.z },
       1000
-    ) as any; // 🔥 使用 any 暂时绕过 IDE 的跨文件类型扫描延迟
+    ) as any;
 
     const oldId = this.selectedEntityId;
 
+    // 🔥 [FPS 优化 2026-01-02] 立即过滤不可选中实体，避免后续逻辑开销
     if (hit.hit && hit.entityId) {
-      // 排除地形的选中
+      const entity = this.entityManager.getEntity(hit.entityId);
+
+      // 排除地形
       if (hit.entityId === this.terrainEntity?.id) {
-        this.selectedEntityId = null;
-      } else {
-        this.selectedEntityId = hit.entityId;
-        console.log(`🎯 [Selection] Picked entity: ${hit.entityId}`);
+        // 🔥 点击地形时，取消当前选中（如果有）
+        if (oldId !== null) {
+          this.selectedEntityId = null;
+          this.updateSelectionOutline(oldId, null);
+        }
+        return; // 直接返回，不触发选中逻辑
       }
+
+      // 🔥 排除植被（草/花不应该被鼠标选中，只作视觉装饰）
+      if (entity?.hasComponent('Vegetation')) {
+        // 🔥 点击植被时，取消当前选中（如果有）
+        if (oldId !== null) {
+          this.selectedEntityId = null;
+          this.updateSelectionOutline(oldId, null);
+        }
+        return; // 直接返回，不触发选中逻辑
+      }
+
+      // 有效实体：设置选中
+      this.selectedEntityId = hit.entityId;
+      console.log(`🎯 [Selection] Picked entity: ${hit.entityId}`);
     } else {
+      // 空点击：取消选中
       this.selectedEntityId = null;
     }
 

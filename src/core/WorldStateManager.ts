@@ -52,6 +52,12 @@ export interface WorldState {
   shadowColor: string;       // 🔥 阴影颜色倾向 (补光色)
   shadowDistance: number;    // 🔥 阴影覆盖距离 (-1: Auto ASA, >0: Manual)
   context: 'CREATION' | 'EXPERIENCE'; // 🔥 当前运行上下文
+
+  // 🔥 植被全局配置 (Vegetation Global Config)
+  vegetationScale: number;     // 植被整体缩放 (0.1-10.0, 默认 1.0)
+  vegetationWindStrength: number; // 植被风力强度 (0.0-2.0, 默认 0.6)
+  grassHeightMultiplier: number;  // 草高度倍率 (0.1-5.0, 默认 1.0)
+  flowerHeightMultiplier: number; // 花高度倍率 (0.1-5.0, 默认 1.0)
 }
 
 /**
@@ -109,7 +115,13 @@ export class WorldStateManager {
       shadowRadius: 1,         // 默认轻微柔化
       shadowColor: '#3f423e',  // 默认冷灰暗部
       shadowDistance: -1,      // 默认自动 ASA 托管
-      context: 'CREATION'      // 默认创建模式
+      context: 'CREATION',     // 默认创建模式
+
+      // 🔥 植被全局配置默认值
+      vegetationScale: 1.0,    // 默认无缩放
+      vegetationWindStrength: 0.6, // 默认中等风力
+      grassHeightMultiplier: 1.0,  // 默认草高度
+      flowerHeightMultiplier: 1.0, // 默认花高度
     };
   }
 

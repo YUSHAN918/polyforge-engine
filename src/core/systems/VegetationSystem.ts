@@ -91,34 +91,37 @@ export class VegetationSystem implements System {
 
     let targetGlobalScale: number | null = null;
 
+    // 🔥 [性能优化 2026-01-02] 禁用每帧缩放同步检测
+    // 原因：缩放已经通过 UI 滑块的 updateVegetationConfig 直接应用到所有实体
+    // 每帧遍历所有实体检测缩放变化是不必要的性能浪费
     // 第一步：检测缩放变化 (仅在 CREATION 模式且已有实体时进行同步)
-    const isCreation = (this.worldStateManager?.getState().context === 'CREATION');
-    if (isCreation) {
-      for (const entity of entities) {
-        const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
-        if (vegetation && vegetation.enabled) {
-          if (vegetation.config.scale !== this.globalScale) {
-            targetGlobalScale = vegetation.config.scale!;
-            break;
-          }
-        }
-      }
-    }
+    // const isCreation = (this.worldStateManager?.getState().context === 'CREATION');
+    // if (isCreation) {
+    //   for (const entity of entities) {
+    //     const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
+    //     if (vegetation && vegetation.enabled) {
+    //       if (vegetation.config.scale !== this.globalScale) {
+    //         targetGlobalScale = vegetation.config.scale!;
+    //         break;
+    //       }
+    //     }
+    //   }
+    // }
 
     // 第二步：如果发生变化，同步给系统及所有其它实体
-    if (targetGlobalScale !== null) {
-      console.log(`[VegetationSystem] 缩放同步广播: ${this.globalScale} -> ${targetGlobalScale}`);
-      this.globalScale = targetGlobalScale;
-      for (const entity of entities) {
-        const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
-        if (vegetation) {
-          vegetation.config.scale = targetGlobalScale;
-          // Scale update might need matrix update if not handled by shader
-          // But usually we regenerate or shader handles it. 
-          // For now, let's assume shader or regen handles it.
-        }
-      }
-    }
+    // if (targetGlobalScale !== null) {
+    //   console.log(`[VegetationSystem] 缩放同步广播: ${this.globalScale} -> ${targetGlobalScale}`);
+    //   this.globalScale = targetGlobalScale;
+    //   for (const entity of entities) {
+    //     const vegetation = entity.getComponent('Vegetation') as VegetationComponent;
+    //     if (vegetation) {
+    //       vegetation.config.scale = targetGlobalScale;
+    //       // Scale update might need matrix update if not handled by shader
+    //       // But usually we regenerate or shader handles it. 
+    //       // For now, let's assume shader or regen handles it.
+    //     }
+    //   }
+    // }
 
     // 第三步：处理脏标记和生成逻辑
     for (const entity of entities) {
@@ -447,14 +450,14 @@ export class VegetationSystem implements System {
       density: actualDensity,
       type: VegetationType.GRASS,
       seed: mixedSeed,
-      scale: this.globalScale, // 🔥 同步当前全局缩放
-      minHeight: 1.0,
-      maxHeight: 2.0,
+      scale: this.worldStateManager?.getState()?.vegetationScale ?? 1.0, // 🔥 从 WorldStateManager 读取缩放
+      minHeight: (this.worldStateManager?.getState()?.grassHeightMultiplier ?? 1.0) * 1.0,
+      maxHeight: (this.worldStateManager?.getState()?.grassHeightMultiplier ?? 1.0) * 2.0,
       minWidth: 0.3,
       maxWidth: 0.6,
       baseColor: '#4a7c3a',
       colorVariation: 0.3,
-      windStrength: 0.6,
+      windStrength: this.worldStateManager?.getState()?.vegetationWindStrength ?? 0.6, // 🔥 从 WorldStateManager 读取风力
       windSpeed: 1.2,
       alignToTerrain: true,
       terrainEntityId,
@@ -520,14 +523,14 @@ export class VegetationSystem implements System {
       density: actualDensity,
       type: VegetationType.FLOWER,
       seed: Math.random() * 10000,
-      scale: this.globalScale, // 🔥 Fix: Inherit global scale to avoid resetting it
-      minHeight: 0.2,
-      maxHeight: 0.5,
+      scale: this.worldStateManager?.getState()?.vegetationScale ?? 1.0, // 🔥 从 WorldStateManager 读取缩放
+      minHeight: (this.worldStateManager?.getState()?.flowerHeightMultiplier ?? 1.0) * 0.2,
+      maxHeight: (this.worldStateManager?.getState()?.flowerHeightMultiplier ?? 1.0) * 0.5,
       minWidth: 0.1,
       maxWidth: 0.2,
       baseColor: '#ff6b9d',
       colorVariation: 0.4,
-      windStrength: 0.4,
+      windStrength: this.worldStateManager?.getState()?.vegetationWindStrength ?? 0.4, // 🔥 从 WorldStateManager 读取风力
       windSpeed: 0.8,
       alignToTerrain: true,
       terrainEntityId,
