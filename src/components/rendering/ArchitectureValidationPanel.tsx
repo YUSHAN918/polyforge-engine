@@ -368,6 +368,7 @@ interface AssetItemProps {
   dispatch: any;
   isLooping: boolean; // Added for PREVIEW_AUDIO
   manager: IArchitectureFacade; // Refined type
+  revision: number; // 🔥 Added to force re-render on engine state change
 }
 
 const AssetItem = React.memo(({
@@ -381,7 +382,8 @@ const AssetItem = React.memo(({
   setPlayingAudioId,
   dispatch,
   isLooping,
-  manager
+  manager,
+  revision
 }: AssetItemProps) => {
   return (
     <div
@@ -443,7 +445,7 @@ const AssetItem = React.memo(({
               }}
             >
               <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${playingAudioId === asset.id ? 'bg-cyan-500 text-white border-cyan-400 scale-110 shadow-[0_0_15px_rgba(6,182,212,0.6)]' : 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200 hover:scale-110'}`}>
-                <i className={`fas ${playingAudioId === asset.id && !manager.getAudioPlaybackState(asset.id)?.isPlaying ? 'fa-play' : playingAudioId === asset.id ? 'fa-pause' : 'fa-play'} text-sm ml-0.5`}></i>
+                <i className={`fas ${playingAudioId === asset.id && manager.getAudioPlaybackState(asset.id)?.isPlaying ? 'fa-pause' : 'fa-play'} text-sm ml-0.5`}></i>
               </div>
             </div>
           )}
@@ -510,7 +512,8 @@ const AssetItem = React.memo(({
   return prev.playingAudioId === next.playingAudioId &&
     prev.assetViewMode === next.assetViewMode &&
     prev.asset === next.asset &&
-    prev.isLooping === next.isLooping; // Also check isLooping
+    prev.isLooping === next.isLooping &&
+    prev.revision === next.revision; // 🔥 Critical: sync with engine state
 });
 
 export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelProps> = ({
@@ -598,6 +601,19 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [colliderScale, setColliderScale] = useState(1.0); // 🔥 Physics compensation
   const [isEditingCollider, setIsEditingCollider] = useState(false); // 🧱 MVP: Collider Edit Mode State
   const [colliderOffsetY, setColliderOffsetY] = useState(0.0); // 🧱 Collider Vertical Offset
+
+  // 🔥 Revision to force-sync UI with Engine State (Audio Icons, etc.)
+  const [refreshRevision, setRefreshRevision] = useState(0);
+
+  useEffect(() => {
+    const handleStateChange = () => {
+      setRefreshRevision(prev => prev + 1);
+    };
+    eventBus.on('ENGINE_STATE_CHANGED', handleStateChange);
+    return () => {
+      eventBus.off('ENGINE_STATE_CHANGED', handleStateChange);
+    };
+  }, []);
   const [colliderRotation, setColliderRotation] = useState(0.0); // 🧱 Collider Y-Axis Rotation
 
 
@@ -1778,6 +1794,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                     dispatch={dispatch}
                     isLooping={isLooping}
                     manager={manager}
+                    revision={refreshRevision}
                   />
                 ))}
 

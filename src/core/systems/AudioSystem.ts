@@ -324,6 +324,16 @@ export class AudioSystem implements System {
     // 停止旧的音频节点
     this.stopAudio(entity);
 
+    // 🔥 关键加固：如果是预览音轨 (asset_ 开头或 _preview 结尾)，强制停止所有其他预览条目，防止多曲重叠
+    if (entity.id.startsWith('asset_') || entity.id.endsWith('_preview')) {
+      for (const [existingId, node] of this.activeNodes.entries()) {
+        if (existingId !== entity.id && (existingId.startsWith('asset_') || existingId.endsWith('_preview'))) {
+          console.log(`⏹️ [AudioSystem] Stopping overlapping preview: ${existingId}`);
+          this.stopAudio({ id: existingId } as any);
+        }
+      }
+    }
+
     // 创建音频节点
     const sourceNode = this.audioContext.createBufferSource();
     sourceNode.buffer = buffer;
@@ -368,8 +378,12 @@ export class AudioSystem implements System {
     gainNode.connect(this.masterGainNode);
 
     // 设置 playbackRate（pitch * timeScale * globalPlaybackRate）
+    const pitch = typeof audio.pitch === 'number' && isFinite(audio.pitch) ? audio.pitch : 1.0;
     const timeScale = (audio.affectedByTimeScale && this.clock) ? this.clock.getTimeScale() : 1.0;
-    sourceNode.playbackRate.value = audio.pitch * timeScale * this.globalPlaybackRate;
+    const finalRate = pitch * timeScale * this.globalPlaybackRate;
+
+    // 🔥 防御性检查：防止 non-finite value 导致崩溃
+    sourceNode.playbackRate.value = isFinite(finalRate) ? Math.max(0.01, finalRate) : 1.0;
 
     // 播放
     sourceNode.start(0);
@@ -400,6 +414,8 @@ export class AudioSystem implements System {
         nodeEntry.isPlaying = false;
         audio.isPlaying = false;
         this.cleanupEntityNodes(entity.id);
+        // 🔥 通知 UI 刷新图标
+        this.broadcastStateChange();
       }
     };
 
@@ -408,6 +424,9 @@ export class AudioSystem implements System {
     audio.audioNode = sourceNode;
     audio.gainNode = gainNode;
     audio.pannerNode = pannerNode;
+
+    // 🔥 关键加固：启动播放后立即通知 UI 刷新图标
+    this.broadcastStateChange();
 
     console.log(`🔊 Playing audio: ${audio.assetId} (spatial: ${audio.spatial})`);
   }
@@ -433,6 +452,9 @@ export class AudioSystem implements System {
     if (audio) {
       audio.isPlaying = false;
     }
+
+    // 🔥 通知 UI 刷新图标
+    this.broadcastStateChange();
   }
 
   /**
@@ -495,6 +517,9 @@ export class AudioSystem implements System {
     }
 
     this.activeNodes.delete(entityId);
+
+    // 🔥 清理完成后通知 UI
+    this.broadcastStateChange();
   }
 
   /**
@@ -504,7 +529,8 @@ export class AudioSystem implements System {
     const toRemove: string[] = [];
 
     for (const [entityId, nodeEntry] of this.activeNodes.entries()) {
-      if (!nodeEntry.isPlaying && !nodeEntry.sourceNode.loop) {
+      // 🔥 关键修正：如果正在播放或者被手动停止（暂停状态），严禁自动清理
+      if (!nodeEntry.isPlaying && !nodeEntry.manualStopped && !nodeEntry.sourceNode.loop) {
         toRemove.push(entityId);
       }
     }
@@ -623,6 +649,16 @@ export class AudioSystem implements System {
   }
 
   /**
+   * 广播引擎状态变更给 UI
+   */
+  private broadcastStateChange(): void {
+    const eventBus = (globalThis as any).eventBus;
+    if (eventBus) {
+      eventBus.emit('ENGINE_STATE_CHANGED');
+    }
+  }
+
+  /**
    * 获取音频播放状态 (用于进度条)
    * @param id 实体 ID 或 资产 ID (预览逻辑通常使用 assetsId_preview 形式)
    */
@@ -664,7 +700,7 @@ export class AudioSystem implements System {
   /**
    * 切换暂停/播放状态 (支持断点续播)
    */
-  public togglePause(id?: string): void {
+  public togglePause(id: string): void {
     if (!this.audioContext) return;
 
     // 🔥 交互自动解锁
@@ -673,7 +709,43 @@ export class AudioSystem implements System {
     }
 
     const entry = this.findEntry(id);
-    if (!entry) return;
+
+    // 🔥 关键增强：如果找不到活跃条目，说明音频可能已经播完被清理了
+    if (!entry) {
+      console.log(`🔍 [AudioSystem] Entry not found for ${id}, attempting fresh play...`);
+      // 如果 ID 看起来像是一个资产 ID，我们可以尝试直接播放。
+      // 注意：这里的 context 很重要，通常 UI 传入的就是 assetId
+      if (id.startsWith('asset_') || id.endsWith('_preview')) {
+        const assetId = id.replace('_preview', '');
+
+        // 🔥 关键加固：重播前强制清理所有 preview，防止多曲重叠
+        for (const [existingId, node] of this.activeNodes.entries()) {
+          if (existingId.startsWith('asset_') || existingId.endsWith('_preview')) {
+            this.stopAudio({ id: existingId } as any);
+          }
+        }
+
+        // 构造一个具备最小必需接口的伪实体
+        const mockEntity = {
+          id: id,
+          getComponent: (name: string) => {
+            if (name === 'AudioSource') return {
+              assetId,
+              loop: false,
+              volume: 1,
+              pitch: 1, // 🔥 补全：修复 NaN 崩溃
+              spatial: false,
+              affectedByTimeScale: true // 🔥 补全
+            };
+            if (name === 'Transform') return { getWorldPosition: () => [0, 0, 0] };
+            return null;
+          }
+        } as any;
+        this.playAudio(mockEntity);
+        this.broadcastStateChange();
+      }
+      return;
+    }
 
     if (entry.isPlaying) {
       // --- PAUSE ---
@@ -696,6 +768,9 @@ export class AudioSystem implements System {
       console.log(`▶️ [AudioSystem] Resuming... (ID: ${id})`);
       this.resumeAudio(entry);
     }
+
+    // 状态变更后立即广播
+    this.broadcastStateChange();
   }
 
   /**
@@ -762,6 +837,15 @@ export class AudioSystem implements System {
     entry.isPlaying = true;
     entry.manualStopped = false; // 🔥 解锁
 
+    // 状态变更广播
+    this.broadcastStateChange();
+
+    // 🔥 关键修复：如果当前已经播完了（非循环），重置到开头
+    if (!newSource.loop && entry.offset >= entry.buffer.duration) {
+      console.log(`🔄 [AudioSystem] Resetting finished audio to start (ID: ${entry.assetId || entry.entityId})`);
+      entry.offset = 0;
+    }
+
     newSource.onended = () => {
       // 🔥 Security Check: 只有当前节点生成的结束事件才触发清理
       // 防止 resumeAudio/togglePause 时由于 stop() 异步触发陈旧的 cleanup
@@ -770,6 +854,8 @@ export class AudioSystem implements System {
       // 🔥 关键修复：只有在非手动停止且自然播放完成时才执行清理
       if (!entry.manualStopped && !newSource.loop) {
         entry.isPlaying = false;
+        // 🔥 通知 UI：音频已自然结束
+        this.broadcastStateChange();
         this.cleanupEntityNodes(entry.entityId);
       }
     };

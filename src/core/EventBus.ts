@@ -63,4 +63,12 @@ class EventBus {
 
 // 导出全局单例
 export const eventBus = new EventBus();
+
+// 🔥 确保全局可用 (供 AudioSystem 等核心系统广播)
+if (typeof window !== 'undefined') {
+    (window as any).eventBus = eventBus;
+} else if (typeof globalThis !== 'undefined') {
+    (globalThis as any).eventBus = eventBus;
+}
+
 export default eventBus;
