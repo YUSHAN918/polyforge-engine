@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
 **最后更新**: 2026-01-03  
-**当前版本**: v1.3.8  
-**整体进度**: 22/22 阶段完成 (100%)
+**当前版本**: v1.3.8+ (Audio Hardening)
+**整体进度**: 23/23 核心阶段交付
 
 ---
 
@@ -29,7 +29,15 @@
 
 ## 📊 阶段完成状态
 
-### 🎯 最新战果（2026-01-02）
+### 🎯 最新战果（2026-01-03）
+
+- ✅ **FPS 相机零延迟对齐 (FPS Zero-Sync)** - 实现主世界坐标物理强锁与插值消除，彻底根治“入体”与“滞后”感
+- ✅ **音频系统物理加固 (Audio Hub Hardening)** - 引入 `manualStopped` 物理锁止层，解决长时运行下的“暂停静默”顽疾
+- ✅ **资产描述 UI 重构 (Asset HUD Re-layout)** - 实现网格/列表全模态分层展示，补全文件名与音频子分类文字标签
+- ✅ **元数据持久化增强 (Persistence Plus)** - 扩展 `AssetMetadata` 物理负载，实现时长、采样率等几何属性的自动捕获与恢复
+- ✅ **UI 健壮性专项** - 修复 AssetItem 引用断流报错，建立严格的 `IArchitectureFacade` 类型守卫
+
+### 🎯 前期战果（2026-01-02）
 
 - ✅ **创造模式性能会战 (Perf War)** - 修复点击地形/植被引发的 2 FPS 掉帧黑洞，实现 60 FPS 稳定交互
 - ✅ **资产放置交互革新 (UX Refinement)** - 实现 Q/E/R 步进旋转、G 键抓取移动、W/S 高度微调及缩放加速度，大幅提升 3D 布局效率
@@ -80,7 +88,7 @@
 | Phase 20 | React 19 + R3F 优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-20-react-19--r3f-优化-) | - |
 | Phase 21 | Shadow System Hardening | ✅ 完成 | 2025-12-31 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-21-shadow-system-hardening-阴影系统加固-native-pcf--asa-) | - |
 | Phase 22 | 性能优化会战 | ✅ 完成 | 2026-01-02 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-22-performance-optimization-war-性能优化会战-) | [Decision Log](.agent/DECISION_LOG.md) |
-| Phase 23 | 音频 UI 联通修复 | ✅ 完成 | 2026-01-03 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-23-音频-ui-联通修复--p0) | 音频系统 UI 集成 |
+| Phase 23 | 音频 UI 联通修复 | ✅ 完成 | 2026-01-03 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-23-音频-ui-联通修复--p0) | [Walkthrough](./.agent/walkthrough.md) |
 
 ---
 
@@ -579,14 +587,13 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 ### P0 - 紧急修复（1-2 周）
 
 #### Phase 23: 音频 UI 联通修复
-**状态**: ⚠️ P0 紧急  
-**工作量**: 2-3 天  
-**依赖**: Phase 9 AudioSystem
-
-**核心任务**:
-- [ ] 修复顶部 TEMPO 滑块 + 播放按钮绑定到 AudioSystem
-- [ ] 修复资产库音频缩略图预览播放
-- [ ] 实现点击即听功能
+**状态**: ✅ 已完成  
+**完成日期**: 2026-01-03  
+**核心交付**:
+- [x] 修复顶部 TEMPO 滑块 + 播放按钮绑定到 AudioSystem
+- [x] 修复资产库音频缩略图预览播放
+- [x] 实现点击即听与断点续播 (Physical Lock)
+- [x] 重构网格/列表文字描述 UI
 
 **验收标准**:
 - WHEN 用户点击音频资产 THEN 系统 SHALL 播放音频预览
