@@ -538,6 +538,12 @@ export class AssetRegistry {
     if (!existing) throw new Error(`Asset not found: ${id}`);
 
     const updated = { ...existing, ...partial };
+    
+    console.log(`[AssetRegistry] Updating metadata for ${id}:`, {
+      existing,
+      partial,
+      updated
+    });
 
     // 1. Save to DB
     await this.storage.saveMetadata(updated);

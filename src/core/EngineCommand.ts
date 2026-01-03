@@ -87,8 +87,14 @@ export enum EngineCommandType {
     SET_COLLIDER_OFFSET_Y = 'SET_COLLIDER_OFFSET_Y',
     SET_COLLIDER_ROTATION_Y = 'SET_COLLIDER_ROTATION_Y',
     SAVE_ASSET_PHYSICS_CONFIG = 'SAVE_ASSET_PHYSICS_CONFIG',
+    SAVE_ASSET_TRANSFORM = 'SAVE_ASSET_TRANSFORM', // 🔥 新增：保存资产默认变换配置
     AUTO_FIT_COLLIDER = 'AUTO_FIT_COLLIDER',
-    SET_IMAGE_MODE = 'SET_IMAGE_MODE'
+    SET_IMAGE_MODE = 'SET_IMAGE_MODE',
+
+    // Audio Preview (ECS Pure)
+    PREVIEW_AUDIO = 'PREVIEW_AUDIO',
+    STOP_PREVIEW_AUDIO = 'STOP_PREVIEW_AUDIO',
+    SET_MASTER_VOLUME = 'SET_MASTER_VOLUME', // 🔥 New Volume Command
 }
 
 // --- Payloads ---
@@ -179,7 +185,17 @@ export interface ToggleColliderEditingPayload { type: EngineCommandType.TOGGLE_C
 export interface SetColliderOffsetYPayload { type: EngineCommandType.SET_COLLIDER_OFFSET_Y; offset: number; }
 export interface SetColliderRotationYPayload { type: EngineCommandType.SET_COLLIDER_ROTATION_Y; rotation: number; }
 export interface SaveAssetPhysicsConfigPayload { type: EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG; }
+export interface SaveAssetTransformPayload { type: EngineCommandType.SAVE_ASSET_TRANSFORM; } // 🔥 新增
 export interface SetImageModePayload { type: EngineCommandType.SET_IMAGE_MODE; entityId: string; mode: 'billboard' | 'standee' | 'sticker'; }
+export interface PreviewAudioPayload { type: EngineCommandType.PREVIEW_AUDIO; assetId: string; }
+export interface StopPreviewAudioPayload {
+    type: EngineCommandType.STOP_PREVIEW_AUDIO;
+}
+
+export interface SetMasterVolumePayload {
+    type: EngineCommandType.SET_MASTER_VOLUME;
+    volume: number;
+}
 
 // --- Union Type ---
 
@@ -240,5 +256,10 @@ export type EngineCommand =
     | SetColliderOffsetYPayload
     | SetColliderRotationYPayload
     | SaveAssetPhysicsConfigPayload
+    | SaveAssetTransformPayload // 🔥 新增
     | AutoFitColliderPayload
-    | SetImageModePayload;
+    | SetImageModePayload
+    | PreviewAudioPayload
+    | StopPreviewAudioPayload
+    | SetMasterVolumePayload;
+

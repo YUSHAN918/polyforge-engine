@@ -35,6 +35,10 @@ export interface AssetMetadata {
     colliderOffset?: [number, number, number];
     colliderRotation?: [number, number, number];
   };
+  defaultTransform?: {     // 🔥 用户自定义的默认变换配置（用于资产放置时的初始状态）
+    scale: [number, number, number];
+    rotation: [number, number, number];
+  };
 }
 
 /**

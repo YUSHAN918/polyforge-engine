@@ -14,6 +14,7 @@ import { CameraMode, CameraComponent } from '../../core/components/CameraCompone
 import { VisualComponent } from '../../core/components/VisualComponent';
 import { PlacementComponent } from '../../core/components/PlacementComponent';
 import { Entity } from '../../core/Entity';
+import { TransformComponent } from '../../core/components/TransformComponent';
 import * as THREE from 'three';
 import { FileSystemService } from '../../core/assets/FileSystemService';
 import { eventBus } from '../../core/EventBus';
@@ -97,6 +98,47 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [flowerColor, setFlowerColor] = useState('#ff69b4');
   const [activeVegType, setActiveVegType] = useState<'grass' | 'flower'>('grass');
   const [gravityY, setGravityY] = useState(-9.8);
+  /* New: Audio State & Drag Logic (Optimized) */
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [playbackVolume, setPlaybackVolume] = useState(1.0);
+  const [isMuted, setIsMuted] = useState(false); // 🔇 New Mute State
+  const [lastVolume, setLastVolume] = useState(1.0); // Restore volume
+
+  // Drag Refs - No Re-renders!
+  const hubRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const positionRef = useRef({ x: window.innerWidth / 2 - 200, y: 32 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || !hubRef.current) return;
+
+      const newX = e.clientX - dragOffsetRef.current.x;
+      const newY = e.clientY - dragOffsetRef.current.y;
+
+      // Direct DOM manipulation - 60FPS smooth!
+      hubRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+      positionRef.current = { x: newX, y: newY };
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      if (hubRef.current) {
+        hubRef.current.style.cursor = 'move';
+        hubRef.current.style.backgroundColor = 'rgba(3, 7, 18, 0.9)'; // Restore opacity
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  /* New: Terrain Gen State */
   const [isGenerating, setIsGenerating] = useState(false);
   const [terrainWidth, setTerrainWidth] = useState(50);
   const [terrainDepth, setTerrainDepth] = useState(50);
@@ -372,6 +414,17 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     const handleFlightReset = () => setFlightMode(false);
     eventBus.on('gameplay:flight_mode:reset', handleFlightReset);
     return () => eventBus.off('gameplay:flight_mode:reset', handleFlightReset);
+  }, []);
+
+  // 🔥 监听 Transform 保存成功事件
+  useEffect(() => {
+    const handleTransformSaved = (e: CustomEvent) => {
+      console.log('✅ [UI] Transform saved:', e.detail);
+      // Toast 已在按钮点击时触发，这里可以做额外处理（如刷新资产列表）
+    };
+
+    window.addEventListener('ASSET_TRANSFORM_SAVED', handleTransformSaved as EventListener);
+    return () => window.removeEventListener('ASSET_TRANSFORM_SAVED', handleTransformSaved as EventListener);
   }, []);
 
   // 🎹 交互输入核心 (Refactored Interaction Core)
@@ -777,28 +830,131 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         <button onClick={handleReset} className="w-8 h-8 rounded flex items-center justify-center text-red-500 hover:bg-red-900/30"><i className="fas fa-trash-alt"></i></button>
       </div>
 
-      {/* 🔥 Audio Hub (DAW Light) */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-2 bg-gray-950/80 border border-gray-800 rounded-full px-4 h-10 flex items-center gap-4 backdrop-blur-md shadow-lg z-20">
-        <div className="flex items-center gap-2">
-          <i className="fas fa-play-circle text-cyan-400"></i>
-          <span className="text-[10px] font-mono text-gray-500 tracking-tighter w-12 truncate">AUDIO_IDLE</span>
+      {/* 🔥 Audio Hub (Now Playing) - Dynamic & Draggable (Optimized) */}
+      {playingAudioId && (
+        <div
+          ref={hubRef}
+          className="absolute border border-cyan-500/30 rounded-full pl-2 pr-6 h-12 flex items-center gap-4 backdrop-blur-xl shadow-[0_0_20px_rgba(8,145,178,0.3)] z-50 animate-in fade-in duration-300 cursor-move select-none"
+          style={{
+            // Initial position (transform will override)
+            transform: `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`,
+            top: 0, left: 0, // Reset logical pos
+            backgroundColor: 'rgba(3, 7, 18, 0.9)'
+          }}
+          onMouseDown={(e) => {
+            if (!hubRef.current) return;
+            isDraggingRef.current = true;
+
+            // Calculate offset relative to the element's current transform
+            // Since we use translate, we need to correct for that.
+            // Actually simplest is: offset = mouse - currentPos
+            dragOffsetRef.current = {
+              x: e.clientX - positionRef.current.x,
+              y: e.clientY - positionRef.current.y
+            };
+
+            hubRef.current.style.backgroundColor = 'rgba(3, 7, 18, 0.95)';
+          }}
+        >
+          {/* Animated Icon */}
+          <div className="w-8 h-8 rounded-full bg-cyan-900/50 flex items-center justify-center relative pointer-events-none">
+            <div className={`absolute inset-0 rounded-full border border-cyan-400/30 ${!playingAudioId ? '' : 'animate-pulse'}`}></div>
+            <i className="fas fa-compact-disc text-cyan-400 text-sm animate-[spin_3s_linear_infinite]"></i>
+          </div>
+
+          <div className="flex flex-col pointer-events-none">
+            <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-none">Now Playing</span>
+            <span className="text-[8px] text-gray-500 font-mono max-w-[100px] truncate">
+              {(() => {
+                // Find asset name from registry
+                const asset = assetList.find(a => a.id === playingAudioId || a.id === playingAudioId?.split('_').pop());
+                return asset ? asset.name : (playingAudioId?.split('_').pop() || 'Unknown');
+              })()}
+            </span>
+          </div>
+
+          <div className="h-6 w-px bg-gray-800 mx-2 pointer-events-none"></div>
+
+          {/* Controls (Stop Propagation to prevent drag) */}
+          <div
+            className="flex items-center gap-4"
+            onMouseDown={(e) => e.stopPropagation()} // Prevent dragging active
+          >
+            {/* Stop Button */}
+            <button
+              onClick={() => {
+                dispatch(EngineCommandType.STOP_PREVIEW_AUDIO);
+                setPlayingAudioId(null);
+                // Also reset mute state if desired, but keeping it is fine
+              }}
+              className="group flex items-center gap-2 hover:bg-red-900/30 px-2 py-1 rounded transition-colors"
+              title="停止 (Stop)"
+            >
+              <i className="fas fa-stop text-red-400 group-hover:scale-110 transition-transform"></i>
+            </button>
+
+            {/* Volume with Mute Toggle */}
+            <div className="flex items-center gap-2 group/vol">
+              <button
+                onClick={() => {
+                  if (isMuted) {
+                    // Unmute
+                    setIsMuted(false);
+                    setPlaybackVolume(lastVolume);
+                    dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: lastVolume });
+                  } else {
+                    // Mute
+                    setIsMuted(true);
+                    setLastVolume(playbackVolume);
+                    setPlaybackVolume(0);
+                    dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: 0 });
+                  }
+                }}
+                className="hover:text-cyan-400 transition-colors"
+                title={isMuted ? "取消静音 (Unmute)" : "静音 (Mute)"}
+              >
+                <i className={`fas ${isMuted || playbackVolume === 0 ? 'fa-volume-mute text-red-400' : 'fa-volume-up text-cyan-600'} text-[10px]`}></i>
+              </button>
+
+              <input
+                type="range" min="0" max="1" step="0.1"
+                value={playbackVolume}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setPlaybackVolume(val);
+
+                  // If dragging slider, auto-unmute if it was plugged
+                  if (val > 0 && isMuted) setIsMuted(false);
+                  if (val === 0) setIsMuted(true);
+
+                  dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: val });
+                }}
+                className="w-12 accent-cyan-500 h-1 cursor-pointer opacity-50 group-hover/vol:opacity-100 transition-opacity"
+                title="音量 (Volume)"
+              />
+            </div>
+
+            {/* Tempo (Discrete Buttons) */}
+            <div className="flex items-center gap-1 bg-gray-900/50 rounded-full p-0.5 border border-gray-700">
+              {[0.5, 1.0, 1.5, 2.0].map(rate => (
+                <button
+                  key={rate}
+                  onClick={() => {
+                    setPlaybackRate(rate);
+                    dispatch(EngineCommandType.SET_PLAYBACK_RATE, { rate });
+                  }}
+                  className={`text-[8px] font-mono px-2 py-0.5 rounded-full transition-all ${playbackRate === rate
+                    ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(8,145,178,0.4)]'
+                    : 'text-gray-500 hover:text-cyan-200 hover:bg-gray-700'
+                    }`}
+                >
+                  {rate}x
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="h-4 w-px bg-gray-800"></div>
-        <div className="flex items-center gap-3">
-          <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">Tempo</span>
-          <input
-            type="range" min="0.5" max="2.0" step="0.1"
-            value={playbackRate}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setPlaybackRate(val);
-              dispatch(EngineCommandType.SET_PLAYBACK_RATE, { rate: val });
-            }}
-            className="w-20 accent-cyan-500 h-1"
-          />
-          <span className="text-[10px] font-mono text-cyan-400 w-8">{playbackRate.toFixed(1)}x</span>
-        </div>
-      </div>
+      )}
 
       {/* 1.1 Context Switch */}
       <div className="bg-gray-950 p-2 shrink-0">
@@ -1202,8 +1358,37 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                           )}
 
                           {assetViewMode === 'grid' && (
-                            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-gray-950/90 rounded-md text-[7px] text-cyan-400 font-bold uppercase tracking-tighter border border-cyan-500/20 whitespace-nowrap backdrop-blur-sm z-10 shadow-xl">
+                            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-gray-950/90 rounded-md text-[7px] text-cyan-400 font-bold uppercase tracking-tighter border border-cyan-500/20 whitespace-nowrap backdrop-blur-sm z-10 shadow-xl pointer-events-none">
                               {asset.category === 'environments' ? 'HDR' : asset.category.replace(/s$/, '').toUpperCase()}
+                            </div>
+                          )}
+
+                          {/* 🎵 Audio Preview Trigger (Centered Overlay) */}
+                          {(asset.category === 'audio' || asset.category === 'music' || asset.category === 'sound') && (
+                            <div
+                              className={`absolute inset-0 z-15 flex items-center justify-center transition-all duration-300 backdrop-blur-[1px] ${playingAudioId === asset.id
+                                ? 'bg-cyan-900/40 opacity-100 ring-2 ring-inset ring-cyan-500/50'
+                                : 'bg-black/50 opacity-0 group-hover:opacity-100'
+                                }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (playingAudioId === asset.id) {
+                                  // Stop
+                                  setPlayingAudioId(null);
+                                  dispatch(EngineCommandType.STOP_PREVIEW_AUDIO);
+                                } else {
+                                  // Play
+                                  setPlayingAudioId(asset.id);
+                                  dispatch(EngineCommandType.PREVIEW_AUDIO, { assetId: asset.id });
+                                }
+                              }}
+                            >
+                              <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] ${playingAudioId === asset.id
+                                ? 'bg-cyan-500 text-white border-cyan-400 scale-110'
+                                : 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200 hover:scale-110 hover:bg-cyan-500/40'
+                                }`}>
+                                <i className={`fas ${playingAudioId === asset.id ? 'fa-pause' : 'fa-play'} text-sm ml-0.5`}></i>
+                              </div>
                             </div>
                           )}
 
@@ -1706,6 +1891,46 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 </div>
               )}
 
+              {/* 🔥 Transform 编辑区 - 新增 */}
+              {!isEditingCollider && (
+                <div className="space-y-3 mt-2 pt-2 border-t border-dashed border-gray-800 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-tight">变换配置 (Transform)</span>
+                    <span className="text-[7px] text-gray-500 font-mono italic">SCALE & ROTATION</span>
+                  </div>
+
+                  {/* Transform Info Display */}
+                  <div className="space-y-1 bg-gray-900/50 p-2 rounded">
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-gray-500">缩放 (Scale)</span>
+                      <span className="text-cyan-400 font-mono">{manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.scale[0].toFixed(2)}x</span>
+                    </div>
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-gray-500">旋转 (Rotation Y)</span>
+                      <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[1] || 0)}°</span>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={() => {
+                      if (confirm('确认保存此变换配置为默认设置？这将影响未来放置的所有相同资产。')) {
+                        dispatch(EngineCommandType.SAVE_ASSET_TRANSFORM, {});
+                        setNotification({ message: '变换配置已保存', type: 'success' });
+                      }
+                    }}
+                    className="w-full py-1.5 bg-cyan-900/40 hover:bg-cyan-800/60 border border-cyan-500/30 text-cyan-200 rounded text-[9px] font-bold uppercase transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <i className="fas fa-save group-hover:scale-110 transition-transform"></i>
+                    保存变换配置 (Save Transform)
+                  </button>
+
+                  <div className="text-[7px] text-gray-500 italic leading-relaxed">
+                    💡 提示：使用 E/Q 键调整缩放，R 键旋转
+                  </div>
+                </div>
+              )}
+
               <div className="h-px bg-gray-800 my-2"></div>
 
               <button
@@ -1745,6 +1970,7 @@ interface EntityDetailsSectionProps {
   revision: number; // 🔥 强制刷新的脉冲
 }
 const EntityDetailsSection = React.memo(({ selectedEntity, manager, dispatch, revision }: EntityDetailsSectionProps) => {
+  if (!selectedEntity) return null;
   const entity = manager.getEntityManager().getEntity(selectedEntity);
   if (!entity) return null;
 

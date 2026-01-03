@@ -114,6 +114,19 @@ export class AudioSystem implements System {
   public setPlaybackRate(rate: number): void {
     this.globalPlaybackRate = rate;
     console.log(`🎵 Global playback rate set to: ${rate}x`);
+
+    // 🔥 Real-time update for active sources
+    this.activeNodes.forEach((entry, entityId) => {
+      if (entry && entry.sourceNode) {
+        try {
+          entry.sourceNode.playbackRate.cancelScheduledValues(0);
+          // Apply global rate immediately
+          // Note: This overrides individual pitch but standardizes playback rate
+          // Ideally we should multiply entry.sourceNode.playbackRate.value by (newRate/oldRate) but simple set is fine for preview
+          entry.sourceNode.playbackRate.setValueAtTime(rate, this.audioContext?.currentTime || 0);
+        } catch (e) { /* ignore */ }
+      }
+    });
   }
 
   /**

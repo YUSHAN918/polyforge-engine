@@ -34,8 +34,9 @@ import { BundleSystem } from './bundling/BundleSystem';
 import { BundleOptions } from './bundling/BundleBuilder';
 import { BundleProgress } from './bundling/types';
 import { IArchitectureFacade, ValidationStats } from './IArchitectureFacade';
-import { EngineCommand, EngineCommandType, SetImageModePayload } from './EngineCommand';
+import { EngineCommand, EngineCommandType, SetImageModePayload, PreviewAudioPayload } from './EngineCommand';
 import { eventBus } from './EventBus';
+import { AudioSourceComponent } from './components/AudioSourceComponent';
 import { CreateEntityCommand, UpdateWorldStateCommand, ModifyComponentCommand } from './CommandManager';
 
 export enum ValidationContext {
@@ -120,6 +121,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.entityManager.registerComponent('Camera', CameraComponent);
     this.entityManager.registerComponent('Physics', PhysicsComponent);
     this.entityManager.registerComponent('Placement', PlacementComponent);
+    this.entityManager.registerComponent('AudioSource', AudioSourceComponent);
 
     // 3. System Initialization
     this.inputSystem = new InputSystem();
@@ -137,6 +139,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.cameraSystem.setArchitectureManager(this); // 🆕 注入 Manager 以支持预设系统
     this.cameraSystem.setPhysicsSystem(this.physicsSystem);
     this.inputSystem.setCommandManager(this.commandManager);
+    this.audioSystem.setAssetRegistry(this.assetRegistry); // 🔥 Critical Fix: AssetRegistry Injection
+    this.audioSystem.setClock(this.clock); // Inject Clock for time scale
 
     // 5. System Registration
     this.systemManager.registerSystem('InputSystem', this.inputSystem);
@@ -599,10 +603,97 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         break;
       }
 
+      case EngineCommandType.SAVE_ASSET_TRANSFORM: {
+        if (this.selectedEntityId) {
+          const entity = this.entityManager.getEntity(this.selectedEntityId);
+          const transform = entity?.getComponent<TransformComponent>('Transform');
+          const vis = entity?.getComponent<VisualComponent>('Visual');
+
+          if (transform && vis && vis.geometry.assetId) {
+            const config = {
+              scale: [...transform.scale] as [number, number, number],
+              rotation: [...transform.rotation] as [number, number, number]
+            };
+            // Save to Asset Registry
+            await this.assetRegistry.updateAssetMetadata(vis.geometry.assetId, { defaultTransform: config });
+            console.log(`💾 [Manager] Saved Transform Config for Asset: ${vis.geometry.assetId}`, config);
+            console.log(`💾 [Manager] Current Transform State:`, {
+              scale: transform.scale,
+              rotation: transform.rotation,
+              position: transform.position
+            });
+
+            // 🔥 验证保存：立即读取确认
+            const verifyMeta = await this.assetRegistry.getMetadata(vis.geometry.assetId);
+            console.log(`✅ [Manager] Verification - Saved metadata:`, verifyMeta?.defaultTransform);
+
+            // 🔥 触发UI通知事件
+            window.dispatchEvent(new CustomEvent('ASSET_TRANSFORM_SAVED', {
+              detail: { assetId: vis.geometry.assetId, config }
+            }));
+          } else {
+            console.warn('⚠️ [Manager] Cannot save transform config: Missing components or Asset ID.');
+          }
+        }
+        break;
+      }
+
       // --- Audio ---
       case EngineCommandType.SET_PLAYBACK_RATE:
         this.audioSystem.setPlaybackRate(command.rate);
         break;
+
+      case EngineCommandType.SET_MASTER_VOLUME:
+        this.audioSystem.setMasterVolume(command.volume);
+        break;
+
+      case EngineCommandType.PREVIEW_AUDIO: {
+        const c = command as PreviewAudioPayload;
+        const PREVIEW_ENTITY_NAME = '_AudioPreview_';
+
+        // 1. Cleanup previous preview if exists
+        const oldEntity = this.entityManager.getAllEntities().find(e => e.name === PREVIEW_ENTITY_NAME);
+        if (oldEntity) {
+          this.entityManager.destroyEntity(oldEntity.id);
+        }
+
+        // 2. Create new transient entity
+        const entity = this.entityManager.createEntity();
+        // const entity = this.entityManager.getEntity(entityId); // ❌ Removed redundant call
+
+        if (entity) {
+          entity.name = PREVIEW_ENTITY_NAME;
+          // Transient flag (if system supports it, basically don't serialize)
+          // For now relying on name conventions or just manual cleanup
+
+          // 3. Add AudioSourceComponent
+          // Use 'sfx' for preview, volume 1, non-spatial (2D)
+          const audio = new AudioSourceComponent(c.assetId, 'sfx', 1.0, false);
+          audio.autoPlay = true; // Auto start
+          entity.addComponent(audio);
+
+          // 🔥 Critical Fix: AudioSystem requires TransformComponent even for 2D sounds (implementation detail)
+          entity.addComponent(new TransformComponent());
+
+          // 4. Register to world (triggers AudioSystem)
+          // this.worldStateManager.addEntity(entity); // ❌ Removed: WorldState doesn't manage entities directly
+          this.systemManager.notifyEntityAdded(entity); // ✅ Correct: Notify Systems including Audio
+          console.log(`🎵 [Manager] Previewing Audio: ${c.assetId}`);
+        }
+        break;
+      }
+
+      case EngineCommandType.STOP_PREVIEW_AUDIO: {
+        const PREVIEW_ENTITY_NAME = '_AudioPreview_';
+        const entity = this.entityManager.getAllEntities().find(e => e.name === PREVIEW_ENTITY_NAME);
+        if (entity) {
+          this.entityManager.destroyEntity(entity.id);
+          // this.worldStateManager.removeEntity(entity.id); // ❌ Removed
+          console.log(`⏹️ [Manager] Stopped Preview Audio`);
+        }
+        break;
+      }
+
 
       // --- Image Mode ---
       case EngineCommandType.SET_IMAGE_MODE: {
@@ -1597,14 +1688,50 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // 1. Cleanup existing ghost
     this.handleCancelPlacement();
 
-    // 2. Create Ghost Entity
+    // 2. Fetch metadata for default transform
+    const metadata = await this.assetRegistry.getMetadata(assetId);
+    const defaultTransform = metadata?.defaultTransform;
+
+    console.log(`🔍 [Placement] Loading metadata for ${assetName}:`, {
+      assetId,
+      hasMetadata: !!metadata,
+      metadata: metadata, // 🔥 打印完整metadata
+      hasDefaultTransform: !!defaultTransform,
+      defaultTransform: defaultTransform,
+      defaultTransformType: typeof defaultTransform,
+      defaultTransformKeys: defaultTransform ? Object.keys(defaultTransform) : []
+    });
+
+    // 3. Create Ghost Entity
     const id = `Ghost_${assetName}_${Date.now()}`;
     const entity = this.entityManager.createEntity(`Ghost: ${assetName}`, id);
     if (!entity) return;
     entity.persistent = false;
 
-    // 3. Components
+    // 4. Components
     const transform = new TransformComponent();
+
+    console.log(`🔍 [Placement] About to check defaultTransform:`, {
+      defaultTransform,
+      truthyCheck: !!defaultTransform,
+      typeofCheck: typeof defaultTransform,
+      isNull: defaultTransform === null,
+      isUndefined: defaultTransform === undefined
+    });
+
+    // 🔥 应用默认Transform配置（如果存在）
+    if (defaultTransform) {
+      transform.scale = [...defaultTransform.scale] as [number, number, number];
+      transform.rotation = [...defaultTransform.rotation] as [number, number, number];
+      transform.markLocalDirty(); // 🔥 标记为脏，确保矩阵更新
+      console.log(`🎨 [Placement] Applied Default Transform for ${assetName}:`, {
+        scale: transform.scale,
+        rotation: transform.rotation
+      });
+    } else {
+      console.log(`ℹ️ [Placement] No default transform found, using defaults [1,1,1] scale, [0,0,0] rotation`);
+    }
+
     this.entityManager.addComponent(id, transform);
 
     const visual = new VisualComponent();
