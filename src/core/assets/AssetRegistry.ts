@@ -318,6 +318,28 @@ export class AssetRegistry {
   }
 
   /**
+   * 智能推断音频子分类
+   * @param filename 文件名
+   */
+  private inferAudioSubCategory(filename: string): any {
+    const name = filename.toLowerCase();
+
+    // BGM / Music
+    if (/bgm|music|track|ost|theme|score|soundtrack/.test(name)) return 'bgm';
+
+    // SFX / Effects
+    if (/sfx|effect|hit|explosion|click|shoot|gun|attack|slash|coin|ui|step|jump|footstep/.test(name)) return 'sfx';
+
+    // Voice / Dialog
+    if (/voice|dialog|speech|narrat|vocal|talk/.test(name)) return 'voice';
+
+    // Ambient / Environment
+    if (/ambient|nature|environment|wind|rain|forest|city|crowd|atmosphere/.test(name)) return 'ambient';
+
+    return 'general';
+  }
+
+  /**
    * 导入音频资产
    * 
    * @param file 音频文件（MP3/WAV/OGG）
@@ -333,19 +355,26 @@ export class AssetRegistry {
       // 1. 使用 AudioImporter 导入音频
       const { blob, metadata } = await this.audioImporter.importAudio(file);
 
-      // 2. 注册资产
+      // 2. 智能分类
+      const subCategory = options.category && options.category !== 'audio'
+        ? options.category // 如果用户手动指定了非 audio 的分类（可能是旧逻辑），作为兜底
+        : this.inferAudioSubCategory(file.name);
+
+      // 3. 注册资产
       const assetId = await this.registerAsset(
         {
           name: file.name.replace(/\.(mp3|wav|ogg)$/i, ''),
           type: 'audio' as any,
           category: options.category || 'audio',
+          subCategory, // 🔥 新增子分类
           tags: options.tags || ['imported', 'audio', metadata.format],
           size: blob.size,
+          audioMetadata: metadata, // 🔥 核心修复：持久化音频元数据（时长等）
         },
         blob
       );
 
-      console.log(`[AssetRegistry] Audio imported successfully: ${assetId}`);
+      console.log(`[AssetRegistry] Audio imported successfully: ${assetId} (Sub-Category: ${subCategory})`);
       console.log(`[AssetRegistry] Metadata:`, metadata);
 
       return {
@@ -538,7 +567,7 @@ export class AssetRegistry {
     if (!existing) throw new Error(`Asset not found: ${id}`);
 
     const updated = { ...existing, ...partial };
-    
+
     console.log(`[AssetRegistry] Updating metadata for ${id}:`, {
       existing,
       partial,

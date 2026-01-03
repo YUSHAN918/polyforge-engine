@@ -5,6 +5,15 @@
 
 ---
 
+## 📚 相关文档
+
+- **[核心架构进度总览](../PROGRESS_SUMMARY.md)** - 当前完成状态（Phase 1-22）
+- **[路线图对比分析报告](./ROADMAP_ANALYSIS_20260103.md)** - 深度分析与优先级梳理
+- **[愿景白皮书](./VISION.md)** - 最高愿景与设计哲学
+- **[核心规约](./AGENT_CORE.md)** - 架构铁律与操作公理
+
+---
+
 ## 第一部分：管线全景地图 (Pipeline Overview)
 
 | 管线名称 | 状态 | 依赖 | 对应阶段 |
@@ -563,3 +572,58 @@ graph TD
 **签署人**：山神 (Mountain God)
 **创建日期**：2026-01-03
 **最后更新**：2026-01-03 (v0.7.0 - 新增模型编辑管线)
+
+
+---
+
+## 第十九部分：与 PROGRESS_SUMMARY 的对应关系
+
+> **完整对比分析**: [路线图对比分析报告](./ROADMAP_ANALYSIS_20260103.md)
+
+### 已完成管线映射
+
+| PIPELINE_ROADMAP 管线 | PROGRESS_SUMMARY Phase | 完成度 |
+|---|---|---|
+| 环境管线 (Environment) | Phase 11-12 | ✅ 100% |
+| 游戏体验管线 (Experience) | Phase 15/17/19 | ✅ 100% |
+| 模型资产管线 (Model Asset) | Phase 7 | ⚙️ 71% |
+| 音频管线 (Audio) | Phase 9 | ⚙️ 30% |
+
+### 待开发管线映射
+
+| PIPELINE_ROADMAP 管线 | 建议 Phase 编号 | 优先级 | 预计工作量 |
+|---|---|---|---|
+| 音频 UI 联通 | Phase 23 | P0 | 2-3 天 |
+| 模型资产库 UI | Phase 24 | P1 | 1-2 周 |
+| LOD 自动生成 | Phase 25 | P1 | 1-2 周 |
+| 动画管线 (Phase 21) | Phase 26 | P2 | 2-3 周 |
+| 2D 动画管线 (Phase 21.8-21.15) | Phase 27 | P2 | 2-3 周 |
+| 节奏-事件管线 (Phase 21.5) | Phase 27.5 | P2 | 1-2 周 |
+| 碰撞体分层管线 (Phase 22) | Phase 28 | P2 | 1-2 周 |
+| VFX 特效管线 (Phase 23) | Phase 29 | P3 | 3-4 周 |
+| 大世界渲染管线 (Phase 28) | Phase 30 | P3 | 3-4 周 |
+| UI 编辑器管线 (Phase 25) | Phase 31 | P4 | 4-6 周 |
+| 模型编辑管线 (Phase 29) | Phase 32 | P4 | 3-4 周 |
+| 旧版工坊打通 (Phase 26) | Phase 35 | P5 | 4-6 周 |
+| 导演/影视管线 (Phase 27) | Phase 36 | P5 | 3-4 周 |
+
+### Phase 编号说明
+
+**注意**: 本文档中的 Phase 编号（Phase 21-29）是独立的规划编号，与 PROGRESS_SUMMARY 中的 Phase 编号不同。
+
+- **PIPELINE_ROADMAP Phase 21** = 动画管线 → **建议重新编号为 Phase 26**
+- **PIPELINE_ROADMAP Phase 22** = 碰撞体分层 → **建议重新编号为 Phase 28**
+- **PIPELINE_ROADMAP Phase 23** = VFX 特效 → **建议重新编号为 Phase 29**
+- **PIPELINE_ROADMAP Phase 25** = UI 编辑器 → **建议重新编号为 Phase 31**
+- **PIPELINE_ROADMAP Phase 26** = 旧版工坊 → **建议重新编号为 Phase 35**
+- **PIPELINE_ROADMAP Phase 27** = 导演管线 → **建议重新编号为 Phase 36**
+- **PIPELINE_ROADMAP Phase 28** = 大世界渲染 → **建议重新编号为 Phase 30**
+- **PIPELINE_ROADMAP Phase 29** = 模型编辑 → **建议重新编号为 Phase 32**
+
+详细的编号重整方案请参考：[路线图对比分析报告 - 第四章](./ROADMAP_ANALYSIS_20260103.md#四优先级重新梳理建议)
+
+---
+
+**签署人**：山神 (Mountain God)  
+**创建日期**：2026-01-03  
+**最后更新**：2026-01-03 (v0.8.0 - 添加与 PROGRESS_SUMMARY 的对应关系)

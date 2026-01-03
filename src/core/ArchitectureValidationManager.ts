@@ -658,6 +658,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
           // 3. Add AudioSourceComponent
           // Use 'sfx' for preview, volume 1, non-spatial (2D)
           const audio = new AudioSourceComponent(c.assetId, 'sfx', 1.0, false);
+          audio.loop = !!c.looping;
           audio.autoPlay = true; // Auto start
           entity.addComponent(audio);
 
@@ -680,6 +681,34 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
           // this.worldStateManager.removeEntity(entity.id); // ❌ Removed
           console.log(`⏹️ [Manager] Stopped Preview Audio`);
         }
+        break;
+      }
+
+      case EngineCommandType.TOGGLE_PAUSE_AUDIO: {
+        this.audioSystem.togglePause((command as any).assetId);
+        this.stateRevision++;
+        eventBus.emit('ENGINE_STATE_CHANGED');
+        break;
+      }
+
+      case EngineCommandType.SET_AUDIO_LOOPING: {
+        this.audioSystem.setLooping((command as any).assetId, (command as any).isLooping);
+        this.stateRevision++;
+        eventBus.emit('ENGINE_STATE_CHANGED');
+        break;
+      }
+
+      case EngineCommandType.SET_PLAYBACK_RATE: {
+        this.audioSystem.setPlaybackRate((command as any).rate);
+        this.stateRevision++;
+        eventBus.emit('ENGINE_STATE_CHANGED');
+        break;
+      }
+
+      case EngineCommandType.SET_MASTER_VOLUME: {
+        this.audioSystem.setMasterVolume((command as any).volume);
+        this.stateRevision++;
+        eventBus.emit('ENGINE_STATE_CHANGED');
         break;
       }
 
@@ -830,6 +859,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   public getStorageManager(): ArchitectureStorageManager {
     return this.storageManager;
+  }
+
+  public getAudioPlaybackState(assetId: string): { currentTime: number; duration: number; isPlaying: boolean } | null {
+    return this.audioSystem?.getPlaybackState(assetId) || null;
   }
 
   // 🔥 Special Getter for EngineBridge - Bridge needs access to State Manager to subscribe
@@ -1716,7 +1749,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // 🛡️ ECS 隔离加固：存储放置控制元数据
     const placement = new PlacementComponent(assetId, assetName);
     placement.mode = 'model';
-    
+
     // 🔥 应用默认变换到PlacementComponent（如果存在）
     if (defaultTransform) {
       if (defaultTransform.rotation) {
@@ -1726,7 +1759,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         placement.defaultScale = defaultTransform.scale[0];
       }
     }
-    
+
     this.entityManager.addComponent(id, placement);
 
     this.ghostEntityId = id;

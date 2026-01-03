@@ -16,6 +16,11 @@ export enum AssetType {
 }
 
 /**
+ * 音频子分类
+ */
+export type AudioSubCategory = 'bgm' | 'sfx' | 'voice' | 'ambient' | 'general';
+
+/**
  * 资产元数据接口
  * 用于快速查询和索引
  */
@@ -24,12 +29,14 @@ export interface AssetMetadata {
   name: string;            // 资产名称
   type: AssetType;         // 资产类型
   category: string;        // 分类（如 'characters', 'props', 'environments'）
+  subCategory?: AudioSubCategory | string; // 🔥 子分类（如 'bgm', 'sfx'）
   tags: string[];          // 标签数组（用于搜索）
   size: number;            // 文件大小（字节）
   createdAt: number;       // 创建时间戳
   thumbnail?: string;      // Base64 缩略图（可选）
   modelStats?: ModelMetadata; // 模型特定数据（可选）
   textureMetadata?: TextureMetadata; // 🔥 图片特定数据（可选）
+  audioMetadata?: AudioMetadata; // 🔥 音频特定数据（可选）
   physicsConfig?: {        // 🔥 用户自定义的默认物理配置（覆盖原始 BBox）
     colliderScale?: number;
     colliderOffset?: [number, number, number];

@@ -5,7 +5,7 @@
  * "Guard Rail Compliance": strict dispatch(command) only.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { ValidationContext } from '../../core/ArchitectureValidationManager';
 import { IArchitectureFacade } from '../../core/IArchitectureFacade'; // Use Interface
 import { EngineCommandType } from '../../core/EngineCommand';
@@ -20,6 +20,7 @@ import { FileSystemService } from '../../core/assets/FileSystemService';
 import { eventBus } from '../../core/EventBus';
 import { BundleProgress } from '../../core/bundling/types';
 import { ModelExportService } from '../../core/export/ModelExportService';
+import { AssetMetadata } from '../../core/assets/types';
 
 interface ArchitectureValidationPanelProps {
   manager: IArchitectureFacade | null; // Strict typing
@@ -31,6 +32,486 @@ interface ArchitectureValidationPanelProps {
 }
 
 type TabType = 'world' | 'director' | 'assets' | 'experience' | 'stats';
+
+/**
+ * 实体详情段落 - 独立组件化以防止外部 stats 更新导致失焦 (如图片模式选择下拉框)
+ */
+interface EntityDetailsSectionProps {
+  selectedEntity: string | null;
+  manager: IArchitectureFacade;
+  dispatch: (type: any, payload: any) => void;
+  revision: number;
+}
+
+const EntityDetailsSection = React.memo(({ selectedEntity, manager, dispatch, revision }: EntityDetailsSectionProps) => {
+  if (!selectedEntity) return null;
+  const entity = manager.getEntityManager().getEntity(selectedEntity);
+  if (!entity) return null;
+
+  const visual = entity.getComponent('Visual') as any;
+  const placement = entity.getComponent('Placement') as any;
+  const geom = visual?.geometry;
+  const isModel = geom?.type === 'model';
+  const assetId = geom?.assetId || visual?.material?.textureAssetId;
+  const assetMetadata = assetId ? manager.getAssetRegistry().getMetadataSync(assetId) : null;
+  const realFaces = assetMetadata?.modelStats?.faces;
+  const imgWidth = assetMetadata?.textureMetadata?.width;
+  const imgHeight = assetMetadata?.textureMetadata?.height;
+
+  return (
+    <>
+      <div className="flex justify-between text-[10px]">
+        <span className="text-gray-500">几何类型 (Geometry)</span>
+        <span className="text-cyan-400 font-mono uppercase">{geom?.type || 'Unknown'}</span>
+      </div>
+      <div className="flex justify-between text-[10px]">
+        <span className="text-gray-500">{realFaces ? '多边形总数 (Faces)' : '多边形估算 (Polygons)'}</span>
+        <span className="text-cyan-400 font-mono">
+          {realFaces ? realFaces.toLocaleString() : (isModel || geom?.type === 'custom' ? '~42.5k' : '24')}
+        </span>
+      </div>
+      {(imgWidth && imgHeight) && (
+        <div className="flex justify-between text-[10px]">
+          <span className="text-gray-500">原始规格 (Image Stats)</span>
+          <span className="text-cyan-400 font-mono">{imgWidth} x {imgHeight}</span>
+        </div>
+      )}
+      <div className="flex justify-between text-[10px]">
+        <span className="text-gray-500">材质插槽 (Materials)</span>
+        <span className="text-cyan-400 font-mono">{visual?.material ? '1' : '0'}</span>
+      </div>
+
+      {geom?.type === 'plane' && visual?.material?.textureAssetId && (
+        <div className="flex items-center justify-between p-2 mt-2 bg-blue-950/30 border border-blue-500/30 rounded-lg animate-in fade-in zoom-in-95 duration-300">
+          <div className="flex flex-col">
+            <span className="text-[9px] text-blue-400 font-bold uppercase tracking-tight">显示模式 (Mode)</span>
+            <span className="text-[7px] text-blue-600 font-mono italic">IMAGE MODALITY</span>
+          </div>
+          <select
+            value={placement?.mode || 'billboard'}
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              dispatch(EngineCommandType.SET_IMAGE_MODE, {
+                entityId: selectedEntity,
+                mode: (e.target.value as any)
+              });
+            }}
+            className="bg-black/40 text-blue-400 text-[10px] border border-blue-900 rounded p-1 outline-none focus:border-blue-400 transition-all cursor-pointer hover:bg-black/60 font-bold"
+          >
+            <option value="billboard"> 看板 (Billboard)</option>
+            <option value="standee"> 立牌 (Standee)</option>
+            <option value="sticker"> 贴纸 (Sticker)</option>
+          </select>
+        </div>
+      )}
+    </>
+  );
+}, (prev, next) => {
+  return prev.selectedEntity === next.selectedEntity && prev.revision === next.revision;
+});
+
+/**
+ * 🔥 Optimization: Global Audio Hub (Isolated)
+ * Handles high-frequency playback progress (100ms) without re-rendering the whole panel.
+ */
+interface AudioHubProps {
+  playingAudioId: string;
+  assetList: AssetMetadata[];
+  manager: IArchitectureFacade;
+  dispatch: (type: EngineCommandType, payload?: any) => void;
+  setPlayingAudioId: (id: string | null) => void;
+  playbackVolume: number;
+  setPlaybackVolume: (v: number) => void;
+  isMuted: boolean;
+  setIsMuted: (m: boolean) => void;
+  playbackRate: number;
+  setPlaybackRate: (r: number) => void;
+  lastVolume: number;
+  setLastVolume: (v: number) => void;
+  isLooping: boolean;
+  setIsLooping: (v: boolean) => void;
+}
+
+const AudioHub = React.memo(({
+  playingAudioId,
+  assetList,
+  manager,
+  dispatch,
+  setPlayingAudioId,
+  playbackVolume,
+  setPlaybackVolume,
+  isMuted,
+  setIsMuted,
+  playbackRate,
+  setPlaybackRate,
+  lastVolume,
+  setLastVolume,
+  isLooping,
+  setIsLooping
+}: AudioHubProps) => {
+  const [playbackStatus, setPlaybackStatus] = useState<{ currentTime: number; duration: number; isPlaying: boolean } | null>(null);
+
+  // Drag & Position Persistence
+  const hubRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const positionRef = useRef<{ x: number, y: number }>((() => {
+    try {
+      const saved = localStorage.getItem('polyforge_audiohub_pos');
+      return saved ? JSON.parse(saved) : { x: window.innerWidth / 2 - 180, y: 32 };
+    } catch {
+      return { x: window.innerWidth / 2 - 180, y: 32 };
+    }
+  })());
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || !hubRef.current) return;
+      const newX = e.clientX - dragOffsetRef.current.x;
+      const newY = e.clientY - dragOffsetRef.current.y;
+      hubRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+      positionRef.current = { x: newX, y: newY };
+    };
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        localStorage.setItem('polyforge_audiohub_pos', JSON.stringify(positionRef.current));
+      }
+      isDraggingRef.current = false;
+      if (hubRef.current) {
+        hubRef.current.style.cursor = 'move';
+      }
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // Internal Polling - Only this component re-renders at 10Hz
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const status = manager.getAudioPlaybackState(playingAudioId);
+      if (status) setPlaybackStatus(status);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [playingAudioId, manager]);
+
+  const asset = useMemo(() => {
+    return assetList.find(a => a.id === playingAudioId || a.id === playingAudioId?.split('_').pop());
+  }, [assetList, playingAudioId]);
+
+  const progress = (playbackStatus && playbackStatus.duration > 0) ? (playbackStatus.currentTime / playbackStatus.duration) * 100 : 0;
+  const isPlaying = !!playbackStatus?.isPlaying; // 🔥 Precise check from system
+
+  return (
+    <div
+      ref={hubRef}
+      className="absolute border border-cyan-500/20 rounded-2xl pl-1 pr-2 py-1 flex items-center gap-3 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] z-[9999] animate-in fade-in slide-in-from-top-2 duration-500 cursor-move select-none group/hub"
+      style={{
+        transform: `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`,
+        top: 0, left: 0,
+        backgroundColor: 'rgba(10, 15, 25, 0.7)',
+        boxShadow: '0 0 20px rgba(6, 182, 212, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.05)'
+      }}
+      onMouseDown={(e) => {
+        if (!hubRef.current || (e.target as HTMLElement).closest('button, input')) return;
+        isDraggingRef.current = true;
+        dragOffsetRef.current = {
+          x: e.clientX - positionRef.current.x,
+          y: e.clientY - positionRef.current.y
+        };
+      }}
+    >
+      {/* 📀 Spinning Record (Play/Pause Toggle) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          dispatch(EngineCommandType.TOGGLE_PAUSE_AUDIO, { assetId: playingAudioId });
+        }}
+        className="relative w-10 h-10 group/record outline-none"
+      >
+        <div className={`w-full h-full rounded-full bg-gray-900 border-2 border-gray-800 flex items-center justify-center transition-all duration-700 shadow-lg ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : 'rotate-45 scale-95 opacity-80'}`}>
+          <div className="w-1/3 h-1/3 rounded-full bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center">
+            <div className="w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
+          </div>
+          {/* Vinyl Grooves Mockup */}
+          <div className="absolute inset-1 rounded-full border border-white/5 pointer-events-none"></div>
+          <div className="absolute inset-2 rounded-full border border-white/5 pointer-events-none"></div>
+        </div>
+        {/* Play/Pause Hover Icon */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/record:opacity-100 transition-opacity">
+          <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-white text-[10px] drop-shadow-md`}></i>
+        </div>
+      </button>
+
+      <div className="flex flex-col min-w-[100px] gap-0.5">
+        <div className="flex items-center gap-1.5 overflow-hidden">
+          <span className="text-[7px] font-black text-cyan-500/60 uppercase tracking-widest animate-pulse">Live</span>
+          <span className="text-[9px] text-gray-200 font-bold truncate max-w-[140px] tracking-tight">
+            {asset ? asset.name : (playingAudioId.split('_').pop() || 'Unknown Track')}
+          </span>
+        </div>
+
+        {/* 📊 Progress Bar */}
+        <div className="w-full flex flex-col gap-1 pr-2">
+          <div className="relative w-full h-[2px] bg-white/5 rounded-full overflow-hidden self-center">
+            <div
+              className={`h-full bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all duration-300 ${isPlaying ? '' : 'opacity-40 grayscale'}`}
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between font-mono text-[6px] text-gray-500 font-bold tabular-nums">
+            <span>{playbackStatus ? `${Math.floor(playbackStatus.currentTime / 60)}:${Math.floor(playbackStatus.currentTime % 60).toString().padStart(2, '0')}` : '--:--'}</span>
+            <span className="opacity-50 tracking-widest">{playbackStatus ? `${Math.floor(playbackStatus.duration / 60)}:${Math.floor(playbackStatus.duration % 60).toString().padStart(2, '0')}` : '--:--'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-8 w-[1px] bg-white/5 mx-1"></div>
+
+      {/* 🕹️ Controls Section */}
+      <div className="flex items-center gap-0.5 pr-1" onMouseDown={(e) => e.stopPropagation()}>
+        {/* 🔁 Loop Button */}
+        <button
+          onClick={() => {
+            const next = !isLooping;
+            setIsLooping(next);
+            dispatch(EngineCommandType.SET_AUDIO_LOOPING, { assetId: playingAudioId, isLooping: next });
+          }}
+          className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${isLooping ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+          title="循环播放 (Toggle Loop)"
+        >
+          <i className="fas fa-redo-alt text-[10px]"></i>
+        </button>
+
+        {/* 🔊 Volume (Compact) */}
+        <div className="flex items-center gap-1.5 px-1.5 h-7 bg-black/20 rounded-lg group/vol border border-white/5">
+          <button
+            onClick={() => {
+              if (isMuted) {
+                setIsMuted(false);
+                setPlaybackVolume(lastVolume);
+                dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: lastVolume });
+              } else {
+                setIsMuted(true);
+                setLastVolume(playbackVolume);
+                setPlaybackVolume(0);
+                dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: 0 });
+              }
+            }}
+            className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-cyan-400 transition-colors"
+          >
+            <i className={`fas ${isMuted || playbackVolume === 0 ? 'fa-volume-mute text-red-500' : 'fa-volume-up'} text-[9px]`}></i>
+          </button>
+          <input
+            type="range" min="0" max="1" step="0.05"
+            value={playbackVolume}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value);
+              setPlaybackVolume(val);
+              if (val > 0 && isMuted) setIsMuted(false);
+              dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: val });
+            }}
+            className="w-10 accent-cyan-500 h-[2px] cursor-pointer bg-white/10 rounded-full appearance-none flex self-center transition-all group-hover/vol:w-16"
+          />
+        </div>
+
+        {/* ⚡ Playback Rate (Restored) */}
+        <div className="flex items-center gap-1 bg-black/20 rounded-lg p-0.5 border border-white/5 mx-1">
+          {[0.5, 1.0, 1.5, 2.0].map(rate => (
+            <button
+              key={rate}
+              onClick={() => {
+                setPlaybackRate(rate);
+                dispatch(EngineCommandType.SET_PLAYBACK_RATE, { rate });
+              }}
+              className={`text-[7px] font-mono px-1.5 py-0.5 rounded transition-all ${playbackRate === rate ? 'bg-cyan-500 text-white shadow-[0_0_8px_rgba(6,182,212,0.4)]' : 'text-gray-500 hover:text-cyan-200'}`}
+            >
+              x{rate}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/5 mx-1"></div>
+
+        {/* ✖️ Explicit Close Button */}
+        <button
+          onClick={() => {
+            dispatch(EngineCommandType.STOP_PREVIEW_AUDIO);
+            setPlayingAudioId(null);
+          }}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:bg-red-500/20 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
+          title="关闭播放器 (Dismiss)"
+        >
+          <i className="fas fa-times text-[10px]"></i>
+        </button>
+      </div>
+    </div>
+  );
+});
+
+/**
+ * 🔥 Optimization: Individual Asset Item (Memoized)
+ * Prevents re-rendering 50+ assets when a unrelated state (like Stats) changes.
+ */
+interface AssetItemProps {
+  asset: AssetMetadata;
+  assetViewMode: string;
+  playingAudioId: string | null;
+  onAssetClick: (asset: AssetMetadata) => void;
+  onContextMenu: (e: React.MouseEvent, asset: AssetMetadata) => void;
+  onDelete: (id: string) => void;
+  onExport: (asset: AssetMetadata) => void;
+  setPlayingAudioId: (id: string | null) => void;
+  dispatch: any;
+  isLooping: boolean; // Added for PREVIEW_AUDIO
+  manager: IArchitectureFacade; // Refined type
+}
+
+const AssetItem = React.memo(({
+  asset,
+  assetViewMode,
+  playingAudioId,
+  onAssetClick,
+  onContextMenu,
+  onDelete,
+  onExport,
+  setPlayingAudioId,
+  dispatch,
+  isLooping,
+  manager
+}: AssetItemProps) => {
+  return (
+    <div
+      onClick={() => onAssetClick(asset)}
+      onContextMenu={(e) => onContextMenu(e, asset)}
+      className={`group transition-all duration-300 cursor-pointer relative ${assetViewMode === 'grid' ? 'bg-gray-900/40 border border-gray-800 rounded-2xl p-3 flex flex-col gap-2 hover:border-cyan-500/40 hover:bg-gray-800/50 hover:-translate-y-1 shadow-lg' :
+        assetViewMode === 'compact' ? 'bg-gray-900/30 border border-gray-800/50 rounded-lg p-1 aspect-square hover:border-cyan-500/50 transition-all' :
+          'bg-gray-900/20 hover:bg-gray-800/40 border border-gray-800/20 hover:border-cyan-900/30 rounded-lg px-3 py-2 flex items-center justify-between group'
+        }`}
+    >
+      {/* Visual Content */}
+      {(assetViewMode === 'grid' || assetViewMode === 'compact') && (
+        <div className={`w-full bg-gray-950 rounded-xl flex items-center justify-center relative overflow-hidden ring-1 ring-gray-800/50 group-hover:ring-cyan-900/40 transition-all ${assetViewMode === 'grid' ? 'aspect-square' : 'h-full'}`}>
+          {asset.thumbnail ? (
+            <img src={asset.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" alt="" />
+          ) : (
+            <div className="flex flex-col items-center justify-center opacity-10 group-hover:opacity-40 transition-opacity">
+              {(() => {
+                const cat = (asset.category || '').toLowerCase();
+                const sub = asset.subCategory;
+                if (cat === 'audio' || cat === 'music' || cat === 'sound' || cat === 'mp3' || asset.type === 'audio' || sub) {
+                  if (sub === 'bgm') return <i className={`fas fa-compact-disc ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-purple-400`}></i>;
+                  if (sub === 'sfx') return <i className={`fas fa-bolt ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-orange-400`}></i>;
+                  if (sub === 'voice') return <i className={`fas fa-microphone ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-pink-400`}></i>;
+                  if (sub === 'ambient') return <i className={`fas fa-tree ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-green-400`}></i>;
+                  return <i className={`fas fa-music ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-cyan-400`}></i>;
+                }
+                return <i className={`fas ${cat === 'models' ? 'fa-cube' : cat === 'textures' ? 'fa-image' : cat === 'environments' ? 'fa-mountain' : 'fa-box'} ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'}`}></i>;
+              })()}
+            </div>
+          )}
+          {assetViewMode === 'grid' && (
+            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-gray-950/90 rounded-md text-[7px] text-cyan-400 font-bold uppercase border border-cyan-500/20 backdrop-blur-sm z-10 shadow-xl pointer-events-none">
+              {asset.category === 'environments' ? 'HDR' : (asset.subCategory || asset.category.replace(/s$/, '')).toUpperCase()}
+            </div>
+          )}
+
+          {/* 🔥 音频卡片信息增强：在网格模式下显示名称与类型预览 */}
+          {(assetViewMode === 'grid' || assetViewMode === 'compact') && (asset.category === 'audio' || asset.type === 'audio') && (
+            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
+              <div className="text-[8px] text-cyan-300 font-bold truncate">{asset.name}</div>
+              <div className="text-[6px] text-gray-500 font-mono uppercase tracking-widest">{asset.subCategory || 'General'}</div>
+            </div>
+          )}
+
+          {(asset.category === 'audio' || asset.category === 'music' || asset.category === 'sound' || asset.type === 'audio') && (
+            <div
+              className={`absolute inset-0 z-[15] flex items-center justify-center transition-all duration-300 backdrop-blur-[1px] ${playingAudioId === asset.id ? 'bg-cyan-900/40 opacity-100 ring-2 ring-inset ring-cyan-500/50' : 'bg-black/50 opacity-0 group-hover:opacity-100'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (playingAudioId === asset.id) {
+                  // 🔥 此处逻辑修改：点击列表中的预览按钮，改为触发引擎侧的 TogglePause
+                  // 这样可以利用断点续播，而不是目前简单的 Stop/Play
+                  dispatch(EngineCommandType.TOGGLE_PAUSE_AUDIO, { assetId: asset.id });
+                } else {
+                  dispatch(EngineCommandType.PREVIEW_AUDIO, { assetId: asset.id, looping: isLooping });
+                  setPlayingAudioId(asset.id);
+                }
+              }}
+            >
+              <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${playingAudioId === asset.id ? 'bg-cyan-500 text-white border-cyan-400 scale-110 shadow-[0_0_15px_rgba(6,182,212,0.6)]' : 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200 hover:scale-110'}`}>
+                <i className={`fas ${playingAudioId === asset.id && !manager.getAudioPlaybackState(asset.id)?.isPlaying ? 'fa-play' : playingAudioId === asset.id ? 'fa-pause' : 'fa-play'} text-sm ml-0.5`}></i>
+              </div>
+            </div>
+          )}
+          <div className="absolute top-1 left-1 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-all">
+            {(asset.category === 'models' || asset.category === 'model') && (
+              <button onClick={(e) => { e.stopPropagation(); onExport(asset); }} className="w-5 h-5 bg-cyan-950/80 text-cyan-400 rounded-md flex items-center justify-center text-[7px] border border-cyan-500/20"><i className="fas fa-file-export"></i></button>
+            )}
+            <button onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }} className="w-5 h-5 bg-red-950/80 text-red-400 rounded-md flex items-center justify-center text-[7px] border border-red-500/20"><i className="fas fa-trash"></i></button>
+          </div>
+        </div>
+      )}
+      {/* Name & ID */}
+      {assetViewMode === 'grid' && (
+        <div className="flex flex-col px-0.5 mt-1">
+          <span className="text-[9px] text-gray-300 font-bold truncate group-hover:text-cyan-400 transition-colors" title={asset.name}>{asset.name}</span>
+          <div className="flex justify-between items-center mt-0.5">
+            <span className="text-[7px] text-gray-600 font-mono truncate uppercase tracking-widest">{asset.id.split('_').pop()}</span>
+            {asset.type === 'audio' && <span className="text-[6px] text-cyan-900 border border-cyan-900/30 px-1 rounded uppercase font-black">{asset.subCategory || 'Audio'}</span>}
+          </div>
+        </div>
+      )}
+      {assetViewMode === 'list' && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded bg-gray-900 flex items-center justify-center text-cyan-700 relative overflow-hidden group/audio-list">
+              <i className={`fas ${asset.category === 'models' ? 'fa-cube' : (asset.category === 'audio' ? 'fa-music' : 'fa-image')} text-[10px]`}></i>
+
+              {(asset.category === 'audio' || asset.category === 'music' || asset.category === 'sound' || asset.type === 'audio') && (
+                <div
+                  className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-all duration-300 ${playingAudioId === asset.id ? 'bg-cyan-500 text-white' : 'bg-black/60 text-cyan-400 opacity-0 group-hover/audio-list:opacity-100'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (playingAudioId === asset.id) {
+                      // 🔥 Use TogglePause instead of Stop for better continuity
+                      dispatch(EngineCommandType.TOGGLE_PAUSE_AUDIO, { assetId: asset.id });
+                    } else {
+                      setPlayingAudioId(asset.id);
+                      dispatch(EngineCommandType.PREVIEW_AUDIO, { assetId: asset.id, looping: isLooping });
+                    }
+                  }}
+                >
+                  <i className={`fas ${playingAudioId === asset.id ? 'fa-pause' : 'fa-play'} text-[10px]`}></i>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-200 font-bold group-hover:text-cyan-400 transition-colors cursor-pointer" onClick={() => onAssetClick(asset)}>{asset.name}</span>
+                {asset.type === 'audio' && <span className="text-[6px] text-cyan-600/60 border border-cyan-600/20 px-1 rounded uppercase font-mono">{asset.subCategory || 'General'}</span>}
+              </div>
+              <span className="text-[6px] text-gray-600 font-mono uppercase truncate max-w-[150px] tracking-tight">{asset.id}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-[7px] bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800 text-gray-500 uppercase font-bold tracking-tighter">{asset.category}</span>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }} className="text-[10px] text-gray-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><i className="fas fa-trash-alt"></i></button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}, (prev, next) => {
+  // Only re-render if its play state or view mode changes
+  return prev.playingAudioId === next.playingAudioId &&
+    prev.assetViewMode === next.assetViewMode &&
+    prev.asset === next.asset &&
+    prev.isLooping === next.isLooping; // Also check isLooping
+});
 
 export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelProps> = ({
   manager,
@@ -58,7 +539,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     undoHistory: [] as any[],
   });
 
-  const [assetList, setAssetList] = useState<any[]>([]);
+  const [assetList, setAssetList] = useState<AssetMetadata[]>([]);
 
   // 导演控制状态
   const [bloomStrength, setBloomStrength] = useState(0.5);
@@ -99,44 +580,16 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
   const [activeVegType, setActiveVegType] = useState<'grass' | 'flower'>('grass');
   const [gravityY, setGravityY] = useState(-9.8);
   /* New: Audio State & Drag Logic (Optimized) */
+  /* New: Audio State (Isolated in Sub-component) */
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [playbackVolume, setPlaybackVolume] = useState(1.0);
-  const [isMuted, setIsMuted] = useState(false); // 🔇 New Mute State
-  const [lastVolume, setLastVolume] = useState(1.0); // Restore volume
+  const [isMuted, setIsMuted] = useState(false);
+  const [lastVolume, setLastVolume] = useState(1.0);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [isLooping, setIsLooping] = useState(false); // 🔥 Moved to global for persistence
 
   // Drag Refs - No Re-renders!
-  const hubRef = useRef<HTMLDivElement>(null);
-  const isDraggingRef = useRef(false);
-  const dragOffsetRef = useRef({ x: 0, y: 0 });
-  const positionRef = useRef({ x: window.innerWidth / 2 - 200, y: 32 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current || !hubRef.current) return;
-
-      const newX = e.clientX - dragOffsetRef.current.x;
-      const newY = e.clientY - dragOffsetRef.current.y;
-
-      // Direct DOM manipulation - 60FPS smooth!
-      hubRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
-      positionRef.current = { x: newX, y: newY };
-    };
-
-    const handleMouseUp = () => {
-      isDraggingRef.current = false;
-      if (hubRef.current) {
-        hubRef.current.style.cursor = 'move';
-        hubRef.current.style.backgroundColor = 'rgba(3, 7, 18, 0.9)'; // Restore opacity
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
+  /* Removed global drag refs - isolated in AudioHub */
 
   /* New: Terrain Gen State */
   const [isGenerating, setIsGenerating] = useState(false);
@@ -149,8 +602,38 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
 
   // Asset Controls
-  const [activeAssetTab, setActiveAssetTab] = useState<'all' | 'models' | 'audio' | 'environments' | 'textures'>('all');
+  const [activeAssetTab, setActiveAssetTab] = useState<any>('all'); // 资产相关状态
+  const [audioSubFilter, setAudioSubFilter] = useState<string>('all'); // 🔥 新增：音频子分类筛选
   const [assetViewMode, setAssetViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, assetId: string } | null>(null); // 🔥 新增：右键菜单状态
+
+  // 🔥 Optimization: Memoize asset filtering to prevent frame drops during audio playback or rapid re-renders
+  const visibleAssets = useMemo(() => {
+    return assetList.filter(a => {
+      if (activeAssetTab === 'all') return true;
+
+      const cat = (a.category || '').toLowerCase().trim();
+      const tab = activeAssetTab.toLowerCase();
+
+      // 🔥 终极兼容: 归一化比较 + 别名支持
+      if (tab === 'textures') {
+        return cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images' || cat === 'png' || cat === 'jpg';
+      }
+      if (tab === 'models') {
+        return cat === 'models' || cat === 'model' || cat === 'glb' || cat === 'gltf';
+      }
+      if (tab === 'audio') {
+        if (!(cat === 'audio' || cat === 'sound' || cat === 'music' || cat === 'mp3')) return false;
+        // 🔥 子分类筛选
+        if (audioSubFilter !== 'all') {
+          return a.subCategory === audioSubFilter;
+        }
+        return true;
+      }
+
+      return cat === tab || cat.includes(tab);
+    });
+  }, [assetList, activeAssetTab, audioSubFilter]);
 
   // 🔥 UX Polish States
   const [isLoading, setIsLoading] = useState(false);
@@ -161,7 +644,6 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
   // 🔥 Placement & Rhythm States
   const [placementState, setPlacementState] = useState({ isPlacing: false, mode: 'model' as any, assetName: null as string | null });
-  const [playbackRate, setPlaybackRate] = useState(1.0);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [revision, setRevision] = useState(0); // 🔥 UI 刷新脉冲
 
@@ -757,6 +1239,24 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
     }
   };
 
+  const handleAssetContextMenu = (e: React.MouseEvent, asset: any) => {
+    e.preventDefault();
+    if (asset.category === 'audio' || asset.category === 'music' || (asset.subCategory && asset.category !== 'models')) {
+      setContextMenu({ x: e.clientX, y: e.clientY, assetId: asset.id });
+    }
+  };
+
+  const handleReclassify = async (assetId: string, subCategory: string) => {
+    if (!manager) return;
+    try {
+      await manager.getAssetRegistry().updateAssetMetadata(assetId, { subCategory });
+      setNotification({ message: '分类已更新', type: 'success' });
+      setContextMenu(null);
+    } catch (err) {
+      console.error('Reclassify Error:', err);
+    }
+  };
+
   const handleModelExport = async (asset: any) => {
     if (!manager) return;
 
@@ -810,13 +1310,20 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       return;
     }
 
-    if (cat === 'audio' || cat === 'music' || cat === 'sound') {
+    if (cat === 'audio' || cat === 'music' || cat === 'sound' || asset.type === 'audio') {
       // 预览逻辑
-      manager?.dispatch({ type: 'PREVIEW_AUDIO' } as any);
-      console.log('🎵 [UI] Preview Audio request sent');
+      if (playingAudioId === asset.id) {
+        setPlayingAudioId(null);
+        dispatch(EngineCommandType.STOP_PREVIEW_AUDIO);
+      } else {
+        setPlayingAudioId(asset.id);
+        dispatch(EngineCommandType.PREVIEW_AUDIO, { assetId: asset.id, looping: isLooping });
+      }
+      return;
     }
   };
 
+  // Audio Progress Polling - Removed from global (Isolated in AudioHub)
   // ... Render ...
   if (!manager) {
     return <div className="w-96 h-full bg-gray-950 flex items-center justify-center text-gray-500 italic font-mono">
@@ -826,6 +1333,18 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
   return (
     <div className="w-96 h-full bg-gray-950 border-l border-gray-800 flex flex-col overflow-hidden font-sans text-xs select-none shadow-2xl z-50">
+
+      <style>
+        {`
+          .no-scrollbar::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
+            display: none !important;
+          }
+          .no-scrollbar, .custom-scrollbar {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+          }
+        `}
+      </style>
 
       {/* 1. HUD */}
       <div className="h-[60px] bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 shrink-0 shadow-md z-10">
@@ -844,130 +1363,25 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
         <button onClick={handleReset} className="w-8 h-8 rounded flex items-center justify-center text-red-500 hover:bg-red-900/30"><i className="fas fa-trash-alt"></i></button>
       </div>
 
-      {/* 🔥 Audio Hub (Now Playing) - Dynamic & Draggable (Optimized) */}
-      {playingAudioId && (
-        <div
-          ref={hubRef}
-          className="absolute border border-cyan-500/30 rounded-full pl-2 pr-6 h-12 flex items-center gap-4 backdrop-blur-xl shadow-[0_0_20px_rgba(8,145,178,0.3)] z-50 animate-in fade-in duration-300 cursor-move select-none"
-          style={{
-            // Initial position (transform will override)
-            transform: `translate(${positionRef.current.x}px, ${positionRef.current.y}px)`,
-            top: 0, left: 0, // Reset logical pos
-            backgroundColor: 'rgba(3, 7, 18, 0.9)'
-          }}
-          onMouseDown={(e) => {
-            if (!hubRef.current) return;
-            isDraggingRef.current = true;
-
-            // Calculate offset relative to the element's current transform
-            // Since we use translate, we need to correct for that.
-            // Actually simplest is: offset = mouse - currentPos
-            dragOffsetRef.current = {
-              x: e.clientX - positionRef.current.x,
-              y: e.clientY - positionRef.current.y
-            };
-
-            hubRef.current.style.backgroundColor = 'rgba(3, 7, 18, 0.95)';
-          }}
-        >
-          {/* Animated Icon */}
-          <div className="w-8 h-8 rounded-full bg-cyan-900/50 flex items-center justify-center relative pointer-events-none">
-            <div className={`absolute inset-0 rounded-full border border-cyan-400/30 ${!playingAudioId ? '' : 'animate-pulse'}`}></div>
-            <i className="fas fa-compact-disc text-cyan-400 text-sm animate-[spin_3s_linear_infinite]"></i>
-          </div>
-
-          <div className="flex flex-col pointer-events-none">
-            <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-none">Now Playing</span>
-            <span className="text-[8px] text-gray-500 font-mono max-w-[100px] truncate">
-              {(() => {
-                // Find asset name from registry
-                const asset = assetList.find(a => a.id === playingAudioId || a.id === playingAudioId?.split('_').pop());
-                return asset ? asset.name : (playingAudioId?.split('_').pop() || 'Unknown');
-              })()}
-            </span>
-          </div>
-
-          <div className="h-6 w-px bg-gray-800 mx-2 pointer-events-none"></div>
-
-          {/* Controls (Stop Propagation to prevent drag) */}
-          <div
-            className="flex items-center gap-4"
-            onMouseDown={(e) => e.stopPropagation()} // Prevent dragging active
-          >
-            {/* Stop Button */}
-            <button
-              onClick={() => {
-                dispatch(EngineCommandType.STOP_PREVIEW_AUDIO);
-                setPlayingAudioId(null);
-                // Also reset mute state if desired, but keeping it is fine
-              }}
-              className="group flex items-center gap-2 hover:bg-red-900/30 px-2 py-1 rounded transition-colors"
-              title="停止 (Stop)"
-            >
-              <i className="fas fa-stop text-red-400 group-hover:scale-110 transition-transform"></i>
-            </button>
-
-            {/* Volume with Mute Toggle */}
-            <div className="flex items-center gap-2 group/vol">
-              <button
-                onClick={() => {
-                  if (isMuted) {
-                    // Unmute
-                    setIsMuted(false);
-                    setPlaybackVolume(lastVolume);
-                    dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: lastVolume });
-                  } else {
-                    // Mute
-                    setIsMuted(true);
-                    setLastVolume(playbackVolume);
-                    setPlaybackVolume(0);
-                    dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: 0 });
-                  }
-                }}
-                className="hover:text-cyan-400 transition-colors"
-                title={isMuted ? "取消静音 (Unmute)" : "静音 (Mute)"}
-              >
-                <i className={`fas ${isMuted || playbackVolume === 0 ? 'fa-volume-mute text-red-400' : 'fa-volume-up text-cyan-600'} text-[10px]`}></i>
-              </button>
-
-              <input
-                type="range" min="0" max="1" step="0.1"
-                value={playbackVolume}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setPlaybackVolume(val);
-
-                  // If dragging slider, auto-unmute if it was plugged
-                  if (val > 0 && isMuted) setIsMuted(false);
-                  if (val === 0) setIsMuted(true);
-
-                  dispatch(EngineCommandType.SET_MASTER_VOLUME, { volume: val });
-                }}
-                className="w-12 accent-cyan-500 h-1 cursor-pointer opacity-50 group-hover/vol:opacity-100 transition-opacity"
-                title="音量 (Volume)"
-              />
-            </div>
-
-            {/* Tempo (Discrete Buttons) */}
-            <div className="flex items-center gap-1 bg-gray-900/50 rounded-full p-0.5 border border-gray-700">
-              {[0.5, 1.0, 1.5, 2.0].map(rate => (
-                <button
-                  key={rate}
-                  onClick={() => {
-                    setPlaybackRate(rate);
-                    dispatch(EngineCommandType.SET_PLAYBACK_RATE, { rate });
-                  }}
-                  className={`text-[8px] font-mono px-2 py-0.5 rounded-full transition-all ${playbackRate === rate
-                    ? 'bg-cyan-600 text-white shadow-[0_0_10px_rgba(8,145,178,0.4)]'
-                    : 'text-gray-500 hover:text-cyan-200 hover:bg-gray-700'
-                    }`}
-                >
-                  {rate}x
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* 🔥 Audio Hub (Isolated Component) */}
+      {playingAudioId && manager && (
+        <AudioHub
+          playingAudioId={playingAudioId}
+          assetList={assetList}
+          dispatch={dispatch}
+          manager={manager}
+          setPlayingAudioId={setPlayingAudioId}
+          playbackVolume={playbackVolume}
+          setPlaybackVolume={setPlaybackVolume}
+          playbackRate={playbackRate}
+          setPlaybackRate={setPlaybackRate}
+          isMuted={isMuted}
+          setIsMuted={setIsMuted}
+          lastVolume={lastVolume}
+          setLastVolume={setLastVolume}
+          isLooping={isLooping}
+          setIsLooping={setIsLooping}
+        />
       )}
 
       {/* 1.1 Context Switch */}
@@ -995,7 +1409,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       </div>
 
       {/* 3. Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-6">
 
         {/* === WORLD === */}
         {activeTab === 'world' && (
@@ -1308,6 +1722,28 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   )}
                 </div>
               </div>
+
+              {/* 🔥 Audio Sub-Category Filter (Restoration) */}
+              {activeAssetTab === 'audio' && (
+                <div className="flex flex-wrap gap-1 mt-2 animate-in fade-in slide-in-from-top-1 duration-300">
+                  {['all', 'bgm', 'sfx', 'voice', 'ambient', 'general'].map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setAudioSubFilter(sub)}
+                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-tight transition-all border ${audioSubFilter === sub
+                        ? 'bg-cyan-500 text-white border-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                        : 'bg-gray-900/50 text-gray-500 border-gray-800 hover:text-gray-300 hover:border-gray-700'
+                        }`}
+                    >
+                      {sub === 'all' ? '全部 (ALL)' :
+                        sub === 'bgm' ? '音乐 (BGM)' :
+                          sub === 'sfx' ? '音效 (SFX)' :
+                            sub === 'voice' ? '配音 (VOICE)' :
+                              sub === 'ambient' ? '环境 (AMB)' : '通用 (GEN)'}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 3. Asset Registry Dashboard */}
@@ -1327,213 +1763,53 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 assetViewMode === 'compact' ? 'grid grid-cols-4 gap-2' :
                   'flex flex-col gap-1'
                 }`}>
-                {assetList
-                  .filter(a => {
-                    if (activeAssetTab === 'all') return true;
+                {/* 🔥 Optimization: Use memoized sub-component to isolate item rendering */}
+                {visibleAssets.map((asset) => (
+                  <AssetItem
+                    key={asset.id}
+                    asset={asset}
+                    assetViewMode={assetViewMode}
+                    playingAudioId={playingAudioId}
+                    onAssetClick={handleAssetClick}
+                    onContextMenu={handleAssetContextMenu}
+                    onDelete={handleAssetDelete}
+                    onExport={handleModelExport}
+                    setPlayingAudioId={setPlayingAudioId}
+                    dispatch={dispatch}
+                    isLooping={isLooping}
+                    manager={manager}
+                  />
+                ))}
 
-                    const cat = (a.category || '').toLowerCase().trim();
-                    const tab = activeAssetTab.toLowerCase();
-
-                    // 🔥 终极兼容: 归一化比较 + 别名支持
-                    if (tab === 'textures') {
-                      return cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images' || cat === 'png' || cat === 'jpg';
-                    }
-                    if (tab === 'models') {
-                      return cat === 'models' || cat === 'model' || cat === 'glb' || cat === 'gltf';
-                    }
-                    if (tab === 'audio') {
-                      return cat === 'audio' || cat === 'sound' || cat === 'music' || cat === 'mp3';
-                    }
-
-                    return cat === tab || cat.includes(tab);
-                  })
-                  .map((asset, i) => (
-                    <div key={i}
-                      onClick={() => handleAssetClick(asset)}
-                      className={`group transition-all duration-300 cursor-pointer ${assetViewMode === 'grid' ? 'bg-gray-900/40 border border-gray-800 rounded-2xl p-3 flex flex-col gap-2 hover:border-cyan-500/40 hover:bg-gray-800/50 hover:-translate-y-1 shadow-lg' :
-                        assetViewMode === 'compact' ? 'bg-gray-900/30 border border-gray-800/50 rounded-lg p-1 aspect-square hover:border-cyan-500/50 transition-all' :
-                          'bg-gray-900/20 hover:bg-gray-800/40 border border-gray-800/20 hover:border-cyan-900/30 rounded-lg px-3 py-2 flex items-center justify-between group'
-                        }`}>
-
-                      {/* Visual Content */}
-                      {(assetViewMode === 'grid' || assetViewMode === 'compact') && (
-                        <div className={`w-full bg-gray-950 rounded-xl flex items-center justify-center relative overflow-hidden ring-1 ring-gray-800/50 group-hover:ring-cyan-900/40 transition-all ${assetViewMode === 'grid' ? 'aspect-square' : 'h-full'
-                          }`}>
-                          {asset.thumbnail ? (
-                            <img src={asset.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" alt="" />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center opacity-10 group-hover:opacity-40 transition-opacity">
-                              {(() => {
-                                const cat = (asset.category || '').toLowerCase();
-                                const name = (asset.name || '').toLowerCase();
-
-                                // Audio-specific icon logic
-                                if (cat === 'audio' || cat === 'music' || cat === 'sound' || cat === 'mp3') {
-                                  // BGM / Music
-                                  if (name.includes('bgm') || name.includes('music') || name.includes('track') || name.includes('ost') || name.includes('theme')) {
-                                    return <i className={`fas fa-compact-disc ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-purple-400`}></i>;
-                                  }
-                                  // SFX / Effects
-                                  if (name.includes('sfx') || name.includes('effect') || name.includes('hit') || name.includes('explosion') || name.includes('click') || name.includes('shoot')) {
-                                    return <i className={`fas fa-bolt ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-orange-400`}></i>;
-                                  }
-                                  // Voice / Dialog
-                                  if (name.includes('voice') || name.includes('dialog') || name.includes('speech') || name.includes('narrat')) {
-                                    return <i className={`fas fa-microphone ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-pink-400`}></i>;
-                                  }
-                                  // Ambient / Environment
-                                  if (name.includes('ambient') || name.includes('nature') || name.includes('environment') || name.includes('wind') || name.includes('rain') || name.includes('forest')) {
-                                    return <i className={`fas fa-tree ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-green-400`}></i>;
-                                  }
-                                  // Default Audio
-                                  return <i className={`fas fa-music ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-cyan-400`}></i>;
-                                }
-
-                                // Non-audio fallback
-                                return <i className={`fas ${cat === 'models' ? 'fa-cube' : cat === 'textures' ? 'fa-image' : cat === 'environments' ? 'fa-mountain' : 'fa-box'} ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'}`}></i>;
-                              })()}
-                            </div>
-                          )}
-
-                          {assetViewMode === 'grid' && (
-                            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-gray-950/90 rounded-md text-[7px] text-cyan-400 font-bold uppercase tracking-tighter border border-cyan-500/20 whitespace-nowrap backdrop-blur-sm z-10 shadow-xl pointer-events-none">
-                              {asset.category === 'environments' ? 'HDR' : asset.category.replace(/s$/, '').toUpperCase()}
-                            </div>
-                          )}
-
-                          {/* 🎵 Audio Preview Trigger (Centered Overlay) */}
-                          {(asset.category === 'audio' || asset.category === 'music' || asset.category === 'sound') && (
-                            <div
-                              className={`absolute inset-0 z-15 flex items-center justify-center transition-all duration-300 backdrop-blur-[1px] ${playingAudioId === asset.id
-                                ? 'bg-cyan-900/40 opacity-100 ring-2 ring-inset ring-cyan-500/50'
-                                : 'bg-black/50 opacity-0 group-hover:opacity-100'
-                                }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (playingAudioId === asset.id) {
-                                  // Stop
-                                  setPlayingAudioId(null);
-                                  dispatch(EngineCommandType.STOP_PREVIEW_AUDIO);
-                                } else {
-                                  // Play
-                                  setPlayingAudioId(asset.id);
-                                  dispatch(EngineCommandType.PREVIEW_AUDIO, { assetId: asset.id });
-                                }
-                              }}
-                            >
-                              <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] ${playingAudioId === asset.id
-                                ? 'bg-cyan-500 text-white border-cyan-400 scale-110'
-                                : 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200 hover:scale-110 hover:bg-cyan-500/40'
-                                }`}>
-                                <i className={`fas ${playingAudioId === asset.id ? 'fa-pause' : 'fa-play'} text-sm ml-0.5`}></i>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Floating Delete Mini Button */}
-                          <div className="absolute bottom-1 right-1 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-all">
-                            {(asset.category === 'models' || asset.category === 'model') && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleModelExport(asset); }}
-                                className="w-5 h-5 bg-cyan-950/80 text-cyan-400 rounded-md flex items-center justify-center text-[7px] hover:bg-cyan-900 border border-cyan-500/20"
-                                title="导出为 GLB"
-                              >
-                                <i className="fas fa-file-export"></i>
-                              </button>
-                            )}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleAssetDelete(asset.id); }}
-                              className="w-5 h-5 bg-red-950/80 text-red-400 rounded-md flex items-center justify-center text-[7px] hover:bg-red-900 border border-red-500/20"
-                              title="删除资产"
-                            >
-                              <i className="fas fa-trash"></i>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Text Content - Grid */}
-                      {assetViewMode === 'grid' && (
-                        <div className="flex flex-col px-0.5">
-                          <span className="text-[10px] text-gray-400 font-bold truncate group-hover:text-white transition-colors" title={asset.name}>{asset.name}</span>
-                          <span className="text-[7px] text-gray-600 font-mono truncate uppercase mt-0.5 tracking-widest">{asset.id.split('_').pop()}</span>
-                        </div>
-                      )}
-
-                      {/* Text Content - List */}
-                      {assetViewMode === 'list' && (
-                        <>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded bg-gray-900 flex items-center justify-center text-cyan-700">
-                              {(() => {
-                                const cat = (asset.category || '').toLowerCase().trim();
-                                const isModel = cat === 'models' || cat === 'model' || cat === 'glb';
-                                const isAudio = cat === 'audio' || cat === 'music' || cat === 'sound';
-                                const isTexture = cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images';
-
-                                return <i className={`fas ${isModel ? 'fa-cube' : isAudio ? 'fa-music' : isTexture ? 'fa-image' : 'fa-mountain'} text-[10px]`}></i>;
-                              })()}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[10px] text-gray-300 font-bold group-hover:text-cyan-400 transition-colors">{asset.name}</span>
-                              <span className="text-[7px] text-gray-600 font-mono uppercase">{asset.id}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="text-[7px] bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800 text-gray-500 uppercase font-bold tracking-tighter">{asset.category}</span>
-                            <button onClick={() => handleAssetDelete(asset.id)} className="text-[10px] text-gray-700 hover:text-red-500 transition-colors px-2 opacity-0 group-hover:opacity-100"><i className="fas fa-trash-alt"></i></button>
-                          </div>
-                        </>
-                      )}
+                {visibleAssets.length === 0 && (
+                  <div className={`${assetViewMode === 'grid' ? 'col-span-2' : assetViewMode === 'compact' ? 'col-span-4' : ''} py-20 flex flex-col items-center justify-center text-gray-700 bg-gray-950/40 rounded-3xl border-2 border-dashed border-gray-900/50 backdrop-blur-sm`}>
+                    <div className="relative mb-4">
+                      <i className="fas fa-ghost text-4xl opacity-10"></i>
+                      <div className="absolute -top-1 -right-1 h-3 w-3 bg-cyan-500/20 rounded-full animate-ping"></div>
                     </div>
-                  ))}
-
-                {assetList.filter(a => {
-                  if (activeAssetTab === 'all') return true;
-
-                  const cat = (a.category || '').toLowerCase().trim();
-                  const tab = activeAssetTab.toLowerCase();
-
-                  if (tab === 'textures') {
-                    return cat === 'textures' || cat === 'texture' || cat === 'image' || cat === 'images' || cat === 'png' || cat === 'jpg';
-                  }
-                  if (tab === 'models') {
-                    return cat === 'models' || cat === 'model' || cat === 'glb' || cat === 'gltf';
-                  }
-                  if (tab === 'audio') {
-                    return cat === 'audio' || cat === 'sound' || cat === 'music' || cat === 'mp3';
-                  }
-
-                  return cat === tab || cat.includes(tab);
-                }).length === 0 && (
-                    <div className={`${assetViewMode === 'grid' ? 'col-span-2' : assetViewMode === 'compact' ? 'col-span-4' : ''} py-20 flex flex-col items-center justify-center text-gray-700 bg-gray-950/40 rounded-3xl border-2 border-dashed border-gray-900/50 backdrop-blur-sm`}>
-                      <div className="relative mb-4">
-                        <i className="fas fa-ghost text-4xl opacity-10"></i>
-                        <div className="absolute -top-1 -right-1 h-3 w-3 bg-cyan-500/20 rounded-full animate-ping"></div>
-                      </div>
-                      <span className="text-[10px] uppercase font-black tracking-[0.4em] opacity-30">Registry Empty</span>
-                      <span className="text-[8px] mt-2 opacity-10 italic">SYNC_STATUS: IDLE // SCANNING_FAIL</span>
-                    </div>
-                  )}
+                    <span className="text-[10px] uppercase font-black tracking-[0.4em] opacity-30">Registry Empty</span>
+                    <span className="text-[8px] mt-2 opacity-10 italic">SYNC_STATUS: IDLE // SCANNING_FAIL</span>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* 4. Global Scene Actions (Refined) */}
-            <div className="pt-6 border-t border-gray-900/50 grid grid-cols-2 gap-4" >
-              <button
-                onClick={() => document.getElementById('import_pfb')?.click()}
-                className="group relative py-3 bg-indigo-950/20 border border-indigo-500/20 text-indigo-400 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-900/30 transition-all flex items-center justify-center overflow-hidden"
-              >
-                <div className="absolute inset-x-0 h-[1px] top-0 bg-indigo-400/20"></div>
-                <i className="fas fa-dna mr-2 group-hover:rotate-180 transition-transform duration-700"></i> 生态包导入 (.pfb)
-              </button>
-              <button
-                onClick={handleExportBundle}
-                className="group relative py-3 bg-gray-900/40 border border-gray-800 text-gray-500 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white hover:bg-gray-800/60 transition-all flex items-center justify-center"
-              >
-                <i className="fas fa-download mr-2 group-hover:translate-y-0.5 transition-transform"></i> 全量导出
-              </button>
-              <input type="file" id="import_pfb" accept=".pfb" className="hidden" onChange={handleImportBundle} />
+              {/* 4. Global Scene Actions (Refined) */}
+              <div className="pt-6 border-t border-gray-900/50 grid grid-cols-2 gap-4" >
+                <button
+                  onClick={() => document.getElementById('import_pfb')?.click()}
+                  className="group relative py-3 bg-indigo-950/20 border border-indigo-500/20 text-indigo-400 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-900/30 transition-all flex items-center justify-center overflow-hidden"
+                >
+                  <div className="absolute inset-x-0 h-[1px] top-0 bg-indigo-400/20"></div>
+                  <i className="fas fa-dna mr-2 group-hover:rotate-180 transition-transform duration-700"></i> 生态包导入 (.pfb)
+                </button>
+                <button
+                  onClick={handleExportBundle}
+                  className="group relative py-3 bg-gray-900/40 border border-gray-800 text-gray-500 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white hover:bg-gray-800/60 transition-all flex items-center justify-center"
+                >
+                  <i className="fas fa-download mr-2 group-hover:translate-y-0.5 transition-transform"></i> 全量导出
+                </button>
+                <input type="file" id="import_pfb" accept=".pfb" className="hidden" onChange={handleImportBundle} />
+              </div>
             </div>
           </div>
         )}
@@ -1711,7 +1987,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 <i className="fas fa-exclamation-triangle mr-2"></i> 警告 (Warning)
               </h3>
               <p className="text-gray-300 text-[11px] mb-6 whitespace-pre-line leading-relaxed">
-                {showConfirm.message}
+                {showConfirm?.message}
               </p>
               <div className="flex gap-2">
                 <button
@@ -1722,7 +1998,7 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                 </button>
                 <button
                   onClick={() => {
-                    showConfirm.onConfirm();
+                    showConfirm?.onConfirm();
                     setShowConfirm(null);
                   }}
                   className="flex-1 py-2 bg-red-900/50 hover:bg-red-800/50 border border-red-500/30 text-red-400 rounded text-[10px] font-bold uppercase"
@@ -1738,14 +2014,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
       {/* 3. Notification Toast */}
       {
         notification && (
-          <div className={`absolute top-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full shadow-xl border backdrop-blur-md flex items-center gap-2 animate-slideDown z-50 ${notification.type === 'success' ? 'bg-green-900/80 border-green-500/50 text-green-300' :
-            notification.type === 'error' ? 'bg-red-900/80 border-red-500/50 text-red-300' :
+          <div className={`absolute top-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full shadow-xl border backdrop-blur-md flex items-center gap-2 animate-slideDown z-50 ${notification?.type === 'success' ? 'bg-green-900/80 border-green-500/50 text-green-300' :
+            notification?.type === 'error' ? 'bg-red-900/80 border-red-500/50 text-red-300' :
               'bg-blue-900/80 border-blue-500/50 text-blue-300'
             }`}>
-            <i className={`fas ${notification.type === 'success' ? 'fa-check-circle' :
-              notification.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'
+            <i className={`fas ${notification?.type === 'success' ? 'fa-check-circle' :
+              notification?.type === 'error' ? 'fa-times-circle' : 'fa-info-circle'
               }`}></i>
-            <span className="text-[10px] font-bold">{notification.message}</span>
+            <span className="text-[10px] font-bold">{notification?.message}</span>
           </div>
         )
       }
@@ -1756,15 +2032,15 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           <div className="absolute inset-x-0 bottom-6 px-4 py-3 bg-black/80 backdrop-blur-md border-t border-cyan-500/30 flex flex-col gap-2 z-[100] animate-in fade-in slide-in-from-bottom-5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
             <div className="flex justify-between items-end">
               <div className="flex flex-col">
-                <span className="text-[8px] text-cyan-400 font-black uppercase tracking-[0.2em]">{bundleProgress.step}</span>
-                <span className="text-[10px] text-white font-bold opacity-80">{bundleProgress.assetName}</span>
+                <span className="text-[8px] text-cyan-400 font-black uppercase tracking-[0.2em]">{bundleProgress?.step}</span>
+                <span className="text-[10px] text-white font-bold opacity-80">{bundleProgress?.assetName}</span>
               </div>
-              <span className="text-[10px] font-mono text-cyan-400">{Math.round(bundleProgress.progress * 100)}%</span>
+              <span className="text-[10px] font-mono text-cyan-400">{Math.round((bundleProgress?.progress || 0) * 100)}%</span>
             </div>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-cyan-500 transition-all duration-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-                style={{ width: `${bundleProgress.progress * 100}%` }}
+                style={{ width: `${(bundleProgress?.progress || 0) * 100}%` }}
               ></div>
             </div>
           </div>
@@ -1821,13 +2097,14 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
             </div>
 
             <div className="space-y-2">
-              {/* 🔥 Entity Details Overlay - Separated for Focus Stability */}
-              <EntityDetailsSection
-                selectedEntity={selectedEntity}
-                manager={manager}
-                dispatch={dispatch}
-                revision={revision}
-              />
+              {manager && (
+                <EntityDetailsSection
+                  selectedEntity={selectedEntity}
+                  manager={manager}
+                  dispatch={dispatch}
+                  revision={revision}
+                />
+              )}
 
               {/* 🔥 isEditingCollider: Advanced Controls */}
 
@@ -1941,19 +2218,19 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                   <div className="space-y-1 bg-gray-900/50 p-2 rounded">
                     <div className="flex justify-between text-[9px]">
                       <span className="text-gray-500">缩放 (Scale)</span>
-                      <span className="text-cyan-400 font-mono">{manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.scale[0].toFixed(2)}x</span>
+                      <span className="text-cyan-400 font-mono">{manager?.getEntityManager().getEntity(selectedEntity!)?.getComponent<TransformComponent>('Transform')?.scale[0].toFixed(2)}x</span>
                     </div>
                     <div className="flex justify-between text-[9px]">
                       <span className="text-gray-500">旋转 X (Rotation X)</span>
-                      <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[0] || 0)}°</span>
+                      <span className="text-cyan-400 font-mono">{Math.round(manager?.getEntityManager().getEntity(selectedEntity!)?.getComponent<TransformComponent>('Transform')?.rotation[0] || 0)}°</span>
                     </div>
                     <div className="flex justify-between text-[9px]">
                       <span className="text-gray-500">旋转 Y (Rotation Y)</span>
-                      <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[1] || 0)}°</span>
+                      <span className="text-cyan-400 font-mono">{Math.round(manager?.getEntityManager().getEntity(selectedEntity!)?.getComponent<TransformComponent>('Transform')?.rotation[1] || 0)}°</span>
                     </div>
                     <div className="flex justify-between text-[9px]">
                       <span className="text-gray-500">旋转 Z (Rotation Z)</span>
-                      <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[2] || 0)}°</span>
+                      <span className="text-cyan-400 font-mono">{Math.round(manager?.getEntityManager().getEntity(selectedEntity!)?.getComponent<TransformComponent>('Transform')?.rotation[2] || 0)}°</span>
                     </div>
                   </div>
 
@@ -1979,17 +2256,19 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
               <div className="h-px bg-gray-800 my-2"></div>
 
-              <button
-                onClick={() => {
-                  if (confirm('确定要从世界中移除此实体吗？')) {
-                    manager.handleDeleteSelectedEntity();
-                    setSelectedEntity(null);
-                  }
-                }}
-                className="w-full py-2 bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-500 rounded text-[10px] font-bold uppercase transition-all mb-2"
-              >
-                <i className="fas fa-trash-alt mr-2"></i> 物理移除 (Delete Entity)
-              </button>
+              {manager && (
+                <button
+                  onClick={() => {
+                    if (confirm('确定要从世界中移除此实体吗？')) {
+                      manager.handleDeleteSelectedEntity();
+                      setSelectedEntity(null);
+                    }
+                  }}
+                  className="w-full py-2 bg-red-900/30 hover:bg-red-800/50 border border-red-500/30 text-red-500 rounded text-[10px] font-bold uppercase transition-all mb-2"
+                >
+                  <i className="fas fa-trash-alt mr-2"></i> 物理移除 (Delete Entity)
+                </button>
+              )}
 
               <div className="text-[8px] text-gray-400 leading-relaxed italic opacity-60">
                 "引擎审计通过。资产已就绪，可进行高保真部署。"
@@ -1998,88 +2277,50 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
           </div>
         )
       }
+
+      {/* 🚀 Context Menu for Reclassification */}
+      {
+        contextMenu && (
+          <>
+            <div className="fixed inset-0 z-[1000]" onClick={() => setContextMenu(null)}></div>
+            <div
+              className="fixed z-[1001] bg-gray-950/95 border border-cyan-500/30 rounded-lg shadow-2xl backdrop-blur-xl py-1 min-w-[120px] animate-in fade-in zoom-in duration-200"
+              style={{ left: contextMenu?.x ?? 0, top: contextMenu?.y ?? 0 }}
+            >
+              <div className="px-3 py-1.5 border-b border-gray-800 mb-1">
+                <span className="text-[7px] text-cyan-500 font-bold uppercase tracking-widest opacity-50">移动至 (MOVE TO)</span>
+              </div>
+              {[
+                { id: 'bgm', label: '音乐 (BGM)', icon: 'fa-compact-disc' },
+                { id: 'sfx', label: '音效 (SFX)', icon: 'fa-bolt' },
+                { id: 'voice', label: '配音 (VOICE)', icon: 'fa-microphone' },
+                { id: 'ambient', label: '环境 (AMBIENT)', icon: 'fa-tree' },
+                { id: 'general', label: '通用 (GENERAL)', icon: 'fa-music' }
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={(e) => { e.stopPropagation(); handleReclassify(contextMenu.assetId, item.id); }}
+                  className="w-full text-left px-3 py-1.5 text-[9px] text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-400 flex items-center gap-2 transition-all"
+                >
+                  <i className={`fas ${item.icon} w-3 text-center`}></i>
+                  {item.label}
+                </button>
+              ))}
+              <div className="border-t border-gray-800 mt-1 pt-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAssetDelete(contextMenu.assetId); setContextMenu(null); }}
+                  className="w-full text-left px-3 py-1.5 text-[9px] text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                >
+                  <i className="fas fa-trash w-3 text-center"></i>
+                  删除资产 (Delete)
+                </button>
+              </div>
+            </div>
+          </>
+        )
+      }
+
     </div>
   );
 };
 
-// ===================================================================================
-// 🛡️ Sub-Components (Separated for focus/re-render stability)
-// ===================================================================================
-
-/**
- * 实体详情段落 - 独立组件化以防止外部 stats 更新导致失焦 (如图片模式选择下拉框)
- */
-interface EntityDetailsSectionProps {
-  selectedEntity: string | null;
-  manager: IArchitectureFacade;
-  dispatch: (type: EngineCommandType, payload: any) => void;
-  revision: number; // 🔥 强制刷新的脉冲
-}
-const EntityDetailsSection = React.memo(({ selectedEntity, manager, dispatch, revision }: EntityDetailsSectionProps) => {
-  if (!selectedEntity) return null;
-  const entity = manager.getEntityManager().getEntity(selectedEntity);
-  if (!entity) return null;
-
-  const visual = entity.getComponent('Visual') as VisualComponent | undefined;
-  const placement = entity.getComponent('Placement') as PlacementComponent | undefined;
-  const geom = visual?.geometry;
-  const isModel = geom?.type === 'model';
-  const assetId = geom?.assetId || visual?.material?.textureAssetId;
-  const assetMetadata = assetId ? manager.getAssetRegistry().getMetadataSync(assetId) : null;
-  const realFaces = assetMetadata?.modelStats?.faces;
-  const imgWidth = assetMetadata?.textureMetadata?.width;
-  const imgHeight = assetMetadata?.textureMetadata?.height;
-
-  return (
-    <>
-      <div className="flex justify-between text-[10px]">
-        <span className="text-gray-500">几何类型 (Geometry)</span>
-        <span className="text-cyan-400 font-mono uppercase">{geom?.type || 'Unknown'}</span>
-      </div>
-      <div className="flex justify-between text-[10px]">
-        <span className="text-gray-500">{realFaces ? '多边形总数 (Faces)' : '多边形估算 (Polygons)'}</span>
-        <span className="text-cyan-400 font-mono">
-          {realFaces ? realFaces.toLocaleString() : (isModel || geom?.type === 'custom' ? '~42.5k' : '24')}
-        </span>
-      </div>
-      {(imgWidth && imgHeight) && (
-        <div className="flex justify-between text-[10px]">
-          <span className="text-gray-500">原始规格 (Image Stats)</span>
-          <span className="text-cyan-400 font-mono">{imgWidth} x {imgHeight}</span>
-        </div>
-      )}
-      <div className="flex justify-between text-[10px]">
-        <span className="text-gray-500">材质插槽 (Materials)</span>
-        <span className="text-cyan-400 font-mono">{visual?.material ? '1' : '0'}</span>
-      </div>
-
-      {/* 🔥 Image Asset Behavior Select */}
-      {geom?.type === 'plane' && visual?.material?.textureAssetId && (
-        <div className="flex items-center justify-between p-2 mt-2 bg-blue-950/30 border border-blue-500/30 rounded-lg animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex flex-col">
-            <span className="text-[9px] text-blue-400 font-bold uppercase tracking-tight">显示模式 (Mode)</span>
-            <span className="text-[7px] text-blue-600 font-mono italic">IMAGE MODALITY</span>
-          </div>
-          <select
-            value={placement?.mode || 'billboard'}
-            onMouseDown={(e) => e.stopPropagation()} // 🔥 阻止事件冒泡防止 Canvas 捕获
-            onChange={(e) => {
-              dispatch(EngineCommandType.SET_IMAGE_MODE, {
-                entityId: selectedEntity,
-                mode: e.target.value
-              });
-            }}
-            className="bg-black/40 text-blue-400 text-[10px] border border-blue-900 rounded p-1 outline-none focus:border-blue-400 transition-all cursor-pointer hover:bg-black/60 font-bold"
-          >
-            <option value="billboard"> 看板 (Billboard)</option>
-            <option value="standee"> 立牌 (Standee)</option>
-            <option value="sticker"> 贴纸 (Sticker)</option>
-          </select>
-        </div>
-      )}
-    </>
-  );
-}, (prev, next) => {
-  // 🔥 FIX: Must re-render when revision changes (Engine State Update) or entity changes
-  return prev.selectedEntity === next.selectedEntity && prev.revision === next.revision;
-});

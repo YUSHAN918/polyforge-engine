@@ -1,8 +1,8 @@
 # PolyForge v1.3.0 核心架构 - 进度总览
 
-**最后更新**: 2026-01-02  
+**最后更新**: 2026-01-03  
 **当前版本**: v1.3.8  
-**整体进度**: 21/22 阶段完成 (95.4%)
+**整体进度**: 22/22 阶段完成 (100%)
 
 ---
 
@@ -12,6 +12,10 @@
 - **[需求文档](./docs/requirements.md)** - 完整的功能需求和验收标准
 - **[设计文档](./docs/design.md)** - 架构设计和技术方案
 - **[AI 协作 SOP](./docs/SOP_AI_Collaboration.md)** - AI 协同开发标准操作流程
+
+### 规划文档
+- **[资产管线与功能完成性路线图](./.agent/PIPELINE_ROADMAP.md)** - 长期功能规划（Phase 21-29）
+- **[路线图对比分析报告](./.agent/ROADMAP_ANALYSIS_20260103.md)** - 深度分析与优先级梳理
 
 ### 任务清单（分片）
 - **[基础设施任务](./docs/tasks/tasks_infra.md)** - Phase 1-7（核心 ECS 至资产管线）
@@ -76,6 +80,7 @@
 | Phase 20 | React 19 + R3F 优化 | ⏳ 待开始 | - | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-20-react-19--r3f-优化-) | - |
 | Phase 21 | Shadow System Hardening | ✅ 完成 | 2025-12-31 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-21-shadow-system-hardening-阴影系统加固-native-pcf--asa-) | - |
 | Phase 22 | 性能优化会战 | ✅ 完成 | 2026-01-02 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-22-performance-optimization-war-性能优化会战-) | [Decision Log](.agent/DECISION_LOG.md) |
+| Phase 23 | 音频 UI 联通修复 | ✅ 完成 | 2026-01-03 | [📋 任务](./docs/tasks/tasks_v1.3_final.md#phase-23-音频-ui-联通修复--p0) | 音频系统 UI 集成 |
 
 ---
 
@@ -555,5 +560,307 @@ window.renderDemoControls.getPostProcessingSettings(); // 查看后处理设置
 
 ---
 
+## 🔮 未来规划 (Phase 23-35)
+
+> **相关文档**: [资产管线与功能完成性路线图](./.agent/PIPELINE_ROADMAP.md)  
+> **深度分析**: [路线图对比分析报告](./.agent/ROADMAP_ANALYSIS_20260103.md)
+
+### 优先级说明
+
+- **P0** - 紧急修复（1-2 周）
+- **P1** - 核心功能补全（1-2 月）
+- **P2** - 动画系统（2-3 月）
+- **P3** - 视觉增强（2-3 月）
+- **P4** - 编辑器增强（3-4 月）
+- **P5** - 生态整合（后期）
+
+---
+
+### P0 - 紧急修复（1-2 周）
+
+#### Phase 23: 音频 UI 联通修复
+**状态**: ⚠️ P0 紧急  
+**工作量**: 2-3 天  
+**依赖**: Phase 9 AudioSystem
+
+**核心任务**:
+- [ ] 修复顶部 TEMPO 滑块 + 播放按钮绑定到 AudioSystem
+- [ ] 修复资产库音频缩略图预览播放
+- [ ] 实现点击即听功能
+
+**验收标准**:
+- WHEN 用户点击音频资产 THEN 系统 SHALL 播放音频预览
+- WHEN 用户调整 TEMPO 滑块 THEN 系统 SHALL 实时调整播放速度
+
+---
+
+### P1 - 核心功能补全（1-2 月）
+
+#### Phase 24: 模型资产库 UI
+**状态**: 📋 待开发  
+**工作量**: 1-2 周  
+**依赖**: Phase 7 AssetRegistry
+
+**核心任务**:
+- [ ] 实现模型资产分类导航
+- [ ] 实现网格预览功能
+- [ ] 实现拖拽放置功能
+- [ ] 实现资产搜索和过滤
+
+**验收标准**:
+- WHEN 用户打开资产库 THEN 系统 SHALL 显示所有已导入模型
+- WHEN 用户拖拽模型 THEN 系统 SHALL 在场景中放置模型
+
+---
+
+#### Phase 25: LOD 自动生成
+**状态**: 📋 待开发  
+**工作量**: 1-2 周  
+**依赖**: Phase 7 ModelImporter
+
+**核心任务**:
+- [ ] 集成 meshoptimizer (WASM)
+- [ ] 实现多级 LOD 自动生成
+- [ ] 实现相机距离动态切换
+- [ ] 实现 LOD 配置 UI
+
+**验收标准**:
+- WHEN 用户导入高模 THEN 系统 SHALL 自动生成 3 级 LOD
+- WHEN 相机距离变化 THEN 系统 SHALL 自动切换 LOD 级别
+
+---
+
+### P2 - 动画系统（2-3 月）
+
+#### Phase 26: 动画管线 (Animation Pipeline)
+**状态**: 📋 待规划  
+**工作量**: 2-3 周  
+**依赖**: Phase 7 ModelImporter
+
+**核心任务**:
+- [ ] 26.1 AnimationComponent - 动画数据组件
+- [ ] 26.2 AnimationSystem - 动画更新系统
+- [ ] 26.3 EngineBridge AnimationMixer 桥接
+- [ ] 26.4 UI 动画选择器
+- [ ] 26.5 帧级事件系统
+- [ ] 26.6 多生物骨骼支持（人形/四足/多足）
+- [ ] 26.7 程序化动画 Additive Layer
+
+**验收标准**:
+- WHEN 用户导入带动画的 GLB THEN 系统 SHALL 自动提取所有动画
+- WHEN 用户播放动画 THEN 系统 SHALL 平滑播放并支持混合
+- WHEN 动画播放到特定帧 THEN 系统 SHALL 触发帧事件
+
+---
+
+#### Phase 27: 2D 动画管线 (2D Animation)
+**状态**: 📋 待规划  
+**工作量**: 2-3 周  
+**依赖**: Phase 26 动画管线
+
+**核心任务**:
+- [ ] 27.1 SpriteSequenceComponent - 序列帧数据结构
+- [ ] 27.2 PNG 文件夹导入 + 自动打包
+- [ ] 27.3 Sprite Sheet 导入（指定行列）
+- [ ] 27.4 EngineBridge UV 偏移播放
+- [ ] 27.5 资产库集成 + 拖拽预览
+- [ ] 27.6 Spine 资产导入（spine-threejs）
+- [ ] 27.7 定格/流畅模式切换
+- [ ] 27.8 骨骼动画 → 序列帧导出
+
+**验收标准**:
+- WHEN 用户导入 PNG 序列 THEN 系统 SHALL 自动打包为 Sprite Sheet
+- WHEN 用户导入 Spine 资产 THEN 系统 SHALL 拖入即可播放
+- WHEN 用户切换定格模式 THEN 系统 SHALL 只在关键帧跳变
+
+---
+
+#### Phase 27.5: 节奏-事件管线 (Rhythm-Event)
+**状态**: 📋 待规划  
+**工作量**: 1-2 周  
+**依赖**: Phase 26 动画管线 + Phase 9 AudioSystem
+
+**核心任务**:
+- [ ] 动画帧事件触发
+- [ ] RhythmClock (AudioWorklet 高精度时钟)
+- [ ] BeatMap 节拍图数据结构
+- [ ] 节拍编辑器 UI
+
+**验收标准**:
+- WHEN 动画播放到特定帧 THEN 系统 SHALL 触发事件
+- WHEN 音乐播放到节拍点 THEN 系统 SHALL 触发节拍事件
+- WHEN 用户编辑节拍图 THEN 系统 SHALL 可视化显示节拍点
+
+---
+
+#### Phase 28: 碰撞体分层管线 (Collision Layers)
+**状态**: 📋 待规划  
+**工作量**: 1-2 周  
+**依赖**: Phase 26 动画管线
+
+**核心任务**:
+- [ ] 攻击判定碰撞体（Box/Sphere）
+- [ ] 骨骼绑定碰撞体
+- [ ] 精确碰撞（Convex/Trimesh）
+- [ ] 碰撞层级配置 UI
+
+**验收标准**:
+- WHEN 用户创建攻击判定 THEN 系统 SHALL 绑定到骨骼
+- WHEN 攻击判定碰撞 THEN 系统 SHALL 触发伤害事件
+
+---
+
+### P3 - 视觉增强（2-3 月）
+
+#### Phase 29: VFX 特效管线 (VFX Pipeline)
+**状态**: 📋 待规划  
+**工作量**: 3-4 周  
+**依赖**: Phase 26 动画管线
+
+**核心任务**:
+- [ ] ParticleEmitterComponent - 粒子发射器组件
+- [ ] ParticleSystem - GPU Particles 系统
+- [ ] ParticleMaterial - 粒子材质
+- [ ] 2D 序列帧轨道（Billboard 渲染）
+- [ ] VFX 编辑器 UI
+
+**验收标准**:
+- WHEN 用户创建粒子发射器 THEN 系统 SHALL 使用 GPU Instancing 渲染
+- WHEN 粒子数量超过 10000 THEN 系统 SHALL 保持 60 FPS
+
+---
+
+#### Phase 30: 大世界渲染管线 (Large World)
+**状态**: 📋 待规划  
+**工作量**: 3-4 周  
+**依赖**: Phase 11.2 TerrainSystem
+
+**核心任务**:
+- [ ] 大气散射 Shader（Rayleigh/Mie）
+- [ ] 距离雾 + 天空渐变
+- [ ] 地形 Chunk 分块（动态加载卸载）
+- [ ] Billboard 远景优化
+- [ ] 程序化生态分布
+
+**验收标准**:
+- WHEN 地图规模超过 1km THEN 系统 SHALL 自动分块加载
+- WHEN 相机移动 THEN 系统 SHALL 动态加载/卸载 Chunk
+- WHEN 远处物体 THEN 系统 SHALL 使用 Billboard 渲染
+
+---
+
+### P4 - 编辑器增强（3-4 月）
+
+#### Phase 31: UI 编辑器管线 (UI Editor)
+**状态**: 📋 待规划  
+**工作量**: 4-6 周  
+**依赖**: 无
+
+**核心任务**:
+- [ ] 31.1 Dockable Layout MVP（2-3 周）
+- [ ] 31.2 Theme Engine（1-2 周）
+- [ ] 31.3 Schema-Driven Components（3-4 周）
+- [ ] 31.4 Visual UI Editor（4-6 周）
+- [ ] 31.5 Binding System（2-3 周）
+- [ ] 31.6 Game HUD Builder（4-6 周）
+
+**验收标准**:
+- WHEN 用户拖拽面板 THEN 系统 SHALL 支持自由布局
+- WHEN 用户创建 UI 组件 THEN 系统 SHALL 自动绑定到 WorldState
+- WHEN 用户切换主题 THEN 系统 SHALL 实时更新所有 UI
+
+---
+
+#### Phase 32: 模型编辑管线 (Model Editing)
+**状态**: 📋 待规划  
+**工作量**: 3-4 周  
+**依赖**: Phase 7 AssetRegistry
+
+**核心任务**:
+- [ ] 32.1 布尔运算集成（three-bvh-csg）
+- [ ] 32.2 合并选中物体 + 删内面
+- [ ] 32.3 减面工具（SimplifyModifier）
+- [ ] 32.4 一键封装导出 GLB
+- [ ] 32.5 模型雕刻笔刷（基础）
+- [ ] 32.6 补洞/修复工具
+
+**验收标准**:
+- WHEN 用户选中多个物体 THEN 系统 SHALL 支持布尔运算（合并/相减）
+- WHEN 用户导出模型 THEN 系统 SHALL 自动减面并封装为 GLB
+
+---
+
+### P5 - 生态整合（后期）
+
+#### Phase 33: MOD 扩展系统
+**状态**: ⏳ 待开始  
+**工作量**: 2-3 周  
+**依赖**: 无
+
+**核心任务**:
+- [ ] 动态组件注册
+- [ ] 动态系统注册
+- [ ] 热重载机制
+- [ ] MOD 管理 UI
+
+---
+
+#### Phase 34: React 19 + R3F 优化
+**状态**: ⏳ 待开始  
+**工作量**: 1-2 周  
+**依赖**: 无
+
+**核心任务**:
+- [ ] React 19 升级
+- [ ] R3F 性能优化
+- [ ] 兼容性测试
+
+---
+
+#### Phase 35: 旧版工坊打通（大和龙）
+**状态**: 📋 待规划  
+**工作量**: 4-6 周  
+**依赖**: Phase 26-32 全部完成
+
+**核心任务**:
+- [ ] 英雄大厅桥接
+- [ ] 装备库迁移
+- [ ] 动画工坊桥接
+- [ ] 程序化参数桥接
+- [ ] 特效库评估
+
+---
+
+#### Phase 36: 导演/影视管线 (Director)
+**状态**: 📋 待规划  
+**工作量**: 3-4 周  
+**依赖**: Phase 29 VFX + Phase 31 UI Editor
+
+**核心任务**:
+- [ ] 时间轴编辑器
+- [ ] 相机轨道动画
+- [ ] AI 高光录制
+- [ ] 视频导出
+
+---
+
+## 📊 未来规划统计
+
+### Phase 分布
+- **P0 紧急修复**: 1 个 Phase（Phase 23）
+- **P1 核心功能**: 2 个 Phase（Phase 24-25）
+- **P2 动画系统**: 4 个 Phase（Phase 26-28 + 27.5）
+- **P3 视觉增强**: 2 个 Phase（Phase 29-30）
+- **P4 编辑器增强**: 2 个 Phase（Phase 31-32）
+- **P5 生态整合**: 3 个 Phase（Phase 33-36）
+
+### 预计工作量
+- **短期（1-2 月）**: Phase 23-25（P0-P1）
+- **中期（2-4 月）**: Phase 26-30（P2-P3）
+- **长期（4-8 月）**: Phase 31-36（P4-P5）
+
+---
+
 **制作人**: _YUSHAN_  
-**最后审计**: 2025-12-23
+**最后更新**: 2026-01-03  
+**下一步**: 执行 Phase 23（音频 UI 联通修复）

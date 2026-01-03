@@ -28,7 +28,9 @@ interface AudioNodeEntry {
   gainNode: GainNode;
   pannerNode?: PannerNode;
   startTime: number;
+  offset: number; // 🔥 New: Track played time for pause/resume
   isPlaying: boolean;
+  manualStopped?: boolean; // 🔥 New: Flag to prevent onended cleanup during manual pause
 }
 
 /**
@@ -108,26 +110,6 @@ export class AudioSystem implements System {
     this.isUnlocked = true;
   }
 
-  /**
-   * 设置全局播放倍速
-   */
-  public setPlaybackRate(rate: number): void {
-    this.globalPlaybackRate = rate;
-    console.log(`🎵 Global playback rate set to: ${rate}x`);
-
-    // 🔥 Real-time update for active sources
-    this.activeNodes.forEach((entry, entityId) => {
-      if (entry && entry.sourceNode) {
-        try {
-          entry.sourceNode.playbackRate.cancelScheduledValues(0);
-          // Apply global rate immediately
-          // Note: This overrides individual pitch but standardizes playback rate
-          // Ideally we should multiply entry.sourceNode.playbackRate.value by (newRate/oldRate) but simple set is fine for preview
-          entry.sourceNode.playbackRate.setValueAtTime(rate, this.audioContext?.currentTime || 0);
-        } catch (e) { /* ignore */ }
-      }
-    });
-  }
 
   /**
    * 设置 Clock 引用
@@ -146,12 +128,6 @@ export class AudioSystem implements System {
   /**
    * 设置主音量
    */
-  public setMasterVolume(volume: number): void {
-    this.masterVolume = Math.max(0, Math.min(1, volume));
-    if (this.masterGainNode) {
-      this.masterGainNode.gain.value = this.masterVolume;
-    }
-  }
 
   /**
    * System 接口：实体添加回调
@@ -407,6 +383,7 @@ export class AudioSystem implements System {
       gainNode,
       pannerNode,
       startTime: this.audioContext.currentTime,
+      offset: 0, // 🔥 Initialize offset
       isPlaying: true,
     };
 
@@ -414,10 +391,14 @@ export class AudioSystem implements System {
 
     // 监听播放结束
     sourceNode.onended = () => {
-      nodeEntry.isPlaying = false;
-      audio.isPlaying = false;
+      // 🔥 Security Check: 只有当前节点生成的结束事件才触发清理
+      // 防止 resumeAudio/togglePause 时由于 stop() 异步触发陈旧的 cleanup
+      if (nodeEntry.sourceNode !== sourceNode) return;
 
-      if (!audio.loop) {
+      // 🔥 关键修复：只有在非手动停止（即自然播放完成或非暂停状态下）才执行清理
+      if (nodeEntry.isPlaying && !audio.loop) {
+        nodeEntry.isPlaying = false;
+        audio.isPlaying = false;
         this.cleanupEntityNodes(entity.id);
       }
     };
@@ -604,5 +585,195 @@ export class AudioSystem implements System {
     }
 
     return info;
+  }
+
+  /**
+   * 设置全局播放倍速
+   */
+  public setPlaybackRate(rate: number): void {
+    this.globalPlaybackRate = rate;
+
+    // 🔥 核心重构：当倍速改变时，必须立即对所有活动节点“提交”当前进度
+    // 否则 elapsed * newRate 会导致进度线上产生瞬间位移
+    for (const entry of this.activeNodes.values()) {
+      if (entry.isPlaying) {
+        const elapsed = this.audioContext!.currentTime - entry.startTime;
+        entry.offset += elapsed * entry.sourceNode.playbackRate.value;
+        entry.startTime = this.audioContext!.currentTime;
+
+        // 更新物理节点速率
+        entry.sourceNode.playbackRate.value = rate;
+      } else {
+        // 如果是暂停状态，仅更新引用，下次 resume 会自动拉取
+        entry.sourceNode.playbackRate.value = rate;
+      }
+    }
+    console.log(`🎵 [AudioSystem] Global playback rate: ${rate}x`);
+  }
+
+  /**
+   * 设置主音量
+   */
+  public setMasterVolume(volume: number): void {
+    this.masterVolume = volume;
+    if (this.masterGainNode) {
+      this.masterGainNode.gain.setTargetAtTime(volume, this.audioContext!.currentTime, 0.02);
+    }
+    console.log(`🔊 [AudioSystem] Master volume: ${volume.toFixed(2)}`);
+  }
+
+  /**
+   * 获取音频播放状态 (用于进度条)
+   * @param id 实体 ID 或 资产 ID (预览逻辑通常使用 assetsId_preview 形式)
+   */
+  public getPlaybackState(id: string): { currentTime: number; duration: number; isPlaying: boolean } | null {
+    if (!this.audioContext) return null;
+
+    // 尝试直接按 ID 查找
+    let entry = this.activeNodes.get(id);
+
+    // 如果没找到，尝试按资产 ID 模糊匹配 (预览音频 ID 通常包含资产 ID)
+    if (!entry) {
+      for (const e of this.activeNodes.values()) {
+        if (e.assetId === id || id.includes(e.assetId)) {
+          entry = e;
+          break;
+        }
+      }
+    }
+
+    if (!entry) return null;
+
+    let currentTime = 0;
+    if (entry.isPlaying) {
+      const elapsed = this.audioContext.currentTime - entry.startTime;
+      currentTime = entry.offset + (elapsed * entry.sourceNode.playbackRate.value);
+    } else {
+      currentTime = entry.offset;
+    }
+
+    const duration = entry.buffer.duration;
+
+    return {
+      currentTime: currentTime % duration,
+      duration,
+      isPlaying: entry.isPlaying
+    };
+  }
+
+  /**
+   * 切换暂停/播放状态 (支持断点续播)
+   */
+  public togglePause(id?: string): void {
+    if (!this.audioContext) return;
+
+    // 🔥 交互自动解锁
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    const entry = this.findEntry(id);
+    if (!entry) return;
+
+    if (entry.isPlaying) {
+      // --- PAUSE ---
+      const elapsed = this.audioContext.currentTime - entry.startTime;
+      entry.offset += elapsed * entry.sourceNode.playbackRate.value;
+      entry.isPlaying = false;
+
+      // 🔥 关键：锁定由手动触发的暂停，防止 onended 执行清理
+      entry.manualStopped = true;
+
+      // 🔥 关键：在物理停止前标记 isPlaying=false，确保 onended 回调不会误删此活跃节点
+
+      try {
+        entry.sourceNode.stop();
+      } catch (e) { /* already stopped */ }
+
+      console.log(`⏸️ [AudioSystem] Paused at ${entry.offset.toFixed(2)}s (ID: ${id})`);
+    } else {
+      // --- RESUME ---
+      console.log(`▶️ [AudioSystem] Resuming... (ID: ${id})`);
+      this.resumeAudio(entry);
+    }
+  }
+
+  /**
+   * 设置循环状态
+   */
+  public setLooping(id: string | undefined, isLooping: boolean): void {
+    const entry = this.findEntry(id);
+    if (entry) {
+      entry.sourceNode.loop = isLooping;
+      // Also ensure internal state is updated for next resume
+      // (sourceNode is just a transient object)
+
+      // 同时更新组件状态 (如果能找到实体)
+      const entity = Array.from(this.activeNodes.keys()).find(k => k === entry.entityId);
+      if (entity) {
+        // Assume caller handled component update or we do it via entityManager if we had ref
+      }
+      console.log(`🔁 [AudioSystem] Looping set to: ${isLooping}`);
+    }
+  }
+
+  private findEntry(id?: string): AudioNodeEntry | null {
+    if (!id) {
+      return this.activeNodes.size > 0 ? Array.from(this.activeNodes.values())[0] : null;
+    }
+    let entry = this.activeNodes.get(id);
+    if (!entry) {
+      // Search by assetId or partial ID
+      for (const e of this.activeNodes.values()) {
+        if (e.assetId === id || id.includes(e.assetId) || e.entityId.includes(id)) {
+          entry = e;
+          break;
+        }
+      }
+    }
+    return entry || null;
+  }
+
+  private resumeAudio(entry: AudioNodeEntry): void {
+    if (!this.audioContext || !this.masterGainNode) return;
+
+    // 🔥 交互自动解锁
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    // 1. Create NEW source (AudioBufferSourceNode is one-time use)
+    const newSource = this.audioContext.createBufferSource();
+    newSource.buffer = entry.buffer;
+    newSource.loop = entry.sourceNode.loop;
+    newSource.playbackRate.value = entry.sourceNode.playbackRate.value;
+
+    // 2. Reconnect
+    // Note: pannerNode is already connected to gainNode, gainNode to master
+    newSource.connect(entry.pannerNode || entry.gainNode);
+
+    // 3. Start from offset
+    const offset = entry.offset % entry.buffer.duration;
+    newSource.start(0, offset);
+
+    // 4. Update entry
+    entry.sourceNode = newSource;
+    entry.startTime = this.audioContext.currentTime;
+    entry.isPlaying = true;
+    entry.manualStopped = false; // 🔥 解锁
+
+    newSource.onended = () => {
+      // 🔥 Security Check: 只有当前节点生成的结束事件才触发清理
+      // 防止 resumeAudio/togglePause 时由于 stop() 异步触发陈旧的 cleanup
+      if (entry.sourceNode !== newSource) return;
+
+      // 🔥 关键修复：只有在非手动停止且自然播放完成时才执行清理
+      if (!entry.manualStopped && !newSource.loop) {
+        entry.isPlaying = false;
+        this.cleanupEntityNodes(entry.entityId);
+      }
+    };
+
+    console.log(`▶️ [AudioSystem] Resumed from ${offset.toFixed(2)}s`);
   }
 }

@@ -100,6 +100,11 @@ export interface IArchitectureFacade {
     handleDeleteSelectedEntity(): void;
 
     /**
+     * 获取音频播放状态 (用于进度条)
+     */
+    getAudioPlaybackState(assetId: string): { currentTime: number; duration: number; isPlaying: boolean } | null;
+
+    /**
      * 销毁/清理
    */
     dispose(): void;

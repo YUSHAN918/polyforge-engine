@@ -95,6 +95,8 @@ export enum EngineCommandType {
     PREVIEW_AUDIO = 'PREVIEW_AUDIO',
     STOP_PREVIEW_AUDIO = 'STOP_PREVIEW_AUDIO',
     SET_MASTER_VOLUME = 'SET_MASTER_VOLUME', // 🔥 New Volume Command
+    TOGGLE_PAUSE_AUDIO = 'TOGGLE_PAUSE_AUDIO', // 🔥 New Pause Command
+    SET_AUDIO_LOOPING = 'SET_AUDIO_LOOPING', // 🔥 New Looping Command
 }
 
 // --- Payloads ---
@@ -187,7 +189,7 @@ export interface SetColliderRotationYPayload { type: EngineCommandType.SET_COLLI
 export interface SaveAssetPhysicsConfigPayload { type: EngineCommandType.SAVE_ASSET_PHYSICS_CONFIG; }
 export interface SaveAssetTransformPayload { type: EngineCommandType.SAVE_ASSET_TRANSFORM; } // 🔥 新增
 export interface SetImageModePayload { type: EngineCommandType.SET_IMAGE_MODE; entityId: string; mode: 'billboard' | 'standee' | 'sticker'; }
-export interface PreviewAudioPayload { type: EngineCommandType.PREVIEW_AUDIO; assetId: string; }
+export interface PreviewAudioPayload { type: EngineCommandType.PREVIEW_AUDIO; assetId: string; looping?: boolean; }
 export interface StopPreviewAudioPayload {
     type: EngineCommandType.STOP_PREVIEW_AUDIO;
 }
@@ -195,6 +197,17 @@ export interface StopPreviewAudioPayload {
 export interface SetMasterVolumePayload {
     type: EngineCommandType.SET_MASTER_VOLUME;
     volume: number;
+}
+
+export interface TogglePauseAudioPayload {
+    type: EngineCommandType.TOGGLE_PAUSE_AUDIO;
+    assetId?: string;
+}
+
+export interface SetAudioLoopingPayload {
+    type: EngineCommandType.SET_AUDIO_LOOPING;
+    assetId?: string;
+    isLooping: boolean;
 }
 
 // --- Union Type ---
@@ -261,5 +274,7 @@ export type EngineCommand =
     | SetImageModePayload
     | PreviewAudioPayload
     | StopPreviewAudioPayload
-    | SetMasterVolumePayload;
+    | SetMasterVolumePayload
+    | TogglePauseAudioPayload
+    | SetAudioLoopingPayload;
 
