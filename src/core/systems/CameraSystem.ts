@@ -623,6 +623,8 @@ export class CameraSystem implements System {
    * Phase 19.4 Impl
    */
   private applyCollision(camera: CameraComponent): void {
+    // 🛑 Collision strictly restricted to TPS mode
+    if (camera.mode !== 'thirdPerson') return;
     if (!camera.enableCollision || !this.physicsSystem) return;
 
     // 1. Raycast params

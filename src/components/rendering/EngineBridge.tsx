@@ -260,12 +260,19 @@ const EntityRenderer = React.memo<{
           mesh.material.polygonOffsetUnits = -4.0;
           mesh.material.depthWrite = false; // 🚫 禁止写入深度，单纯做 Decal
           mesh.material.transparent = true;
-        } else if (visual.material.textureAssetId) {
-          // 对于普通 Billboard/Standee，恢复默认
+        } else {
+          // 对于所有非贴纸物体 (普通模型、看板、角色等)，恢复默认并开启阴影
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+
           mesh.material.polygonOffset = false;
           mesh.material.polygonOffsetFactor = 0;
           mesh.material.polygonOffsetUnits = 0;
-          mesh.material.depthWrite = !visual.material.transparent;
+
+          // 仅针对图片资产控制深度写入 (模型维持自身材质设置)
+          if (visual.material.textureAssetId) {
+            mesh.material.depthWrite = !visual.material.transparent;
+          }
         }
 
         mesh.material.needsUpdate = true;
