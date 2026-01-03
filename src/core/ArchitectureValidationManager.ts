@@ -504,7 +504,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
           if (phys) {
             phys.colliderScale = c.scale;
             this.physicsSystem.rebuildBody(this.selectedEntityId);
-            console.log(`🧊 [Manager] Collider scale adjusted to: ${c.scale}`);
           }
         }
         break;
@@ -557,7 +556,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
                 window.dispatchEvent(new CustomEvent('PHYSICS_CONFIG_UPDATED', {
                   detail: { scale: 1.0, offsetY: idealOffsetY, rotationY: 0 }
                 }));
-                console.log(`📐 [Manager] Auto-Fitted Model Collider. CenterY: ${idealOffsetY}`);
               }
             } else if (visual.geometry.type === 'plane') {
               // 🖼️ 图片一键贴合：重置偏移并确保比例 1:1 (基于 Visual 参数)
@@ -595,7 +593,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
             };
             // Save to Asset Registry
             this.assetRegistry.updateAssetMetadata(vis.geometry.assetId, { physicsConfig: config });
-            console.log(`💾 [Manager] Saved Physics Config for Asset: ${vis.geometry.assetId}`, config);
+            console.log(`💾 [Manager] Physics config saved for: ${vis.geometry.assetId}`);
           } else {
             console.warn('⚠️ [Manager] Cannot save physics config: Missing components or Asset ID.');
           }
@@ -616,16 +614,7 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
             };
             // Save to Asset Registry
             await this.assetRegistry.updateAssetMetadata(vis.geometry.assetId, { defaultTransform: config });
-            console.log(`💾 [Manager] Saved Transform Config for Asset: ${vis.geometry.assetId}`, config);
-            console.log(`💾 [Manager] Current Transform State:`, {
-              scale: transform.scale,
-              rotation: transform.rotation,
-              position: transform.position
-            });
-
-            // 🔥 验证保存：立即读取确认
-            const verifyMeta = await this.assetRegistry.getMetadata(vis.geometry.assetId);
-            console.log(`✅ [Manager] Verification - Saved metadata:`, verifyMeta?.defaultTransform);
+            console.log(`💾 [Manager] Transform saved for: ${vis.geometry.assetId}`);
 
             // 🔥 触发UI通知事件
             window.dispatchEvent(new CustomEvent('ASSET_TRANSFORM_SAVED', {
@@ -1692,16 +1681,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const metadata = await this.assetRegistry.getMetadata(assetId);
     const defaultTransform = metadata?.defaultTransform;
 
-    console.log(`🔍 [Placement] Loading metadata for ${assetName}:`, {
-      assetId,
-      hasMetadata: !!metadata,
-      metadata: metadata, // 🔥 打印完整metadata
-      hasDefaultTransform: !!defaultTransform,
-      defaultTransform: defaultTransform,
-      defaultTransformType: typeof defaultTransform,
-      defaultTransformKeys: defaultTransform ? Object.keys(defaultTransform) : []
-    });
-
     // 3. Create Ghost Entity
     const id = `Ghost_${assetName}_${Date.now()}`;
     const entity = this.entityManager.createEntity(`Ghost: ${assetName}`, id);
@@ -1711,25 +1690,11 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // 4. Components
     const transform = new TransformComponent();
 
-    console.log(`🔍 [Placement] About to check defaultTransform:`, {
-      defaultTransform,
-      truthyCheck: !!defaultTransform,
-      typeofCheck: typeof defaultTransform,
-      isNull: defaultTransform === null,
-      isUndefined: defaultTransform === undefined
-    });
-
     // 🔥 应用默认Transform配置（如果存在）
     if (defaultTransform) {
       transform.scale = [...defaultTransform.scale] as [number, number, number];
       transform.rotation = [...defaultTransform.rotation] as [number, number, number];
       transform.markLocalDirty(); // 🔥 标记为脏，确保矩阵更新
-      console.log(`🎨 [Placement] Applied Default Transform for ${assetName}:`, {
-        scale: transform.scale,
-        rotation: transform.rotation
-      });
-    } else {
-      console.log(`ℹ️ [Placement] No default transform found, using defaults [1,1,1] scale, [0,0,0] rotation`);
     }
 
     this.entityManager.addComponent(id, transform);
@@ -1751,12 +1716,21 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // 🛡️ ECS 隔离加固：存储放置控制元数据
     const placement = new PlacementComponent(assetId, assetName);
     placement.mode = 'model';
+    
+    // 🔥 应用默认变换到PlacementComponent（如果存在）
+    if (defaultTransform) {
+      if (defaultTransform.rotation) {
+        placement.defaultRotation = [...defaultTransform.rotation] as [number, number, number];
+      }
+      if (defaultTransform.scale) {
+        placement.defaultScale = defaultTransform.scale[0];
+      }
+    }
+    
     this.entityManager.addComponent(id, placement);
 
     this.ghostEntityId = id;
     this.currentPlacementAsset = { id: assetId, name: assetName, type: 'model' };
-
-    console.log(`👻 [Placement] Entered Ghost Mode (ECS) for model: ${assetName}`);
   }
 
   private async handleEnterImagePlacementMode(assetId: string, assetName: string) {
@@ -1810,7 +1784,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         const ratio = imgWidth / imgHeight;
         if (ratio > 1) height = width / ratio;
         else width = height * ratio;
-        console.log(`🖼️ [Placement] Aspect ratio fixed (Robust): ${width}x${height}`);
       }
     } catch (e) {
       console.warn(`[Placement] Failed to detect texture dimensions for ${assetName}, defaults to 4x4`, e);
@@ -1840,8 +1813,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     this.ghostEntityId = id;
     this.currentPlacementAsset = { id: assetId, name: assetName, type: 'image' };
-
-    console.log(`🖼️ [Placement] Entered Ghost Mode (ECS) for image: ${assetName}`);
   }
 
   private handleTogglePlacementMode() {
@@ -1855,7 +1826,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     if (this.currentPlacementAsset.type === 'image') {
       // 切换模式：billboard <-> billboard (目前仅支持看板，后续可加贴地)
       // 保持简单，当前仅切换预览
-      console.log(`🔄 [Placement] Image mode toggled (Dummy)`);
     }
   }
 
@@ -1937,7 +1907,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         // 🔥 核心修正: 使用 ModelImporter 导出的精准包围盒尺寸与中心偏移
         const center = bBox.center || [0, 0, 0];
         solidPhysics.setCollider('box', bBox.size, center);
-        console.log(`🧊 [Manager] Static collider auto-locked to BBox size: ${bBox.size}, offset: ${center}`);
       } else {
         solidPhysics.setCollider('box', [1, 1, 1], [0, 0, 0]);
         console.warn(`⚠️ [Manager] BBox missing for ${assetName}, falling back to unit box.`);
@@ -1949,7 +1918,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
         if (savedConfig.colliderScale) solidPhysics.colliderScale = savedConfig.colliderScale;
         if (savedConfig.colliderOffset) solidPhysics.colliderLocalOffset = [...savedConfig.colliderOffset] as [number, number, number];
         if (savedConfig.colliderRotation) solidPhysics.colliderLocalRotation = [...savedConfig.colliderRotation] as [number, number, number];
-        console.log(`🧠 [Placement] Applied Saved Physics Config for ${assetName}`, savedConfig);
       }
 
       this.entityManager.addComponent(solidId, solidPhysics);
@@ -1965,7 +1933,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       // 设置极薄的 Box 碰撞体，使其可被射线拣选
       solidPhysics.setCollider('box', [w, h, 0.1], [0, 0, 0]);
       this.entityManager.addComponent(solidId, solidPhysics);
-      console.log(`🖼️ [Manager] Image collider created: [${w}, ${h}, 0.1]`);
     }
 
     // 4. Final Sync & Selection
@@ -1975,7 +1942,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // Cleanup Ghost
     this.handleCancelPlacement();
-    console.log(`✅ [Placement] Committed: ${assetName} (${solidId})`);
   }
 
   public isPlacing(): boolean {
@@ -2014,13 +1980,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
             else newW = newH * ratio;
 
             visual.geometry.parameters = { width: newW, height: newH };
-            console.log(`🎨 [Manager] Syncing Plane Aspect Ratio to: ${newW}x${newH}`);
           }
         });
       }
     }
-
-    console.log(`🎨 [Manager] Applied ${assetType} (${assetId}) to entity: ${this.selectedEntityId}`);
   }
 
   // 🔥 交互革新：统一入口处理点击与交互
@@ -2055,6 +2018,9 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
   private performSelectionRaycast(screenX: number, screenY: number) {
     if (!this.physicsSystem) return;
+
+    // 🔥 [BUG FIX] 放置模式下禁止选中状态变更，避免 outline 残留
+    if (this.ghostEntityId) return;
 
     const ray = this.cameraSystem.getRayFromScreen(screenX, screenY);
     if (!ray) return;
@@ -2093,7 +2059,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
       // 有效实体：设置选中
       this.selectedEntityId = hit.entityId;
-      console.log(`🎯 [Selection] Picked entity: ${hit.entityId}`);
     } else {
       // 空点击：取消选中
       this.selectedEntityId = null;
@@ -2214,15 +2179,12 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       if (checkCooldown('ESCAPE', 300)) { // Debounce ESC
         if (this.isPlacing()) {
           this.handleCancelPlacement();
-          console.log('⌨️ [Keyboard] Placement Cancelled');
         } else if (this.isGrabbing) {
           this.exitGrabMode(false);
-          console.log('⌨️ [Keyboard] Grab Cancelled (Reverted)');
         } else if (this.selectedEntityId) {
           const oldId = this.selectedEntityId;
           this.selectedEntityId = null;
           this.updateSelectionOutline(oldId, null);
-          console.log('⌨️ [Keyboard] Selection Cleared');
         }
       }
     }
@@ -2232,10 +2194,8 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
       if (checkCooldown('ENTER', 300)) {
         if (this.isPlacing()) {
           this.handleCommitPlacement();
-          console.log('⌨️ [Keyboard] Placement Committed');
         } else if (this.isGrabbing) {
           this.exitGrabMode(true);
-          console.log('⌨️ [Keyboard] Grab Committed');
         }
       }
     }
@@ -2466,26 +2426,14 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
 
     // 🔥 Collider Mode: Initialize Screen Space Grab
     if (this.isEditingCollider) {
-      // Use Raw or NDC Y. Input system usually gives Normalized Mouse (-1 to 1).
-      // Let's grab the current mouse Y from InputSystem
-      const mouse = this.inputSystem.mousePosition; // {x, y} in NDC usually
+      const mouse = this.inputSystem.mousePosition;
       this.grabStartMouseY = mouse.y;
 
       const phys = entity.getComponent<PhysicsComponent>('Physics');
       if (phys) {
         this.grabStartColliderOffset = phys.colliderLocalOffset[1];
       }
-      console.log(`🔧 [Manager] Collider Grab Started. StartY: ${mouse.y}, StartOffset: ${this.grabStartColliderOffset}`);
     }
-
-    // Disable Physics collision temporarily to avoid knocking things over while dragging?
-    // Or set to Kinematic?
-    // For KISS, let's just move the Transform. Physics system usually follows Transform if set.
-    // But for Static bodies, we need to rebuild or force update. 
-    // Dynamic bodies might fight back.
-    // Let's force kinematic behavior manually by updating position every frame.
-
-    console.log(`✊ [Manager] Grab Mode Entered: ${entityId}`);
   }
 
   private exitGrabMode(confirm: boolean) {
@@ -2511,8 +2459,6 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     this.grabHeightOffset = 0;
     this.stateRevision++; // 🔥 抓取结束，递增脉冲强制刷新 UI（可能存在模式变更联动）
     eventBus.emit('ENGINE_STATE_CHANGED');
-
-    console.log(`✋ [Manager] Grab Mode Exited. Confirmed: ${confirm}`);
   }
 
   private updateGrabPosition() {
@@ -2522,7 +2468,10 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     const entity = this.entityManager.getEntity(this.grabbedEntityId);
     const transform = entity?.getComponent<TransformComponent>('Transform');
 
-    if (this.isEditingCollider && entity) {
+    // 🔥 安全检查：entity 可能为 undefined
+    if (!entity || !transform) return;
+
+    if (this.isEditingCollider) {
       // 🔥 Collider Mode: G-Key just locks into "Keyboard Adjustment Mode".
       // Mouse movement is IGNORED. Use W/S to adjust Y offset.
       return;
@@ -2575,41 +2524,38 @@ export class ArchitectureValidationManager implements IArchitectureFacade {
     // Apply Height Offset
     targetPos[1] += this.grabHeightOffset;
 
-    // Update Entity
-    // (entity and transform are already defined at top of function)
-    if (transform) {
-      transform.position = targetPos as [number, number, number];
+    // Update Entity Transform
+    transform.position = targetPos as [number, number, number];
 
-      // 🔥 贴纸模式：移动时重新计算贴合方向
-      const placement = entity.getComponent<PlacementComponent>('Placement');
-      if (placement && placement.mode === 'sticker' && hitFound) {
-        const dummy = new THREE.Object3D();
-        dummy.position.set(targetPos[0], targetPos[1], targetPos[2]);
-        const target = new THREE.Vector3(
-          targetPos[0] + hitNormal[0],
-          targetPos[1] + hitNormal[1],
-          targetPos[2] + hitNormal[2]
-        );
-        dummy.lookAt(target);
-        if (placement.rotationY !== 0) {
-          // 🔥 修正：rotationY 是度数，dummy.rotateZ 需要弧度
-          dummy.rotateZ(placement.rotationY * Math.PI / 180);
-          const q = dummy.quaternion;
-          transform.quaternion = [q.x, q.y, q.z, q.w];
-          // 🔥 修正：不再写入 rotation = [0,0,0]，避免覆盖四元数
-        }
+    // 🔥 贴纸模式：移动时重新计算贴合方向
+    const placement = entity.getComponent<PlacementComponent>('Placement');
+    if (placement && placement.mode === 'sticker' && hitFound) {
+      const dummy = new THREE.Object3D();
+      dummy.position.set(targetPos[0], targetPos[1], targetPos[2]);
+      const target = new THREE.Vector3(
+        targetPos[0] + hitNormal[0],
+        targetPos[1] + hitNormal[1],
+        targetPos[2] + hitNormal[2]
+      );
+      dummy.lookAt(target);
+      if (placement.rotationY !== 0) {
+        // 🔥 修正：rotationY 是度数，dummy.rotateZ 需要弧度
+        dummy.rotateZ(placement.rotationY * Math.PI / 180);
+        const q = dummy.quaternion;
+        transform.quaternion = [q.x, q.y, q.z, q.w];
+        // 🔥 修正：不再写入 rotation = [0,0,0]，避免覆盖四元数
       }
+    }
 
-      transform.markLocalDirty();
+    transform.markLocalDirty();
 
-      // Force sync physics for smooth visual (if it has a body)
-      const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId as string);
-      if (rb) {
-        rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
-        if (transform.quaternion) {
-          const q = transform.quaternion;
-          rb.setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] }, true);
-        }
+    // Force sync physics for smooth visual (if it has a body)
+    const rb = this.physicsSystem.getRigidBody(this.grabbedEntityId as string);
+    if (rb) {
+      rb.setTranslation({ x: targetPos[0], y: targetPos[1], z: targetPos[2] }, true);
+      if (transform.quaternion) {
+        const q = transform.quaternion;
+        rb.setRotation({ x: q[0], y: q[1], z: q[2], w: q[3] }, true);
       }
     }
   }

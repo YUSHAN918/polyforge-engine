@@ -85,7 +85,8 @@ export class PlacementSystem implements System {
                     hitPos[2] + hitNormal[2] * offset
                 ];
 
-                const s = placement.scale;
+                // 🔥 优先使用保存的默认缩放值
+                const s = placement.defaultScale !== undefined ? placement.defaultScale : placement.scale;
                 transform.scale = [s, s, s];
 
                 // 预览阶段的特殊旋转（如贴纸对齐法线）
@@ -131,7 +132,13 @@ export class PlacementSystem implements System {
                 // 已放置贴纸的位姿已在 SET_IMAGE_MODE 指令周期处理完毕，此处无需轮询恢复
             } else if (placement.mode === 'model' && !placement.isPlaced) {
                 transform.quaternion = undefined;
-                transform.rotation = [placement.rotationX ? -90 : 0, placement.rotationY, 0];
+                // 🔥 优先使用保存的默认旋转值
+                if (placement.defaultRotation) {
+                    transform.rotation = [...placement.defaultRotation] as [number, number, number];
+                } else {
+                    // 兜底：使用旧的逻辑
+                    transform.rotation = [placement.rotationX ? -90 : 0, placement.rotationY, 0];
+                }
             }
 
             // --- 物理同步 (确保碰撞体随动态旋转实时更新) ---
@@ -144,10 +151,10 @@ export class PlacementSystem implements System {
     }
 
     onEntityAdded(entity: Entity): void {
-        console.log(`[PlacementSystem] Ghost entity tracked: ${entity.id}`);
+        // Ghost entity tracked (removed verbose log)
     }
 
     onEntityRemoved(entity: Entity): void {
-        console.log(`[PlacementSystem] Ghost entity untracked: ${entity.id}`);
+        // Ghost entity untracked (removed verbose log)
     }
 }

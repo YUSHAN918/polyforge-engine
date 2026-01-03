@@ -694,14 +694,28 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
 
   // New Asset Imports (using registry)
   const handleAssetImport = (e: React.ChangeEvent<HTMLInputElement>, category: any) => {
-    const file = e.target.files?.[0];
-    if (!file || !manager) return;
+    const files = e.target.files;
+    if (!files || files.length === 0 || !manager) return;
     const registry = manager.getAssetRegistry();
 
-    if (category === 'models') registry.importModel(file, { category: 'models' });
-    else if (category === 'audio') registry.importAudio(file, { category: 'audio' });
-    else if (category === 'environments') registry.importHDR(file, { category: 'environments' });
-    else if (category === 'textures') registry.importTexture(file, { category: 'textures' });
+    // 🔥 Batch: Iterate ALL selected files
+    Array.from(files).forEach((file) => {
+      if (category === 'models') registry.importModel(file, { category: 'models' });
+      else if (category === 'audio') registry.importAudio(file, { category: 'audio' });
+      else if (category === 'environments') registry.importHDR(file, { category: 'environments' });
+      else if (category === 'textures') registry.importTexture(file, { category: 'textures' });
+      else {
+        // 🔥 Auto-detect by extension for 'all' tab
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        if (['glb', 'gltf'].includes(ext)) registry.importModel(file, { category: 'models' });
+        else if (['mp3', 'wav', 'ogg'].includes(ext)) registry.importAudio(file, { category: 'audio' });
+        else if (['hdr', 'exr'].includes(ext)) registry.importHDR(file, { category: 'environments' });
+        else if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) registry.importTexture(file, { category: 'textures' });
+      }
+    });
+
+    // Reset input value to allow re-import of same files
+    e.target.value = '';
   };
 
   const handleBatchImport = async (e?: React.ChangeEvent<HTMLInputElement>) => {
@@ -1348,12 +1362,36 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                           {asset.thumbnail ? (
                             <img src={asset.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" alt="" />
                           ) : (
-                            <div className="flex flex-col items-center justify-center opacity-10 group-hover:opacity-30 transition-opacity">
-                              <i className={`fas ${asset.category === 'models' ? 'fa-cube' :
-                                asset.category === 'audio' ? 'fa-music' :
-                                  asset.category === 'textures' ? 'fa-image' :
-                                    asset.category === 'environments' ? 'fa-mountain' : 'fa-box'
-                                } ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'}`}></i>
+                            <div className="flex flex-col items-center justify-center opacity-10 group-hover:opacity-40 transition-opacity">
+                              {(() => {
+                                const cat = (asset.category || '').toLowerCase();
+                                const name = (asset.name || '').toLowerCase();
+
+                                // Audio-specific icon logic
+                                if (cat === 'audio' || cat === 'music' || cat === 'sound' || cat === 'mp3') {
+                                  // BGM / Music
+                                  if (name.includes('bgm') || name.includes('music') || name.includes('track') || name.includes('ost') || name.includes('theme')) {
+                                    return <i className={`fas fa-compact-disc ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-purple-400`}></i>;
+                                  }
+                                  // SFX / Effects
+                                  if (name.includes('sfx') || name.includes('effect') || name.includes('hit') || name.includes('explosion') || name.includes('click') || name.includes('shoot')) {
+                                    return <i className={`fas fa-bolt ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-orange-400`}></i>;
+                                  }
+                                  // Voice / Dialog
+                                  if (name.includes('voice') || name.includes('dialog') || name.includes('speech') || name.includes('narrat')) {
+                                    return <i className={`fas fa-microphone ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-pink-400`}></i>;
+                                  }
+                                  // Ambient / Environment
+                                  if (name.includes('ambient') || name.includes('nature') || name.includes('environment') || name.includes('wind') || name.includes('rain') || name.includes('forest')) {
+                                    return <i className={`fas fa-tree ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-green-400`}></i>;
+                                  }
+                                  // Default Audio
+                                  return <i className={`fas fa-music ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'} text-cyan-400`}></i>;
+                                }
+
+                                // Non-audio fallback
+                                return <i className={`fas ${cat === 'models' ? 'fa-cube' : cat === 'textures' ? 'fa-image' : cat === 'environments' ? 'fa-mountain' : 'fa-box'} ${assetViewMode === 'grid' ? 'text-4xl' : 'text-xl'}`}></i>;
+                              })()}
                             </div>
                           )}
 
@@ -1906,8 +1944,16 @@ export const ArchitectureValidationPanel: React.FC<ArchitectureValidationPanelPr
                       <span className="text-cyan-400 font-mono">{manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.scale[0].toFixed(2)}x</span>
                     </div>
                     <div className="flex justify-between text-[9px]">
-                      <span className="text-gray-500">旋转 (Rotation Y)</span>
+                      <span className="text-gray-500">旋转 X (Rotation X)</span>
+                      <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[0] || 0)}°</span>
+                    </div>
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-gray-500">旋转 Y (Rotation Y)</span>
                       <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[1] || 0)}°</span>
+                    </div>
+                    <div className="flex justify-between text-[9px]">
+                      <span className="text-gray-500">旋转 Z (Rotation Z)</span>
+                      <span className="text-cyan-400 font-mono">{Math.round(manager.getEntityManager().getEntity(selectedEntity)?.getComponent<TransformComponent>('Transform')?.rotation[2] || 0)}°</span>
                     </div>
                   </div>
 

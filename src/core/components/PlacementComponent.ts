@@ -15,6 +15,11 @@ export class PlacementComponent implements Component {
     public scale: number = 1.0;
     public rotationY: number = 0;
     public rotationX: boolean = false; // 是否旋转 90 度 (用于图片垂直/水平切换)
+    
+    // 🔥 新增：完整的默认旋转值（用于模型资产的自定义旋转）
+    public defaultRotation?: [number, number, number]; // [X, Y, Z] 度数
+    // 🔥 新增：默认缩放值（用于模型资产的自定义缩放）
+    public defaultScale?: number;
 
     constructor(assetId: string = '', assetName: string = '') {
         this.assetId = assetId;
@@ -31,7 +36,9 @@ export class PlacementComponent implements Component {
             isPlaced: this.isPlaced,
             scale: this.scale,
             rotationY: this.rotationY,
-            rotationX: this.rotationX
+            rotationX: this.rotationX,
+            defaultRotation: this.defaultRotation,
+            defaultScale: this.defaultScale
         };
     }
 
@@ -44,5 +51,7 @@ export class PlacementComponent implements Component {
         this.scale = data.scale || 1.0;
         this.rotationY = data.rotationY || 0;
         this.rotationX = !!data.rotationX;
+        this.defaultRotation = data.defaultRotation;
+        this.defaultScale = data.defaultScale;
     }
 }

@@ -192,11 +192,20 @@ const EntityRenderer = React.memo<{
       );
     } else {
       // 兼容：度数转弧度同步
-      group.rotation.set(
-        THREE.MathUtils.degToRad(transform.rotation[0]),
-        THREE.MathUtils.degToRad(transform.rotation[1]),
-        THREE.MathUtils.degToRad(transform.rotation[2])
-      );
+      const rotX = THREE.MathUtils.degToRad(transform.rotation[0]);
+      const rotY = THREE.MathUtils.degToRad(transform.rotation[1]);
+      const rotZ = THREE.MathUtils.degToRad(transform.rotation[2]);
+      
+      group.rotation.set(rotX, rotY, rotZ);
+      
+      // 🔥 调试：打印Ghost实体的旋转
+      if (entity.name.startsWith('Ghost:')) {
+        console.log(`🎨 [Render] Applying rotation to ${entity.name}:`, {
+          degrees: transform.rotation,
+          radians: [rotX, rotY, rotZ],
+          groupRotation: [group.rotation.x, group.rotation.y, group.rotation.z]
+        });
+      }
     }
 
     // 3. 缩放同步
